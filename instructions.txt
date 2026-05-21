@@ -1,0 +1,35 @@
+I am starting the 'Pro' version of the DibsCoin dApp. We are moving from a static HTML site to a professional Next.js 14 (App Router) project with Tailwind CSS.
+
+Please execute the following setup:
+
+1. INITIALIZE PROJECT: Run 'npx create-next-app@latest . --typescript --tailwind --eslint'. 
+   - Use the following defaults: 
+     - Would you like to use `src/` directory? Yes
+     - Would you like to use App Router? Yes
+     - Would you like to customize the default import alias (@/*)? No
+
+2. INSTALL WEB3 TOOLS: Install the following dependencies:
+   - wagmi
+   - viem
+   - @tanstack/react-query
+   - lucide-react (for professional icons)
+
+3. DESIGN SYSTEM: Update 'tailwind.config.ts' to implement the professional color palette:
+   - Background: #0F172A (Deep Navy)
+   - Primary: #7C3AED (Violet)
+   - Secondary: #3B82F6 (Blue)
+   - Surface: rgba(30, 41, 59, 0.8) with backdrop-blur
+
+4. CORE STRUCTURE: Create the basic folder structure for:
+   - /src/components (Navbar, Footer, GlassCard, Button)
+   - /src/app (layout.tsx, page.tsx, swap/page.tsx, stake/page.tsx, dashboard/page.tsx)
+
+5. WALLET PROVIDER: Set up a 'Web3Provider' using Wagmi and Viem. 
+   - Configure it to connect to the Arc Testnet.
+   - Chain ID: 5042002
+   - RPC URL: https://rpc.testnet.arc.network
+   - Ensure the provider wraps the entire application in 'layout.tsx'.
+
+6. BASIC LAYOUT: Create a professional Navbar with a 'Connect Wallet' button and links to Swap, Stake, and Dashboard.
+
+Please let me know once the project is initialized, the provider is set up, and the basic layout is ready.
