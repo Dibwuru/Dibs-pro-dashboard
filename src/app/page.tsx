@@ -2,11 +2,10 @@ import Link from "next/link";
 import {
   ArrowRight,
   ArrowLeftRight,
+  Send,
   Coins,
-  ChartBar,
-  Shield,
   Zap,
-  Globe,
+  Wallet,
 } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
@@ -28,25 +27,16 @@ export default function Home() {
         </h1>
 
         <p className="mt-6 text-lg text-text-muted max-w-xl leading-relaxed">
-          The next-generation decentralized exchange. Swap tokens, earn yield
-          through staking, and manage your portfolio — all powered by the Arc
+          The next-generation decentralized exchange. Swap tokens, send
+          payments, and earn yield through staking — all powered by the Arc
           Testnet.
         </p>
 
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mt-10">
+        {/* CTA Button */}
+        <div className="mt-10">
           <Link href="/swap">
-            <Button size="lg" icon={<ArrowLeftRight className="w-4 h-4" />}>
-              Start Swapping
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button
-              variant="outline"
-              size="lg"
-              icon={<ChartBar className="w-4 h-4" />}
-            >
-              View Dashboard
+            <Button size="lg" icon={<ArrowRight className="w-4 h-4" />}>
+              Start Using DibsCoin
             </Button>
           </Link>
         </div>
@@ -57,10 +47,11 @@ export default function Home() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-3">
-              Why DibsCoin?
+              Powerful DeFi Tools
             </h2>
             <p className="text-text-muted max-w-md mx-auto">
-              Built for speed, security, and simplicity on the Arc Network.
+              Everything you need to manage your digital assets on the Arc
+              Network.
             </p>
           </div>
 
@@ -70,60 +61,62 @@ export default function Home() {
                 <ArrowLeftRight className="w-5 h-5 text-primary" />
               </div>
               <h3 className="text-lg font-semibold text-text-primary mb-2">
-                Instant Swaps
+                Swap
               </h3>
               <p className="text-sm text-text-muted leading-relaxed">
-                Execute token swaps at lightning speed with minimal slippage
-                and low fees on Arc Testnet.
+                Instantly swap between any supported tokens with minimal
+                slippage and low fees, all on-chain on Arc Testnet.
               </p>
             </GlassCard>
 
             <GlassCard hover className="text-center sm:text-left">
               <div className="w-10 h-10 rounded-xl bg-secondary/10 border border-secondary/20 flex items-center justify-center mb-4">
-                <Coins className="w-5 h-5 text-secondary" />
+                <Send className="w-5 h-5 text-secondary" />
               </div>
               <h3 className="text-lg font-semibold text-text-primary mb-2">
-                High-Yield Staking
+                Send
               </h3>
               <p className="text-sm text-text-muted leading-relaxed">
-                Stake your DIBS tokens and earn competitive APY with flexible
-                lock periods and auto-compounding rewards.
+                Send tokens to any wallet instantly and securely. Fast
+                transactions with near-zero fees on the Arc Network.
               </p>
             </GlassCard>
 
             <GlassCard hover className="text-center sm:text-left">
               <div className="w-10 h-10 rounded-xl bg-success/10 border border-success/20 flex items-center justify-center mb-4">
-                <Shield className="w-5 h-5 text-success" />
+                <Coins className="w-5 h-5 text-success" />
               </div>
               <h3 className="text-lg font-semibold text-text-primary mb-2">
-                Secure & Audited
+                Stake
               </h3>
               <p className="text-sm text-text-muted leading-relaxed">
-                Battle-tested smart contracts with comprehensive security
-                audits ensure your assets stay safe.
+                Stake your DIBS tokens to earn competitive yields. Flexible
+                lock periods with auto-compounding rewards.
               </p>
             </GlassCard>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Connect Wallet CTA */}
       <section className="px-4 pb-24">
         <GlassCard className="max-w-3xl mx-auto text-center p-10">
-          <Globe className="w-10 h-10 text-primary mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-text-primary mb-3">
-            Ready to Get Started?
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-5">
+            <Wallet className="w-7 h-7 text-primary" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-3">
+            Connect Your Wallet
           </h2>
-          <p className="text-text-muted mb-6 max-w-md mx-auto">
-            Connect your wallet, get testnet ETH from the faucet, and start
-            trading DIBS tokens on Arc Testnet.
+          <p className="text-text-muted mb-6 max-w-md mx-auto leading-relaxed">
+            Get started in seconds. Connect your wallet, grab testnet ETH from
+            the faucet, and unlock the full power of DibsCoin on Arc Testnet.
           </p>
           <Link href="/swap">
             <Button
               size="lg"
-              icon={<ArrowRight className="w-4 h-4" />}
+              icon={<Wallet className="w-4 h-4" />}
             >
-              Launch App
+              Connect Wallet
             </Button>
           </Link>
         </GlassCard>

@@ -1,35 +1,11 @@
-I am starting the 'Pro' version of the DibsCoin dApp. We are moving from a static HTML site to a professional Next.js 14 (App Router) project with Tailwind CSS.
+I am getting a 404 NOT FOUND error on Vercel. This is because the home page is missing.
 
-Please execute the following setup:
+Please create the main home page at 'src/app/page.tsx'. 
 
-1. INITIALIZE PROJECT: Run 'npx create-next-app@latest . --typescript --tailwind --eslint'. 
-   - Use the following defaults: 
-     - Would you like to use `src/` directory? Yes
-     - Would you like to use App Router? Yes
-     - Would you like to customize the default import alias (@/*)? No
+The page should be a professional, high-converting landing page for DibsCoin featuring:
+1. A Hero section with a 'Start Using DibsCoin' button that links to '/swap'.
+2. A features section showcasing the Swap, Send, and Stake tools.
+3. A 'Connect Wallet' CTA.
+4. Use the Glassmorphism design system (Deep Navy background, Violet accents).
 
-2. INSTALL WEB3 TOOLS: Install the following dependencies:
-   - wagmi
-   - viem
-   - @tanstack/react-query
-   - lucide-react (for professional icons)
-
-3. DESIGN SYSTEM: Update 'tailwind.config.ts' to implement the professional color palette:
-   - Background: #0F172A (Deep Navy)
-   - Primary: #7C3AED (Violet)
-   - Secondary: #3B82F6 (Blue)
-   - Surface: rgba(30, 41, 59, 0.8) with backdrop-blur
-
-4. CORE STRUCTURE: Create the basic folder structure for:
-   - /src/components (Navbar, Footer, GlassCard, Button)
-   - /src/app (layout.tsx, page.tsx, swap/page.tsx, stake/page.tsx, dashboard/page.tsx)
-
-5. WALLET PROVIDER: Set up a 'Web3Provider' using Wagmi and Viem. 
-   - Configure it to connect to the Arc Testnet.
-   - Chain ID: 5042002
-   - RPC URL: https://rpc.testnet.arc.network
-   - Ensure the provider wraps the entire application in 'layout.tsx'.
-
-6. BASIC LAYOUT: Create a professional Navbar with a 'Connect Wallet' button and links to Swap, Stake, and Dashboard.
-
-Please let me know once the project is initialized, the provider is set up, and the basic layout is ready.
+Once created, let me know so I can push the change to GitHub and fix the 404 error.
