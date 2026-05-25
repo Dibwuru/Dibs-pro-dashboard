@@ -13,9 +13,6 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  LayoutDashboard,
-  ArrowLeftRight,
-  Layers,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/Button";
@@ -47,12 +44,6 @@ const transactions = [
   },
 ];
 
-const tabs = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "swap", label: "Swap", icon: ArrowLeftRight },
-  { id: "stake", label: "Stake", icon: Layers },
-];
-
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
@@ -61,10 +52,6 @@ export default function Home() {
 
   const [isMockConnected, setIsMockConnected] = useState(false);
   const [mockEmail, setMockEmail] = useState("");
-  const [fromAmount, setFromAmount] = useState("");
-  const [toAmount, setToAmount] = useState("");
-  const [activeTab, setActiveTab] = useState("dashboard");
-
   const isWrongNetwork =
     isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
 
@@ -163,41 +150,11 @@ export default function Home() {
           </div>
         </section>
       ) : (
-        /* ===== CONNECTED: Tabbed Dashboard ===== */
+        /* ===== CONNECTED: Dashboard ===== */
         <section className="relative flex-1 overflow-hidden">
           <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10">
-            {/* Tab Navigation */}
-            <div className="flex items-center gap-2 mb-8">
-              {tabs.map(({ id, label, icon: Icon }) => {
-                const isActive = activeTab === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => setActiveTab(id)}
-                    className={`flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                      isActive
-                        ? "bg-primary/15 text-primary border border-primary/20 shadow-lg shadow-primary/5"
-                        : "text-text-secondary hover:text-text-primary hover:bg-white/[0.05] border border-transparent"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {label}
-                  </button>
-                );
-              })}
-
-              {/* Arc Testnet Indicator Pill */}
-              <div className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/20 border border-success/30">
-                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse flex-shrink-0" />
-                <span className="text-xs font-medium text-success tracking-wide">
-                  Arc Testnet
-                </span>
-              </div>
-            </div>
-
             {/* ===== DASHBOARD VIEW ===== */}
-            {activeTab === "dashboard" && (
-              <div className="space-y-8">
+            <div className="space-y-8">
                 {/* Balance Hero Card */}
                 <GlassCard className="p-8 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.04] rounded-full blur-[80px] pointer-events-none" />
@@ -401,131 +358,7 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-            )}
 
-            {/* ===== SWAP VIEW ===== */}
-            {activeTab === "swap" && (
-              <div className="flex justify-center">
-                <GlassCard className="p-8 w-full max-w-lg">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-base font-semibold text-text-primary">
-                      Swap Tokens
-                    </h3>
-                  </div>
-
-                  {/* From Input */}
-                  <div className="space-y-2 mb-3">
-                    <label className="text-xs font-medium text-text-muted uppercase tracking-wider">
-                      From
-                    </label>
-                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] p-4 focus-within:border-primary/30 focus-within:ring-1 focus-within:ring-primary/10 transition-all">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#627EEA] to-[#8A9FF5] flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-white">
-                              E
-                            </span>
-                          </div>
-                          <span className="text-sm font-semibold text-text-primary">
-                            ETH
-                          </span>
-                        </div>
-                        <span className="text-xs text-text-muted">
-                          Balance: 4.25 ETH
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        placeholder="0.00"
-                        value={fromAmount}
-                        onChange={(e) => setFromAmount(e.target.value)}
-                        className="w-full bg-transparent text-2xl font-bold text-text-primary placeholder:text-text-muted/30 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Swap Arrow */}
-                  <div className="flex justify-center -my-2 relative z-10">
-                    <button
-                      type="button"
-                      aria-label="Swap direction"
-                      className="w-10 h-10 rounded-xl bg-[#05070C] border border-white/[0.10] flex items-center justify-center hover:border-primary/30 hover:bg-[#1E293B] transition-all group"
-                    >
-                      <ArrowDown className="w-4 h-4 text-text-muted group-hover:text-primary transition-colors" />
-                    </button>
-                  </div>
-
-                  {/* To Input */}
-                  <div className="space-y-2 mt-3 mb-6">
-                    <label className="text-xs font-medium text-text-muted uppercase tracking-wider">
-                      To
-                    </label>
-                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] p-4 focus-within:border-primary/30 focus-within:ring-1 focus-within:ring-primary/10 transition-all">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-white">
-                              D
-                            </span>
-                          </div>
-                          <span className="text-sm font-semibold text-text-primary">
-                            DIBS
-                          </span>
-                        </div>
-                        <span className="text-xs text-text-muted">
-                          Balance: 145,230.50 DIBS
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        placeholder="0.00"
-                        value={toAmount}
-                        onChange={(e) => setToAmount(e.target.value)}
-                        className="w-full bg-transparent text-2xl font-bold text-text-primary placeholder:text-text-muted/30 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Exchange Rate */}
-                  <div className="flex items-center justify-between px-1 mb-6 text-xs text-text-muted">
-                    <span>1 ETH ≈ 34,125.00 DIBS</span>
-                    <span>Slippage: 0.5%</span>
-                  </div>
-
-                  {/* Swap Button */}
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    icon={<ArrowRight className="w-4 h-4" />}
-                  >
-                    Swap
-                  </Button>
-                </GlassCard>
-              </div>
-            )}
-
-            {/* ===== STAKE VIEW ===== */}
-            {activeTab === "stake" && (
-              <div className="flex justify-center">
-                <GlassCard className="p-10 w-full max-w-lg text-center">
-                  <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/20 flex items-center justify-center">
-                    <Layers className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-bold text-text-primary mb-3">
-                    Staking Coming Soon
-                  </h3>
-                  <p className="text-sm text-text-muted leading-relaxed mb-8">
-                    Stake your DIBS tokens to earn rewards on the Arc Testnet.
-                    Our staking interface is being crafted with the same premium
-                    glassmorphic design language.
-                  </p>
-                  <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
-                    <div className="w-1.5 h-1.5 rounded-full bg-success/60 flex-shrink-0" />
-                    <span>Powered by Arc Testnet</span>
-                  </div>
-                </GlassCard>
-              </div>
-            )}
           </div>
         </section>
       )}

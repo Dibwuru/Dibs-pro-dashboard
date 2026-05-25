@@ -1,21 +1,11 @@
-ACT AS: A Senior Web3 Full-Stack Developer.
-TASK: Implement global Obsidian color themes and fix layout spacing, tab visibility, and network display issues across layout.tsx and page.tsx.
+ACT AS: A Senior Web3 Developer.
+TASK: Manually execute the Git pipeline to push our clean, deduplicated code to GitHub.
 
-CRITICAL ARCHITECTURAL REQUIREMENTS:
-1. GLOBAL THEME (src/app/layout.tsx):
-   - Update the root layout wrapper to use an ultra-premium Obsidian Black background (#05070C).
-   - Inject two soft, large background glow components: one Amethyst Purple (#8B5CF6) blur effect on the left, and one Neon Emerald Green (#10B981) blur effect on the right. Ensure these are global so they apply across all current and future sub-pages.
+CRITICAL PIPELINE REQUIREMENTS:
+1. Run 'git status' to ensure our modifications to src/app/page.tsx and src/components/Navbar.tsx are visible.
+2. Run 'git add .' to stage and prepare both cleaned files for saving.
+3. Run a git commit command with the exact message: git commit -m "fix: clear duplicate layout tabs and align arc network pill"
+4. Push the code upstream to your main branch by running: git push origin main
+5. Print a bold confirmation message to the terminal screen when the push is fully complete so the user knows it hit GitHub.
 
-2. CONDITIONAL VISIBILITY & SPACING FIXES (src/app/page.tsx):
-   - Track the active tab at the top using a client-side activeTab state ("dashboard", "swap", "stake").
-   - By default, the main landing page view should ONLY show the Portfolio Overview and Recent Activity. Remove the Swap widget from this layout completely.
-   - If the user clicks the "Swap" tab at the top, conditionally switch the view to display ONLY your beautifully redesigned glassmorphic Swap input interface.
-   - If the user clicks the "Stake" tab, show a placeholder box styled with our new color theme.
-   - Fix the "stucked" feel by dramatically increasing padding (use px-8 py-10 or spacing utilities like gap-8) so every glass card has immense breathing room.
-
-3. ARC TESTNET ACCENT DISPLAY FIX:
-   - Ensure the Arc Testnet connection indicator pill uses a clean, high-visibility Emerald Green background tint with clear typography spacing, eliminating any element clipping or text overlapping.
-
-4. SAFETY: Maintain all working Wagmi wallet hooks, connection logic, and the passive chain ID checks (correctly matching 5042002).
-
-Execute this global theme update and file refactor across layout.tsx and page.tsx now.
+Execute this manual push sequence now.

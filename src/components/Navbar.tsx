@@ -68,6 +68,12 @@ export function Navbar() {
                     {address ? formatAddress(address) : "Connected"}
                   </span>
                 </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/20 border border-success/30">
+                  <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse flex-shrink-0" />
+                  <span className="text-xs font-medium text-success tracking-wide">
+                    Arc Testnet
+                  </span>
+                </div>
                 <button
                   onClick={() => disconnect()}
                   className="px-3 py-2 rounded-lg text-sm font-medium text-text-muted hover:text-error hover:bg-error/5 transition-all"

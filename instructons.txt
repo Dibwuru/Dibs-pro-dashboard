@@ -1,0 +1,10 @@
+ACT AS: A Senior Web3 Frontend Developer.
+TASK: Clean up the duplicate navigation links, eliminate component overlap, and fix the Arc Testnet badge alignment across page.tsx and Navbar.tsx.
+
+CRITICAL CODE CLEANUP REQUIREMENTS:
+1. DE-DUPLICATE NAVIGATION: Look at where navigation items ("Dashboard", "Swap", "Stake") are being rendered. Ensure that they are ONLY created once globally (ideally handled inside your shared Navbar component) and remove the secondary, redundant row of tab buttons from the top of src/app/page.tsx.
+2. ALIGN ARC TESTNET PILL: Reposition the green "Arc Testnet" status indicator so that it sits neatly inside the main top right header row, right next to the wallet address block. Ensure it does not float down or overlap your portfolio numbers.
+3. TAB CONTROL INTEGRATION: Ensure that clicking the "Swap" or "Stake" buttons in the clean main navbar still correctly updates the activeTab state to toggle the layout below.
+4. SPACING RESCUE: Keep the deep spacing properties (padding and margins) intact so that the Portfolio box and Recent Activity table remain un-cramped.
+
+Execute this code cleanup and navigation unification now.
