@@ -1,11 +1,10 @@
-ACT AS: A Senior Web3 Developer.
-TASK: Manually execute the Git pipeline to push our clean, deduplicated code to GitHub.
+ACT AS: A Senior Frontend Developer & Tailwind CSS Expert.
+TASK: Fix the text clipping and overlapping token labels on the Swap and Stake input fields across page.tsx, swap panels, and stake panels.
 
-CRITICAL PIPELINE REQUIREMENTS:
-1. Run 'git status' to ensure our modifications to src/app/page.tsx and src/components/Navbar.tsx are visible.
-2. Run 'git add .' to stage and prepare both cleaned files for saving.
-3. Run a git commit command with the exact message: git commit -m "fix: clear duplicate layout tabs and align arc network pill"
-4. Push the code upstream to your main branch by running: git push origin main
-5. Print a bold confirmation message to the terminal screen when the push is fully complete so the user knows it hit GitHub.
+CRITICAL VISUAL FIX REQUIREMENTS:
+1. RELATIVE BOUNDARY LOCK: Locate all token input fields where "ETH" or "DIBS" badges are rendered inside the Swap and Stake forms. Ensure the wrapping parent element explicitly has the 'relative' Tailwind CSS utility class applied.
+2. INPUT PADDING ROOM: On the <input /> elements themselves, add deep right-hand interior padding using the 'pr-16' or 'pr-20' utility classes. This prevents typed numbers from sliding under or overlapping the token text badges.
+3. INSIDE BADGE BOXING: Style the position of the absolute token labels ("ETH" and "DIBS") using exactly 'absolute right-3 top-1/2 -translate-y-1/2'. Add a premium badge background container using 'bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800' so they sit perfectly locked INSIDE the input border walls.
+4. CONTINUITY: Keep the global Obsidian Black background theme, spacing layout grids, and active wallet connection states entirely intact.
 
-Execute this manual push sequence now.
+Execute this layout boundary alignment and input padding fix now.

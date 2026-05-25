@@ -38,15 +38,15 @@ export default function StakePage() {
             <label className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 block">
               Stake Amount
             </label>
-            <div className="flex items-center gap-3 bg-navy/50 rounded-xl p-4 border border-white/[0.06]">
+            <div className="relative flex items-center bg-navy/50 rounded-xl p-4 border border-white/[0.06]">
               <input
                 type="number"
                 placeholder="0.0"
-                className="flex-1 bg-transparent text-2xl font-semibold text-text-primary outline-none placeholder:text-text-muted/50"
+                className="w-full bg-transparent text-2xl font-semibold text-text-primary outline-none placeholder:text-text-muted/50 pr-20"
               />
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-sm font-semibold text-primary hover:bg-primary/15 transition-all">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800 text-sm font-semibold text-primary">
                 DIBS
-              </button>
+              </span>
             </div>
           </div>
 
