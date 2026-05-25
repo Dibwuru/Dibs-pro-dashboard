@@ -31,10 +31,15 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-mesh">
+      <body className="min-h-full flex flex-col bg-obsidian relative">
+        {/* Global Atmospheric Glow Components */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-[#8B5CF6]/[0.06] blur-[180px]" />
+          <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-[#10B981]/[0.05] blur-[170px]" />
+        </div>
         <Web3Provider>
           <Navbar />
-          <main className="flex-1 flex flex-col">{children}</main>
+          <main className="flex-1 flex flex-col relative z-10">{children}</main>
           <Footer />
         </Web3Provider>
       </body>

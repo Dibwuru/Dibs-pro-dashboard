@@ -23,7 +23,7 @@
 }
 
 :root {
-  --background: #0F172A;
+  --background: #05070C;
   --foreground: #F1F5F9;
 }
 
@@ -76,13 +76,13 @@ body {
   box-shadow: 0 4px 24px rgba(124, 58, 237, 0.3);
 }
 
-/* Animated background */
-.bg-mesh {
-  background-color: #0F172A;
+/* Obsidian background */
+.bg-obsidian {
+  background-color: #05070C;
   background-image:
-    radial-gradient(ellipse at 20% 50%, rgba(124, 58, 237, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+    radial-gradient(ellipse at 15% 60%, rgba(139, 92, 246, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 30%, rgba(16, 185, 129, 0.05) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
 }
 
 /* Scrollbar styling */
@@ -91,7 +91,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0F172A;
+  background: #05070C;
 }
 
 ::-webkit-scrollbar-thumb {

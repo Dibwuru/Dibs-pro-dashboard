@@ -13,6 +13,9 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
+  LayoutDashboard,
+  ArrowLeftRight,
+  Layers,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/Button";
@@ -44,6 +47,12 @@ const transactions = [
   },
 ];
 
+const tabs = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "swap", label: "Swap", icon: ArrowLeftRight },
+  { id: "stake", label: "Stake", icon: Layers },
+];
+
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
@@ -54,6 +63,7 @@ export default function Home() {
   const [mockEmail, setMockEmail] = useState("");
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const isWrongNetwork =
     isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
@@ -153,19 +163,41 @@ export default function Home() {
           </div>
         </section>
       ) : (
-        /* ===== CONNECTED: Google Stitch Dashboard ===== */
+        /* ===== CONNECTED: Tabbed Dashboard ===== */
         <section className="relative flex-1 overflow-hidden">
-          {/* Atmospheric Background Glows */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute top-[-15%] left-[-10%] w-[700px] h-[700px] rounded-full bg-cyan-500/[0.07] blur-[150px]" />
-            <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/[0.07] blur-[150px]" />
-            <div className="absolute top-[35%] left-[55%] w-[350px] h-[350px] rounded-full bg-blue-400/[0.04] blur-[100px]" />
-          </div>
+          <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10">
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-2 mb-8">
+              {tabs.map(({ id, label, icon: Icon }) => {
+                const isActive = activeTab === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className={`flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      isActive
+                        ? "bg-primary/15 text-primary border border-primary/20 shadow-lg shadow-primary/5"
+                        : "text-text-secondary hover:text-text-primary hover:bg-white/[0.05] border border-transparent"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                );
+              })}
 
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* ===== LEFT COLUMN: Portfolio Overview ===== */}
-              <div className="lg:col-span-2 space-y-6">
+              {/* Arc Testnet Indicator Pill */}
+              <div className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/20 border border-success/30">
+                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse flex-shrink-0" />
+                <span className="text-xs font-medium text-success tracking-wide">
+                  Arc Testnet
+                </span>
+              </div>
+            </div>
+
+            {/* ===== DASHBOARD VIEW ===== */}
+            {activeTab === "dashboard" && (
+              <div className="space-y-8">
                 {/* Balance Hero Card */}
                 <GlassCard className="p-8 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.04] rounded-full blur-[80px] pointer-events-none" />
@@ -216,9 +248,9 @@ export default function Home() {
                 </GlassCard>
 
                 {/* Metric Cards Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {/* Staked */}
-                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-5 hover:border-white/[0.16] transition-all duration-300">
+                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-6 hover:border-white/[0.16] transition-all duration-300">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
                         <Coins className="w-4 h-4 text-primary" />
@@ -234,7 +266,7 @@ export default function Home() {
                   </div>
 
                   {/* Earned */}
-                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-5 hover:border-white/[0.16] transition-all duration-300">
+                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-6 hover:border-white/[0.16] transition-all duration-300">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-8 h-8 rounded-lg bg-secondary/15 border border-secondary/20 flex items-center justify-center">
                         <TrendingUp className="w-4 h-4 text-secondary" />
@@ -250,7 +282,7 @@ export default function Home() {
                   </div>
 
                   {/* Rewards */}
-                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-5 hover:border-white/[0.16] transition-all duration-300">
+                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-6 hover:border-white/[0.16] transition-all duration-300">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/20 flex items-center justify-center">
                         <Zap className="w-4 h-4 text-accent" />
@@ -267,8 +299,8 @@ export default function Home() {
                 </div>
 
                 {/* Recent Activity */}
-                <GlassCard className="p-6">
-                  <div className="flex items-center justify-between mb-4">
+                <GlassCard className="p-8">
+                  <div className="flex items-center justify-between mb-6">
                     <h3 className="text-sm font-semibold text-text-primary">
                       Recent Activity
                     </h3>
@@ -369,20 +401,16 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+            )}
 
-              {/* ===== RIGHT COLUMN: Swap Widget ===== */}
-              <div className="lg:col-span-1">
-                <GlassCard className="p-6 flex flex-col h-full">
+            {/* ===== SWAP VIEW ===== */}
+            {activeTab === "swap" && (
+              <div className="flex justify-center">
+                <GlassCard className="p-8 w-full max-w-lg">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-semibold text-text-primary">
-                      Swap
+                    <h3 className="text-base font-semibold text-text-primary">
+                      Swap Tokens
                     </h3>
-                    <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20">
-                      <div className="w-1.5 h-1.5 rounded-full bg-success" />
-                      <span className="text-[10px] font-medium text-primary">
-                        Arc Testnet
-                      </span>
-                    </div>
                   </div>
 
                   {/* From Input */}
@@ -418,7 +446,11 @@ export default function Home() {
 
                   {/* Swap Arrow */}
                   <div className="flex justify-center -my-2 relative z-10">
-                    <button type="button" aria-label="Swap direction" className="w-9 h-9 rounded-xl bg-[#0F172A] border border-white/[0.10] flex items-center justify-center hover:border-primary/30 hover:bg-[#1E293B] transition-all group">
+                    <button
+                      type="button"
+                      aria-label="Swap direction"
+                      className="w-10 h-10 rounded-xl bg-[#05070C] border border-white/[0.10] flex items-center justify-center hover:border-primary/30 hover:bg-[#1E293B] transition-all group"
+                    >
                       <ArrowDown className="w-4 h-4 text-text-muted group-hover:text-primary transition-colors" />
                     </button>
                   </div>
@@ -463,14 +495,37 @@ export default function Home() {
                   {/* Swap Button */}
                   <Button
                     size="lg"
-                    className="w-full mt-auto"
+                    className="w-full"
                     icon={<ArrowRight className="w-4 h-4" />}
                   >
                     Swap
                   </Button>
                 </GlassCard>
               </div>
-            </div>
+            )}
+
+            {/* ===== STAKE VIEW ===== */}
+            {activeTab === "stake" && (
+              <div className="flex justify-center">
+                <GlassCard className="p-10 w-full max-w-lg text-center">
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/20 flex items-center justify-center">
+                    <Layers className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary mb-3">
+                    Staking Coming Soon
+                  </h3>
+                  <p className="text-sm text-text-muted leading-relaxed mb-8">
+                    Stake your DIBS tokens to earn rewards on the Arc Testnet.
+                    Our staking interface is being crafted with the same premium
+                    glassmorphic design language.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
+                    <div className="w-1.5 h-1.5 rounded-full bg-success/60 flex-shrink-0" />
+                    <span>Powered by Arc Testnet</span>
+                  </div>
+                </GlassCard>
+              </div>
+            )}
           </div>
         </section>
       )}
