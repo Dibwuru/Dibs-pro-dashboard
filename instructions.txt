@@ -1,11 +1,11 @@
 ACT AS: A Senior Web3 Developer.
-TASK: Save our updated chain ID fix and email interaction code, then push it to GitHub to update Vercel.
+TASK: Save our new premium Google Stitch frontend layout changes and push them to GitHub to trigger the Vercel update.
 
 CRITICAL REQUIREMENTS:
-1. Run 'git status' to ensure our updates to src/app/page.tsx are detected.
-2. Run 'git add .' to stage and bundle up the modified files.
-3. Run a git commit command with the exact message: git commit -m "fix: adjust arc testnet chain id and wire mock turnkey login state"
-4. Push the code to the main branch by running: git push origin main
-5. Print a clear confirmation message to the terminal screen when the push is fully complete.
+1. Run 'git status' to double-check that our new edits to src/app/page.tsx are fully ready.
+2. Run 'git add .' to package up and stage all layout updates.
+3. Run a git commit command with the exact message: git commit -m "design: implement premium google stitch layout grid and atmospheric backgrounds"
+4. Push the code directly to the main branch by running: git push origin main
+5. Print a clear confirmation banner to the screen once the repository is successfully updated.
 
-Execute this deployment pipeline now.
+Execute this deployment sequence now.
