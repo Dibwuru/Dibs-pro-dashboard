@@ -1,11 +1,11 @@
-I am getting a 404 NOT FOUND error on Vercel. This is because the home page is missing.
+ACT AS: A Senior Web3 Developer.
+TASK: Save our new frontend code changes and push them upstream to GitHub to trigger the Vercel production deployment.
 
-Please create the main home page at 'src/app/page.tsx'. 
+CRITICAL REQUIREMENTS:
+1. Run 'git status' to ensure our modifications to src/app/page.tsx are visible.
+2. Run 'git add .' to stage and prepare all modified files for saving.
+3. Run a git commit command with the exact message: git commit -m "feat: deploy hybrid layout and passive network banner UI"
+4. Push the code securely to your main branch by running: git push origin main
+5. Print a clear confirmation message to the terminal screen once the push succeeds so the Founder knows the code has been shipped.
 
-The page should be a professional, high-converting landing page for DibsCoin featuring:
-1. A Hero section with a 'Start Using DibsCoin' button that links to '/swap'.
-2. A features section showcasing the Swap, Send, and Stake tools.
-3. A 'Connect Wallet' CTA.
-4. Use the Glassmorphism design system (Deep Navy background, Violet accents).
-
-Once created, let me know so I can push the change to GitHub and fix the 404 error.
+Execute this deployment sequence now.
