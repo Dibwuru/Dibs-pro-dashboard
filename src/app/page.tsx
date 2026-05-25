@@ -14,7 +14,7 @@ import { useState } from "react";
 import { Button } from "@/components/Button";
 import { GlassCard } from "@/components/GlassCard";
 
-const ARC_TESTNET_CHAIN_ID = 490413;
+const ARC_TESTNET_CHAIN_ID = 5042002;
 
 export default function Home() {
   const { address, isConnected } = useAccount();
@@ -22,8 +22,20 @@ export default function Home() {
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
 
+  const [isMockConnected, setIsMockConnected] = useState(false);
+  const [mockEmail, setMockEmail] = useState("");
+
   const isWrongNetwork =
     isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
+
+  const handleTurnkeyLogin = (email: string) => {
+    // Simulated Turnkey embedded login — sets mock connection state to true
+    console.log("Turnkey login initiated for:", email);
+    setMockEmail(email);
+    setIsMockConnected(true);
+  };
+
+  const isLoggedIn = isConnected || isMockConnected;
 
   return (
     <div className="flex flex-col flex-1">
@@ -38,7 +50,7 @@ export default function Home() {
         </div>
       )}
 
-      {!isConnected ? (
+      {!isLoggedIn ? (
         /* ===== NOT CONNECTED: Login Interface ===== */
         <section className="flex flex-col items-center justify-center flex-1 px-4 py-16">
           <div className="w-full max-w-md space-y-6">
@@ -73,7 +85,7 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              <EmailLoginForm />
+              <EmailLoginForm onLogin={handleTurnkeyLogin} />
             </GlassCard>
 
             {/* Divider */}
@@ -152,9 +164,11 @@ export default function Home() {
               <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
                 <Shield className="w-3.5 h-3.5" />
                 <span>
-                  {address
-                    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                    : "Connected"}
+                  {isMockConnected
+                    ? mockEmail
+                    : address
+                      ? `${address.slice(0, 6)}...${address.slice(-4)}`
+                      : "Connected"}
                 </span>
               </div>
             </GlassCard>
@@ -185,7 +199,14 @@ export default function Home() {
                   Connected to Arc Testnet
                 </p>
                 <button
-                  onClick={() => disconnect()}
+                  onClick={() => {
+                    if (isMockConnected) {
+                      setIsMockConnected(false);
+                      setMockEmail("");
+                    } else {
+                      disconnect();
+                    }
+                  }}
                   className="text-xs font-medium text-error/80 hover:text-error transition-colors"
                 >
                   Disconnect
@@ -200,35 +221,59 @@ export default function Home() {
 }
 
 /** Reusable email input for Turnkey embedded login visual setup */
-function EmailLoginForm() {
+function EmailLoginForm({ onLogin }: { onLogin: (email: string) => void }) {
   const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+
+  const isValidEmail = (value: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (error) setError("");
+  };
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        // Turnkey embedded login integration point
+        const trimmed = email.trim();
+        if (!trimmed) {
+          setError("Please enter your email address.");
+          return;
+        }
+        if (!isValidEmail(trimmed)) {
+          setError("Please enter a valid email address.");
+          return;
+        }
+        onLogin(trimmed);
       }}
-      className="flex items-center gap-2"
+      className="flex flex-col gap-2"
     >
-      <div className="relative flex-1">
-        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => handleEmailChange(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
+          />
+        </div>
+        <Button
+          size="sm"
+          icon={<ArrowRight className="w-3.5 h-3.5" />}
+          className="flex-shrink-0"
+          type="submit"
+        >
+          Sign In
+        </Button>
       </div>
-      <Button
-        size="sm"
-        icon={<ArrowRight className="w-3.5 h-3.5" />}
-        className="flex-shrink-0"
-        type="submit"
-      >
-        Sign In
-      </Button>
+      {error && (
+        <p className="text-xs text-error/80 pl-1">{error}</p>
+      )}
     </form>
   );
 }
