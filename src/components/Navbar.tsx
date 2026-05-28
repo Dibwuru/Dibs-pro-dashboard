@@ -1,6 +1,7 @@
 "use client";
 
 import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Wallet, Menu, X, Coins, ArrowLeftRight, ChartBar, Fuel, ExternalLink, Sun, Moon } from "lucide-react";
@@ -19,6 +20,7 @@ export function Navbar() {
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { theme, setTheme } = useTheme();
+  const { login, authenticated, logout, user } = usePrivy();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -65,6 +67,17 @@ export function Navbar() {
 
           {/* Desktop Wallet Button */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Privy Sign In Button */}
+            <button
+              onClick={login}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all mr-2"
+            >
+              {authenticated && user?.email?.address
+                ? user.email.address.length > 18
+                  ? `${user.email.address.slice(0, 15)}...`
+                  : user.email.address
+                : "Sign In with Email"}
+            </button>
             {isConnected ? (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-success/20 border border-success/25">

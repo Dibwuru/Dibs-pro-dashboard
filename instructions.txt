@@ -1,16 +1,39 @@
-ACT AS: A Senior Web3 Frontend Engineer.
-TASK: Add an interactive, hydration-safe Light/Dark mode toggle button into the ARCTOR Terminal Navbar.
+ACT AS: A Senior Web3 Architect and Core Frontend Developer.
+TASK: Integrate the Privy Auth React SDK into ARCTOR Terminal using non-destructive, hybrid methods.
 
-CRITICAL CODE REQUIREMENTS:
-1. COMPONENT TARGET: Open src/components/Navbar.tsx. Import 'useTheme' directly from 'next-themes'.
-2. HYDRATION MOUNT CHECK: Inside the Navbar component, implement a client-side mount state to completely eliminate React compilation mismatches:
-   const [mounted, setMounted] = React.useState(false);
-   React.useEffect(() => setMounted(true), []);
-   if (!mounted) return null;
-3. THE TOGGLE ELEMENT: Insert a styled clickable <button> element immediately adjacent to the green Arc Testnet badge and the USDC Gas pill layout row.
-4. INTERACTIVE MECHANICS: Configure the button's onClick event handler to check the active theme state:
-   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-5. VISUAL ACCENTS: Render a clean Lucide icon layout inside the button (use Sun icon when theme is dark, Moon icon when theme is light). Style the button container with crisp, institutional borders: 'p-2 rounded-lg bg-white dark:bg-[#121826] border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-amber-400 hover:scale-105 transition-all'.
-6. DEPLOYMENT PIPELINE: Run 'npm run build' to confirm a successful compilation. Execute a clean repository save sequence: git add ., git commit -m "feat: add interactive theme toggle button to navbar", and git push origin main.
+CRITICAL INTEGRATION & SAFETY RULES:
+1. CUSTOM PROVIDER CREATION: Do not touch layout.tsx directly yet. Create a brand new client provider file at src/providers/PrivyAuthProvider.tsx. Paste this structural implementation:
+   'use client';
+   import { PrivyProvider } from '@privy-io/react-auth';
+   export default function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
+     return (
+       <PrivyProvider
+         appId="clpispdty00ycl80fpueukbhl"
+         config={{
+           loginMethods: ['email', 'google', 'twitter'],
+           appearance: {
+             theme: 'dark',
+             accentColor: '#D4AF37',
+             showWalletLoginFirst: false,
+           },
+           embeddedWallets: {
+             createOnLogin: 'users-without-wallets',
+           },
+         }}
+       >
+         {children}
+       </PrivyProvider>
+     );
+   }
+2. SURGICAL LAYOUT WRAP: Open src/app/layout.tsx. Import 'PrivyAuthProvider' from '@/providers/PrivyAuthProvider'. Nest it clean inside your existing ThemeProvider tree wrapping the {children} tag. Do not modify or replace any other layout tokens or class wrappers.
+3. HYBRID TOOLBAR PATHWAY: Open src/components/Navbar.tsx. Import the 'usePrivy' hook:
+   import { usePrivy } from '@privy-io/react-auth';
+   Inside the Navbar component, destructure the required control states:
+   const { login, authenticated, logout, user } = usePrivy();
+4. THE DUAL-BUTTON INJECTION: Locate your existing standard MetaMask "Connect Wallet" button code string inside the layout. Directly adjacent to it (on the left side), add a secondary button labeled "Sign In with Email". 
+   - Apply the following matching Swiss Sovereign glassmorphic styling: 'px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all mr-2'.
+   - Wire the click mechanism: onClick={login}. If the user is authenticated via Privy, change the text string layout to show a truncated portion of their email (e.g., user.email.address) or add a clean conditional check to manage logs.
+5. INTEGRITY BUILD LOOP: Execute 'npm run build' to confirm that standard extensions and Privy assets coexist perfectly with zero TypeScript warnings.
+6. SOURCE CONTROL DELIVERY: Git add, commit with message "feat: add hybrid privy email login authentication", and push directly to origin main.
 
-Execute this component refactor and manual push pipeline now.
+Execute this surgical onboarding implementation sequence now.

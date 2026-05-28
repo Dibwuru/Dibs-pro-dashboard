@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Web3Provider } from "@/components/Web3Provider";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import PrivyAuthProvider from "@/providers/PrivyAuthProvider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
@@ -35,16 +36,18 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-obsidian relative">
         <ThemeProvider>
-          {/* Global Atmospheric Glow Components */}
-          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-            <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-blue-600/[0.04] blur-[180px] dark:bg-[#8B5CF6]/[0.06]" />
-            <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-amber-600/[0.03] blur-[170px] dark:bg-[#10B981]/[0.05]" />
-          </div>
-          <Web3Provider>
-            <Navbar />
-            <main className="flex-1 flex flex-col relative z-10">{children}</main>
-            <Footer />
-          </Web3Provider>
+          <PrivyAuthProvider>
+            {/* Global Atmospheric Glow Components */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+              <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-blue-600/[0.04] blur-[180px] dark:bg-[#8B5CF6]/[0.06]" />
+              <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-amber-600/[0.03] blur-[170px] dark:bg-[#10B981]/[0.05]" />
+            </div>
+            <Web3Provider>
+              <Navbar />
+              <main className="flex-1 flex flex-col relative z-10">{children}</main>
+              <Footer />
+            </Web3Provider>
+          </PrivyAuthProvider>
         </ThemeProvider>
       </body>
     </html>
