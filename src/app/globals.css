@@ -18,13 +18,26 @@
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-error: #EF4444;
+  --color-amber-400: #FBBF24;
+  --color-amber-500: #F59E0B;
+  --color-amber-600: #D97706;
+  --color-slate-50: #F8FAFC;
+  --color-slate-200: #E2E8F0;
+  --color-slate-400: #94A3B8;
+  --color-slate-500: #64748B;
+  --color-slate-800: #1E293B;
+  --color-slate-900: #0F172A;
+  --color-slate-950: #020617;
+  --color-blue-500: #3B82F6;
+  --color-blue-600: #2563EB;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* ===== LIGHT MODE (Swiss Sovereign Default) ===== */
 :root {
-  --background: #05070C;
-  --foreground: #F1F5F9;
+  --background: #F8FAFC;
+  --foreground: #020617;
 }
 
 * {
@@ -39,24 +52,39 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Glass morphism utility */
+/* ===== DARK MODE (Midnight Navy) — .dark is applied to <html> by next-themes ===== */
+.dark body {
+  background: #090D16;
+}
+
+/* ===== Glass morphism utilities ===== */
 .glass {
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(226, 232, 240, 0.8);
   border-radius: 1rem;
 }
 
+.dark .glass {
+  background: rgba(18, 24, 38, 0.8);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+}
+
 .glass-sm {
-  background: rgba(30, 41, 59, 0.6);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(226, 232, 240, 0.6);
   border-radius: 0.75rem;
 }
 
-/* Gradient text utility */
+.dark .glass-sm {
+  background: rgba(18, 24, 38, 0.6);
+  border: 1px solid rgba(30, 41, 59, 0.6);
+}
+
+/* ===== Gradient text utility ===== */
 .text-gradient {
   background: linear-gradient(135deg, #7C3AED, #3B82F6);
   -webkit-background-clip: text;
@@ -64,7 +92,7 @@ body {
   background-clip: text;
 }
 
-/* Gradient button */
+/* ===== Gradient button ===== */
 .btn-gradient {
   background: linear-gradient(135deg, #7C3AED, #3B82F6);
   transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
@@ -76,29 +104,49 @@ body {
   box-shadow: 0 4px 24px rgba(124, 58, 237, 0.3);
 }
 
-/* Obsidian background */
+/* ===== Swiss Sovereign background layers ===== */
 .bg-obsidian {
-  background-color: #05070C;
+  background-color: #F8FAFC;
+  background-image:
+    radial-gradient(ellipse at 15% 60%, rgba(37, 99, 235, 0.05) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 30%, rgba(217, 119, 6, 0.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 80%, rgba(37, 99, 235, 0.03) 0%, transparent 50%);
+}
+
+.dark .bg-obsidian {
+  background-color: #090D16;
   background-image:
     radial-gradient(ellipse at 15% 60%, rgba(139, 92, 246, 0.06) 0%, transparent 55%),
     radial-gradient(ellipse at 85% 30%, rgba(16, 185, 129, 0.05) 0%, transparent 55%),
     radial-gradient(ellipse at 60% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
 }
 
-/* Scrollbar styling */
+/* ===== Scrollbar styling ===== */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #05070C;
+  background: #F1F5F9;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #090D16;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #CBD5E1;
   border-radius: 3px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
 ::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }

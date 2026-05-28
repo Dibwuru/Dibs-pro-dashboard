@@ -69,8 +69,8 @@ export default function Home() {
       {/* Wrong Network Warning Banner */}
       {isWrongNetwork && (
         <div className="sticky top-16 z-40 flex items-center justify-center gap-3 px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 backdrop-blur-md">
-          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-          <p className="text-sm text-amber-200/90">
+          <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 flex-shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-200/90">
             You are connected to an unsupported network. Please switch to Arc
             Testnet (Chain ID: {ARC_TESTNET_CHAIN_ID}) in your wallet.
           </p>
@@ -87,11 +87,11 @@ export default function Home() {
                 <Zap className="w-3.5 h-3.5" />
                 Pre-Alpha Access
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-text-primary">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 dark:text-slate-50">
                 Welcome to{" "}
-                <span className="text-gradient">DibsCoin</span>
+                <span className="text-gradient">ARCTOR Terminal</span>
               </h1>
-              <p className="text-sm text-text-muted max-w-sm mx-auto leading-relaxed">
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
                 Connect your wallet or sign in with email to start trading on
                 the Arc Testnet.
               </p>
@@ -104,10 +104,10 @@ export default function Home() {
                   <Mail className="w-4.5 h-4.5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-text-primary">
+                  <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
                     Email Sign-In
                   </h3>
-                  <p className="text-xs text-text-muted">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Powered by Turnkey — no seed phrase needed
                   </p>
                 </div>
@@ -117,11 +117,11 @@ export default function Home() {
 
             {/* Divider */}
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-white/[0.06]" />
-              <span className="text-xs font-medium text-text-muted uppercase tracking-wider">
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+              <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 or connect wallet
               </span>
-              <div className="flex-1 h-px bg-white/[0.06]" />
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
             </div>
 
             {/* Wagmi Connectors */}
@@ -130,20 +130,20 @@ export default function Home() {
                 <button
                   key={connector.id}
                   onClick={() => connect({ connector })}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl glass-sm hover:bg-white/[0.06] hover:border-white/12 transition-all duration-200 group"
+                  className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl glass-sm hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/12 transition-all duration-200 group"
                 >
                   <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#FF9A4D] to-[#E27625] flex items-center justify-center flex-shrink-0">
                     <Wallet className="w-4.5 h-4.5 text-white" />
                   </div>
                   <div className="flex-1 text-left">
-                    <span className="text-sm font-semibold text-text-primary">
+                    <span className="text-sm font-semibold text-slate-950 dark:text-slate-50">
                       {connector.name}
                     </span>
-                    <p className="text-xs text-text-muted">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Browser wallet
                     </p>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  <ArrowRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                 </button>
               ))}
             </div>
@@ -161,12 +161,12 @@ export default function Home() {
                   <div className="relative">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                       <div>
-                        <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
+                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                           Portfolio Value
                         </p>
                         <div className="flex items-baseline gap-3 mt-1">
                           <h1
-                            className="text-4xl sm:text-5xl font-bold text-text-primary tracking-tight tabular-nums"
+                            className="text-4xl sm:text-5xl font-bold text-slate-950 dark:text-slate-50 tracking-tight tabular-nums"
                             style={{
                               textShadow:
                                 "0 0 40px rgba(124, 58, 237, 0.15)",
@@ -174,13 +174,13 @@ export default function Home() {
                           >
                             145,230.50
                           </h1>
-                          <span className="text-xl sm:text-2xl font-semibold text-text-secondary">
+                          <span className="text-xl sm:text-2xl font-semibold text-slate-600 dark:text-slate-300">
                             DIBS
                           </span>
                         </div>
                       </div>
                       <div className="sm:text-right">
-                        <p className="text-sm font-semibold text-text-primary">
+                        <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">
                           $218,492.75
                         </p>
                         <div className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full bg-success/10 border border-success/20">
@@ -191,7 +191,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-text-muted">
+                    <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
                       <Shield className="w-3.5 h-3.5" />
                       <span>
                         {isMockConnected
@@ -207,58 +207,58 @@ export default function Home() {
                 {/* Metric Cards Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {/* Staked */}
-                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-6 hover:border-white/[0.16] transition-all duration-300">
+                  <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
                         <Coins className="w-4 h-4 text-primary" />
                       </div>
-                      <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
+                      <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                         Staked
                       </p>
                     </div>
-                    <p className="text-xl font-bold text-text-primary tabular-nums">
+                    <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
                       85,000.00
                     </p>
-                    <p className="text-xs text-text-muted mt-0.5">DIBS</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
                   </div>
 
                   {/* Earned */}
-                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-6 hover:border-white/[0.16] transition-all duration-300">
+                  <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-8 h-8 rounded-lg bg-secondary/15 border border-secondary/20 flex items-center justify-center">
                         <TrendingUp className="w-4 h-4 text-secondary" />
                       </div>
-                      <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
+                      <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                         Earned
                       </p>
                     </div>
-                    <p className="text-xl font-bold text-text-primary tabular-nums">
+                    <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
                       1,200.00
                     </p>
-                    <p className="text-xs text-text-muted mt-0.5">DIBS</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
                   </div>
 
                   {/* Rewards */}
-                  <div className="rounded-xl bg-navy-light/50 backdrop-blur-md border border-white/[0.10] p-6 hover:border-white/[0.16] transition-all duration-300">
+                  <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/20 flex items-center justify-center">
                         <Zap className="w-4 h-4 text-accent" />
                       </div>
-                      <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
+                      <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                         Rewards
                       </p>
                     </div>
-                    <p className="text-xl font-bold text-text-primary tabular-nums">
+                    <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
                       14,500.00
                     </p>
-                    <p className="text-xs text-text-muted mt-0.5">DIBS</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
                   </div>
                 </div>
 
                 {/* Recent Activity */}
                 <GlassCard className="p-8">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-semibold text-text-primary">
+                    <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
                       Recent Activity
                     </h3>
                     <button className="text-xs font-medium text-primary hover:text-primary-hover transition-colors">
@@ -268,17 +268,17 @@ export default function Home() {
                   <div className="overflow-x-auto -mx-2">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-white/[0.06]">
-                          <th className="text-left py-3 px-2 text-xs font-medium text-text-muted uppercase tracking-wider">
+                        <tr className="border-b border-slate-200 dark:border-slate-800">
+                          <th className="text-left py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                             Transaction
                           </th>
-                          <th className="text-left py-3 px-2 text-xs font-medium text-text-muted uppercase tracking-wider hidden sm:table-cell">
+                          <th className="text-left py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider hidden sm:table-cell">
                             Date
                           </th>
-                          <th className="text-right py-3 px-2 text-xs font-medium text-text-muted uppercase tracking-wider">
+                          <th className="text-right py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                             Amount
                           </th>
-                          <th className="text-right py-3 px-2 text-xs font-medium text-text-muted uppercase tracking-wider">
+                          <th className="text-right py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                             Status
                           </th>
                         </tr>
@@ -287,11 +287,11 @@ export default function Home() {
                         {transactions.map((tx, i) => (
                           <tr
                             key={i}
-                            className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
+                            className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
                           >
                             <td className="py-3.5 px-2">
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center flex-shrink-0">
+                                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-slate-800 flex items-center justify-center flex-shrink-0">
                                   {tx.type.includes("Stake") ? (
                                     <Coins className="w-3.5 h-3.5 text-primary" />
                                   ) : tx.type.includes("Sent") ? (
@@ -300,21 +300,21 @@ export default function Home() {
                                     <ArrowDown className="w-3.5 h-3.5 text-success" />
                                   )}
                                 </div>
-                                <span className="text-xs font-medium text-text-primary truncate max-w-[140px]">
+                                <span className="text-xs font-medium text-slate-950 dark:text-slate-50 truncate max-w-[140px]">
                                   {tx.type}
                                 </span>
                               </div>
                             </td>
                             <td className="py-3.5 px-2 hidden sm:table-cell">
                               <div className="flex items-center gap-1.5">
-                                <Clock className="w-3 h-3 text-text-muted" />
-                                <span className="text-xs text-text-secondary">
+                                <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                                <span className="text-xs text-slate-600 dark:text-slate-300">
                                   {tx.date}
                                 </span>
                               </div>
                             </td>
                             <td className="py-3.5 px-2 text-right">
-                              <span className="text-xs font-mono font-medium text-text-primary">
+                              <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
                                 {tx.amount}
                               </span>
                             </td>
@@ -352,7 +352,7 @@ export default function Home() {
                         disconnect();
                       }
                     }}
-                    className="text-xs font-medium text-text-muted hover:text-error transition-colors px-3 py-1.5 rounded-lg hover:bg-error/5"
+                    className="text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-error transition-colors px-3 py-1.5 rounded-lg hover:bg-error/5"
                   >
                     Disconnect Wallet
                   </button>
@@ -399,13 +399,13 @@ function EmailLoginForm({ onLogin }: { onLogin: (email: string) => void }) {
     >
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
           <input
             type="email"
             value={email}
             onChange={(e) => handleEmailChange(e.target.value)}
             placeholder="you@example.com"
-            className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
+            className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-slate-700 text-sm text-slate-950 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500/50 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
           />
         </div>
         <Button

@@ -15,9 +15,9 @@ const variantStyles = {
   secondary:
     "bg-secondary/15 text-secondary border border-secondary/20 hover:bg-secondary/20 hover:border-secondary/30",
   outline:
-    "border border-white/10 text-text-primary hover:bg-white/[0.04] hover:border-white/20",
+    "border border-slate-300 dark:border-slate-700 text-slate-950 dark:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] hover:border-slate-400 dark:hover:border-white/20",
   ghost:
-    "text-text-secondary hover:text-text-primary hover:bg-white/[0.04]",
+    "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04]",
 };
 
 const sizeStyles = {

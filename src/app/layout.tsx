@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Web3Provider } from "@/components/Web3Provider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
@@ -16,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DibsCoin — Decentralized Trading on Arc",
+  title: "ARCTOR Terminal — Decentralized Trading on Arc",
   description:
-    "Swap, stake, and manage your DIBS tokens on the Arc Testnet with a professional DeFi experience.",
+    "Swap, stake, and manage your $DIBS tokens on the Arc Testnet with a professional DeFi experience.",
 };
 
 export default function RootLayout({
@@ -29,19 +30,22 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-obsidian relative">
-        {/* Global Atmospheric Glow Components */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-[#8B5CF6]/[0.06] blur-[180px]" />
-          <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-[#10B981]/[0.05] blur-[170px]" />
-        </div>
-        <Web3Provider>
-          <Navbar />
-          <main className="flex-1 flex flex-col relative z-10">{children}</main>
-          <Footer />
-        </Web3Provider>
+        <ThemeProvider>
+          {/* Global Atmospheric Glow Components */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+            <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-blue-600/[0.04] blur-[180px] dark:bg-[#8B5CF6]/[0.06]" />
+            <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-amber-600/[0.03] blur-[170px] dark:bg-[#10B981]/[0.05]" />
+          </div>
+          <Web3Provider>
+            <Navbar />
+            <main className="flex-1 flex flex-col relative z-10">{children}</main>
+            <Footer />
+          </Web3Provider>
+        </ThemeProvider>
       </body>
     </html>
   );

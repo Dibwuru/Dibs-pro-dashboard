@@ -3,7 +3,7 @@
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet, Menu, X, Coins, ArrowLeftRight, ChartBar } from "lucide-react";
+import { Wallet, Menu, X, Coins, ArrowLeftRight, ChartBar, Fuel, ExternalLink } from "lucide-react";
 import { useState } from "react";
 
 const navLinks = [
@@ -23,7 +23,7 @@ export function Navbar() {
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] glass-sm rounded-none">
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 dark:border-slate-800 glass-sm rounded-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -34,7 +34,7 @@ export function Navbar() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
               <Coins className="w-4.5 h-4.5 text-white" />
             </div>
-            <span className="text-gradient">DibsCoin</span>
+            <span className="text-gradient">ARCTOR Terminal</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -48,7 +48,7 @@ export function Navbar() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     isActive
                       ? "bg-primary/15 text-primary"
-                      : "text-text-secondary hover:text-text-primary hover:bg-white/[0.04]"
+                      : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -74,9 +74,33 @@ export function Navbar() {
                     Arc Testnet
                   </span>
                 </div>
+                {/* USDC Gas Status Pill */}
+                <div className="relative group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600/10 border border-amber-500/20 dark:bg-amber-400/10 dark:border-amber-400/20">
+                  <Fuel className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400 tracking-wide">
+                    Gas: $0.00 USDC
+                  </span>
+                  {/* Tooltip */}
+                  <div className="absolute top-full mt-2 right-0 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="bg-slate-900 dark:bg-[#121826] border border-slate-700 dark:border-slate-800 rounded-lg p-3 shadow-xl">
+                      <p className="text-xs text-slate-300 dark:text-slate-400 mb-2">
+                        Need testnet gas tokens?
+                      </p>
+                      <a
+                        href="https://faucet.arc.io/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-500 dark:text-amber-400 hover:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Get Faucet Gas
+                      </a>
+                    </div>
+                  </div>
+                </div>
                 <button
                   onClick={() => disconnect()}
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-text-muted hover:text-error hover:bg-error/5 transition-all"
+                  className="px-3 py-2 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-500 hover:text-error hover:bg-error/5 transition-all"
                 >
                   Disconnect
                 </button>
@@ -96,7 +120,7 @@ export function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-white/[0.04] transition-all"
+            className="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
             {mobileOpen ? (
@@ -110,7 +134,7 @@ export function Navbar() {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-white/[0.06] bg-navy/95 backdrop-blur-xl">
+        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#090D16]/95 backdrop-blur-xl">
           <div className="px-4 py-3 space-y-1">
             {navLinks.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href;
@@ -122,7 +146,7 @@ export function Navbar() {
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                     isActive
                       ? "bg-primary/15 text-primary"
-                      : "text-text-secondary hover:text-text-primary hover:bg-white/[0.04]"
+                      : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -130,7 +154,7 @@ export function Navbar() {
                 </Link>
               );
             })}
-            <div className="pt-3 border-t border-white/[0.06]">
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
               {isConnected ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 px-4 py-3">
