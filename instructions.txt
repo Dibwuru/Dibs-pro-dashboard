@@ -1,25 +1,27 @@
-ACT AS: A Lead Frontend Architect and Senior Web3 Core Systems Developer.
-TASK: Clean up the main landing layout, clear out the naked wallet selection list, and simultaneously implement Navbar mobile optimization, Privy social options, and live Arc Testnet USDC gas tracking.
+ACT AS: A Senior Web3 Frontend Architect and Master UI/UX Engineer.
+TASK: Polish the ARCTOR Terminal layout by implementing a responsive left hamburger menu drawer, fixing the scrolling navbar overlap bug, and correcting the dark mode text visibility contrast.
 
-CRITICAL CODE MODIFICATION SPECS:
-1. RESTORE PREMIUM LANDING (src/app/page.tsx):
-   - Completely delete the vertical list of naked browser wallets (Injected, Phantom, MetaMask, etc.) from the center of the viewport.
-   - Restore the premium analytics dashboard matrix container: render the master Portfolio Value metric card ($145,230.50 DIBS placeholder grid), the three child info grids (STAKED, EARNED, REWARDS), and the clean tabular layout grid for "Recent Activity".
-   - If no wallet address is detected from either standard Wagmi extensions or Privy, wrap the dashboard canvas elements in a clean CSS blur filter ('blur-[4px]') and overlay a crisp, elegant, high-end centered text badge: "ARCTOR Terminal Locked. Use the command bar options above to connect your institutional wallet or sign in via email."
+CRITICAL REFACTOR SPECIFICATIONS:
 
-2. LIVE NATIVE USDC GAS TRACKER (src/components/Navbar.tsx):
-   - Initialize a 'createPublicClient' instance from the 'viem' library pointing explicitly to the Arc Testnet RPC gateway: "https://rpc.testnet.arc.io" (Chain ID: 5042002).
-   - Dynamically capture the active user string from either native wagmi useAccount or Privy usePrivy hooks. 
-   - Write a background useEffect polling interval that triggers every 8 seconds to query the native token balance of that address. Convert the return value from formatEther/formatUnits and pipe it directly to update your custom Gas Status Navbar pill. Change the static placeholder string to render the exact dynamic layout: "Gas: {balance} USDC". If disconnected, fallback cleanly to "Gas: -- USDC".
+1. NAVBAR OVERLAP AND GLASS OVERLAY (src/components/Navbar.tsx):
+   - Wrap the main outermost <nav> or <header> container inside these structural layout tokens: 'sticky top-0 z-50 w-full bg-white/80 dark:bg-[#090D16]/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-300'. This creates an opaque visual gate keeping text from bleeding underneath during user scrolling.
 
-3. PRIVY SOCIAL EXPANSION (src/providers/PrivyAuthProvider.tsx):
-   - Update the loginMethods configuration parameter array to fully unlock additional premium onboarding tracks: loginMethods: ['email', 'google', 'twitter', 'apple'].
+2. MOBILE & DESKTOP LEFT HAMBURGER MENU DRAWER (src/components/Navbar.tsx):
+   - Completely remove the plain center links ("Swap", "Stake", "Dashboard") from the desktop inline layout row.
+   - On the far left of the Navbar (before the ARCTOR Terminal logo), insert a client-side state managed hamburger button component utilizing a simple React state variable: 'const [isOpen, setIsOpen] = React.useState(false)'.
+   - Render a standard 3-line hamburger icon (or Lucide Menu icon). When clicked, it must slide open an elegant left side overlay container card containing your primary structural dashboard anchors: "Swap", "Stake", and "Dashboard".
+   - Style the side drawer to match the Swiss Sovereign layout: 'fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#121826] shadow-xl z-50 border-r border-slate-200/80 dark:border-slate-800 p-6'. Include an X close button.
 
-4. MOBILE RESPONSIVE FLEX SWEEP (src/components/Navbar.tsx):
-   - Update the outer JSX layout wrapping wrappers for the Gas Pill, Theme Switcher, and authentication buttons using Tailwind breakpoints. Use 'hidden md:inline-flex' or elegant wrapping mechanics to prevent component smashing or design degradation on narrow screens.
+3. TOP CONTROL HEADER CONSOLIDATION (src/components/Navbar.tsx):
+   - Keep the right-side layout layout completely immaculate. It must cleanly align your key utility indicators side by side: [Gas Pill] -> [Theme Toggle Button] -> [Sign In with Email] -> [Wallet Address Pill] -> [Arc Testnet Badge] -> [Disconnect]. 
 
-5. COMPILATION AND REPOSITORY PIPE:
-   - Run 'npm run build' to confirm a flawless Next.js 14 server build with zero configuration errors.
-   - Execute production deployment: git add ., commit with message "refactor: clear naked wallet list landing page, enable live arc testnet usdc gas engine, expand privy socials and mobile optimization", and push origin main.
+4. DARK MODE TEXT VISIBILITY REMEDIATION (src/components/Navbar.tsx & src/app/page.tsx):
+   - Conduct a total typographical balance audit across both layout files.
+   - For all major balance figures, headers, and dashboard titles, explicitly force high-contrast visibility by chaining light/dark modifiers: 'text-slate-950 dark:text-slate-50 font-bold'.
+   - For subtext description strings, secondary metadata, and table subheadings, enforce: 'text-slate-500 dark:text-slate-400'. Ensure no text can render dark gray or black when the global HTML tree has the active '.dark' class name.
 
-Execute this comprehensive terminal cleanup and data routing sequence now.
+5. INTEGRITY VERIFY AND DELIVERY:
+   - Run 'npm run build' to confirm no layout structure breaks, invalid close tags, or broken element scopes exist.
+   - Perform repository sync code deployment: git add ., commit with message "ui: add left hamburger drawer, fix scrolling overlap backdrop blur, and restore dark mode text contrast visibility", and push origin main.
+
+Execute this comprehensive aesthetic layout correction sweep now.

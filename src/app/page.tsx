@@ -78,7 +78,7 @@ export default function Home() {
               <div className="relative">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div>
-                    <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Portfolio Value
                     </p>
                     <div className="flex items-baseline gap-3 mt-1">
@@ -108,7 +108,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <Shield className="w-3.5 h-3.5" />
                   <span>
                     {displayAddress
@@ -127,14 +127,14 @@ export default function Home() {
                   <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
                     <Coins className="w-4 h-4 text-primary" />
                   </div>
-                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Staked
                   </p>
                 </div>
                 <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
                   85,000.00
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">DIBS</p>
               </div>
 
               {/* Earned */}
@@ -143,14 +143,14 @@ export default function Home() {
                   <div className="w-8 h-8 rounded-lg bg-secondary/15 border border-secondary/20 flex items-center justify-center">
                     <TrendingUp className="w-4 h-4 text-secondary" />
                   </div>
-                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Earned
                   </p>
                 </div>
                 <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
                   1,200.00
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">DIBS</p>
               </div>
 
               {/* Rewards */}
@@ -159,14 +159,14 @@ export default function Home() {
                   <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/20 flex items-center justify-center">
                     <Zap className="w-4 h-4 text-accent" />
                   </div>
-                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Rewards
                   </p>
                 </div>
                 <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
                   14,500.00
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">DIBS</p>
               </div>
             </div>
 
@@ -184,16 +184,16 @@ export default function Home() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800">
-                      <th className="text-left py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         Transaction
                       </th>
-                      <th className="text-left py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider hidden sm:table-cell">
+                      <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:table-cell">
                         Date
                       </th>
-                      <th className="text-right py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         Amount
                       </th>
-                      <th className="text-right py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         Status
                       </th>
                     </tr>
@@ -222,7 +222,7 @@ export default function Home() {
                         </td>
                         <td className="py-3.5 px-2 hidden sm:table-cell">
                           <div className="flex items-center gap-1.5">
-                            <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                            <Clock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
                             <span className="text-xs text-slate-600 dark:text-slate-300">
                               {tx.date}
                             </span>
