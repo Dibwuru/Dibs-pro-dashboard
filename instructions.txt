@@ -1,14 +1,25 @@
-ACT AS: A Senior Web3 Frontend Architect.
-TASK: Scrub all hardcoded Turnkey simulation remnants and force-render the active Privy auth button, Gas pill, and Theme toggle in the Navbar.
+ACT AS: A Lead Frontend Architect and Senior Web3 Core Systems Developer.
+TASK: Clean up the main landing layout, clear out the naked wallet selection list, and simultaneously implement Navbar mobile optimization, Privy social options, and live Arc Testnet USDC gas tracking.
 
-CRITICAL CORRECTION PROTOCOL:
-1. WIPE SIMULATION GHOSTS: Open src/app/page.tsx and src/components/Navbar.tsx. Locate and completely delete the hardcoded string "bangzdk@gmail.com", along with any automatic console.log or useEffect statement tracking "Turnkey login initiated".
-2. REFACTOR NAVBAR JSX: Open src/components/Navbar.tsx. Ensure the header layout explicitly returns these items on the right side of the navigation row, exactly adjacent to the standard "Connect Wallet" button:
-   - The Theme Toggle Button (Sun/Moon icon switcher via next-themes).
-   - The USDC Gas Status Pill (Displaying "Gas: -- USDC" or dynamic balance, with the tooltip/link to https://faucet.arc.io/).
-   - The Privy Authentication Button: Render a button labeled "Sign In with Email" if 'authenticated' is false. Wire it explicitly to onClick={() => login()}. If 'authenticated' is true, display a truncated version of the logged-in user's email or account address with an onClick={() => logout()} action.
-3. HYDRATION SAFE GUARD: Ensure all three elements are safely wrapped below your 'if (!mounted) return null;' statement to prevent server-side mismatches.
-4. BUILD VALIDATION: Run 'npm run build' to verify that removing the old strings doesn't break any placeholder array states.
-5. DEPLOYMENT PIPE: Run git add ., commit with message "fix: clear old auth simulation and force-render live privy navbar components", and push to origin main.
+CRITICAL CODE MODIFICATION SPECS:
+1. RESTORE PREMIUM LANDING (src/app/page.tsx):
+   - Completely delete the vertical list of naked browser wallets (Injected, Phantom, MetaMask, etc.) from the center of the viewport.
+   - Restore the premium analytics dashboard matrix container: render the master Portfolio Value metric card ($145,230.50 DIBS placeholder grid), the three child info grids (STAKED, EARNED, REWARDS), and the clean tabular layout grid for "Recent Activity".
+   - If no wallet address is detected from either standard Wagmi extensions or Privy, wrap the dashboard canvas elements in a clean CSS blur filter ('blur-[4px]') and overlay a crisp, elegant, high-end centered text badge: "ARCTOR Terminal Locked. Use the command bar options above to connect your institutional wallet or sign in via email."
 
-Execute this surgical cleanup and component render sync now.
+2. LIVE NATIVE USDC GAS TRACKER (src/components/Navbar.tsx):
+   - Initialize a 'createPublicClient' instance from the 'viem' library pointing explicitly to the Arc Testnet RPC gateway: "https://rpc.testnet.arc.io" (Chain ID: 5042002).
+   - Dynamically capture the active user string from either native wagmi useAccount or Privy usePrivy hooks. 
+   - Write a background useEffect polling interval that triggers every 8 seconds to query the native token balance of that address. Convert the return value from formatEther/formatUnits and pipe it directly to update your custom Gas Status Navbar pill. Change the static placeholder string to render the exact dynamic layout: "Gas: {balance} USDC". If disconnected, fallback cleanly to "Gas: -- USDC".
+
+3. PRIVY SOCIAL EXPANSION (src/providers/PrivyAuthProvider.tsx):
+   - Update the loginMethods configuration parameter array to fully unlock additional premium onboarding tracks: loginMethods: ['email', 'google', 'twitter', 'apple'].
+
+4. MOBILE RESPONSIVE FLEX SWEEP (src/components/Navbar.tsx):
+   - Update the outer JSX layout wrapping wrappers for the Gas Pill, Theme Switcher, and authentication buttons using Tailwind breakpoints. Use 'hidden md:inline-flex' or elegant wrapping mechanics to prevent component smashing or design degradation on narrow screens.
+
+5. COMPILATION AND REPOSITORY PIPE:
+   - Run 'npm run build' to confirm a flawless Next.js 14 server build with zero configuration errors.
+   - Execute production deployment: git add ., commit with message "refactor: clear naked wallet list landing page, enable live arc testnet usdc gas engine, expand privy socials and mobile optimization", and push origin main.
+
+Execute this comprehensive terminal cleanup and data routing sequence now.

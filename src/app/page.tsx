@@ -1,17 +1,18 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
 import {
   Shield,
-  Wallet,
-  ArrowRight,
+  Lock,
   AlertTriangle,
-  Zap,
+  TrendingUp,
   Coins,
   ArrowDown,
-  TrendingUp,
+  ArrowRight,
   Clock,
   CheckCircle,
+  Zap,
 } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
 
@@ -42,13 +43,13 @@ const transactions = [
 ];
 
 export default function Home() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
+  const { address: wagmiAddress, isConnected } = useAccount();
   const chainId = useChainId();
+  const { authenticated, user } = usePrivy();
 
-  const isWrongNetwork =
-    isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
+  const isWalletConnected = isConnected || (authenticated && !!user?.wallet?.address);
+  const displayAddress = wagmiAddress || user?.wallet?.address;
+  const isWrongNetwork = isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
 
   return (
     <div className="flex flex-col flex-1">
@@ -63,255 +64,218 @@ export default function Home() {
         </div>
       )}
 
-      {!isConnected ? (
-        /* ===== NOT CONNECTED: Login Interface ===== */
-        <section className="flex flex-col items-center justify-center flex-1 px-4 py-16">
-          <div className="w-full max-w-md space-y-6">
-            {/* Header */}
-            <div className="text-center space-y-3 mb-2">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary">
-                <Zap className="w-3.5 h-3.5" />
-                Pre-Alpha Access
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 dark:text-slate-50">
-                Welcome to{" "}
-                <span className="text-gradient">ARCTOR Terminal</span>
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-                Connect your wallet to start trading on the Arc Testnet.
-              </p>
-            </div>
-
-            {/* Wagmi Connectors */}
-            <div className="space-y-2">
-              {connectors.map((connector) => (
-                <button
-                  key={connector.id}
-                  onClick={() => connect({ connector })}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl glass-sm hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/12 transition-all duration-200 group"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#FF9A4D] to-[#E27625] flex items-center justify-center flex-shrink-0">
-                    <Wallet className="w-4.5 h-4.5 text-white" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="text-sm font-semibold text-slate-950 dark:text-slate-50">
-                      {connector.name}
-                    </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Browser wallet
+      <section className="relative flex-1 overflow-hidden">
+        <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10">
+          {/* ===== DASHBOARD VIEW ===== */}
+          <div
+            className={`space-y-8 transition-all duration-500 ${
+              !isWalletConnected ? "blur-[4px] select-none pointer-events-none" : ""
+            }`}
+          >
+            {/* Balance Hero Card */}
+            <GlassCard className="p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.04] rounded-full blur-[80px] pointer-events-none" />
+              <div className="relative">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                  <div>
+                    <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      Portfolio Value
                     </p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : (
-        /* ===== CONNECTED: Dashboard ===== */
-        <section className="relative flex-1 overflow-hidden">
-          <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10">
-            {/* ===== DASHBOARD VIEW ===== */}
-            <div className="space-y-8">
-                {/* Balance Hero Card */}
-                <GlassCard className="p-8 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.04] rounded-full blur-[80px] pointer-events-none" />
-                  <div className="relative">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                      <div>
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                          Portfolio Value
-                        </p>
-                        <div className="flex items-baseline gap-3 mt-1">
-                          <h1
-                            className="text-4xl sm:text-5xl font-bold text-slate-950 dark:text-slate-50 tracking-tight tabular-nums"
-                            style={{
-                              textShadow:
-                                "0 0 40px rgba(124, 58, 237, 0.15)",
-                            }}
-                          >
-                            145,230.50
-                          </h1>
-                          <span className="text-xl sm:text-2xl font-semibold text-slate-600 dark:text-slate-300">
-                            DIBS
-                          </span>
-                        </div>
-                      </div>
-                      <div className="sm:text-right">
-                        <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">
-                          $218,492.75
-                        </p>
-                        <div className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full bg-success/10 border border-success/20">
-                          <TrendingUp className="w-3 h-3 text-success" />
-                          <span className="text-xs font-semibold text-success">
-                            +1.5% (24h)
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                      <Shield className="w-3.5 h-3.5" />
-                      <span>
-                        {address
-                          ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                          : "Connected"}
+                    <div className="flex items-baseline gap-3 mt-1">
+                      <h1
+                        className="text-4xl sm:text-5xl font-bold text-slate-950 dark:text-slate-50 tracking-tight tabular-nums"
+                        style={{
+                          textShadow:
+                            "0 0 40px rgba(124, 58, 237, 0.15)",
+                        }}
+                      >
+                        145,230.50
+                      </h1>
+                      <span className="text-xl sm:text-2xl font-semibold text-slate-600 dark:text-slate-300">
+                        DIBS
                       </span>
                     </div>
                   </div>
-                </GlassCard>
-
-                {/* Metric Cards Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  {/* Staked */}
-                  <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
-                        <Coins className="w-4 h-4 text-primary" />
-                      </div>
-                      <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                        Staked
-                      </p>
-                    </div>
-                    <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
-                      85,000.00
+                  <div className="sm:text-right">
+                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">
+                      $218,492.75
                     </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
-                  </div>
-
-                  {/* Earned */}
-                  <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-secondary/15 border border-secondary/20 flex items-center justify-center">
-                        <TrendingUp className="w-4 h-4 text-secondary" />
-                      </div>
-                      <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                        Earned
-                      </p>
+                    <div className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full bg-success/10 border border-success/20">
+                      <TrendingUp className="w-3 h-3 text-success" />
+                      <span className="text-xs font-semibold text-success">
+                        +1.5% (24h)
+                      </span>
                     </div>
-                    <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
-                      1,200.00
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
-                  </div>
-
-                  {/* Rewards */}
-                  <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/20 flex items-center justify-center">
-                        <Zap className="w-4 h-4 text-accent" />
-                      </div>
-                      <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                        Rewards
-                      </p>
-                    </div>
-                    <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
-                      14,500.00
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
                   </div>
                 </div>
-
-                {/* Recent Activity */}
-                <GlassCard className="p-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
-                      Recent Activity
-                    </h3>
-                    <button className="text-xs font-medium text-primary hover:text-primary-hover transition-colors">
-                      View All
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto -mx-2">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-800">
-                          <th className="text-left py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                            Transaction
-                          </th>
-                          <th className="text-left py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider hidden sm:table-cell">
-                            Date
-                          </th>
-                          <th className="text-right py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                            Amount
-                          </th>
-                          <th className="text-right py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transactions.map((tx, i) => (
-                          <tr
-                            key={i}
-                            className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
-                          >
-                            <td className="py-3.5 px-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-slate-800 flex items-center justify-center flex-shrink-0">
-                                  {tx.type.includes("Stake") ? (
-                                    <Coins className="w-3.5 h-3.5 text-primary" />
-                                  ) : tx.type.includes("Sent") ? (
-                                    <ArrowRight className="w-3.5 h-3.5 text-warning -rotate-45" />
-                                  ) : (
-                                    <ArrowDown className="w-3.5 h-3.5 text-success" />
-                                  )}
-                                </div>
-                                <span className="text-xs font-medium text-slate-950 dark:text-slate-50 truncate max-w-[140px]">
-                                  {tx.type}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-2 hidden sm:table-cell">
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                                <span className="text-xs text-slate-600 dark:text-slate-300">
-                                  {tx.date}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-2 text-right">
-                              <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
-                                {tx.amount}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-2 text-right">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                  tx.status === "Confirmed"
-                                    ? "bg-success/10 text-success border border-success/20"
-                                    : "bg-warning/10 text-warning border border-warning/20"
-                                }`}
-                              >
-                                {tx.status === "Confirmed" ? (
-                                  <CheckCircle className="w-2.5 h-2.5" />
-                                ) : (
-                                  <Clock className="w-2.5 h-2.5" />
-                                )}
-                                {tx.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </GlassCard>
-
-                {/* Disconnect */}
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => disconnect()}
-                    className="text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-error transition-colors px-3 py-1.5 rounded-lg hover:bg-error/5"
-                  >
-                    Disconnect Wallet
-                  </button>
+                <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>
+                    {displayAddress
+                      ? `${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}`
+                      : "Connected"}
+                  </span>
                 </div>
               </div>
+            </GlassCard>
 
+            {/* Metric Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {/* Staked */}
+              <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
+                    <Coins className="w-4 h-4 text-primary" />
+                  </div>
+                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Staked
+                  </p>
+                </div>
+                <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
+                  85,000.00
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
+              </div>
+
+              {/* Earned */}
+              <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-secondary/15 border border-secondary/20 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-secondary" />
+                  </div>
+                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Earned
+                  </p>
+                </div>
+                <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
+                  1,200.00
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
+              </div>
+
+              {/* Rewards */}
+              <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/20 flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-accent" />
+                  </div>
+                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Rewards
+                  </p>
+                </div>
+                <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
+                  14,500.00
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">DIBS</p>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <GlassCard className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
+                  Recent Activity
+                </h3>
+                <button className="text-xs font-medium text-primary hover:text-primary-hover transition-colors">
+                  View All
+                </button>
+              </div>
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800">
+                      <th className="text-left py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        Transaction
+                      </th>
+                      <th className="text-left py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider hidden sm:table-cell">
+                        Date
+                      </th>
+                      <th className="text-right py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="text-right py-3 px-2 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((tx, i) => (
+                      <tr
+                        key={i}
+                        className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+                      >
+                        <td className="py-3.5 px-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-slate-800 flex items-center justify-center flex-shrink-0">
+                              {tx.type.includes("Stake") ? (
+                                <Coins className="w-3.5 h-3.5 text-primary" />
+                              ) : tx.type.includes("Sent") ? (
+                                <ArrowRight className="w-3.5 h-3.5 text-warning -rotate-45" />
+                              ) : (
+                                <ArrowDown className="w-3.5 h-3.5 text-success" />
+                              )}
+                            </div>
+                            <span className="text-xs font-medium text-slate-950 dark:text-slate-50 truncate max-w-[140px]">
+                              {tx.type}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-2 hidden sm:table-cell">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                            <span className="text-xs text-slate-600 dark:text-slate-300">
+                              {tx.date}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-2 text-right">
+                          <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
+                            {tx.amount}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-2 text-right">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              tx.status === "Confirmed"
+                                ? "bg-success/10 text-success border border-success/20"
+                                : "bg-warning/10 text-warning border border-warning/20"
+                            }`}
+                          >
+                            {tx.status === "Confirmed" ? (
+                              <CheckCircle className="w-2.5 h-2.5" />
+                            ) : (
+                              <Clock className="w-2.5 h-2.5" />
+                            )}
+                            {tx.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </GlassCard>
           </div>
-        </section>
-      )}
+
+          {/* ===== LOCKED OVERLAY (when no wallet connected) ===== */}
+          {!isWalletConnected && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="bg-white/90 dark:bg-[#090D16]/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700/60 rounded-2xl px-8 py-7 text-center max-w-md mx-4 shadow-2xl">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Lock className="w-6 h-6 text-primary" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-950 dark:text-slate-50 mb-2">
+                  ARCTOR Terminal Locked
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Use the command bar options above to connect your institutional
+                  wallet or sign in via email.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
-
