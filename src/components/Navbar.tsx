@@ -3,8 +3,9 @@
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet, Menu, X, Coins, ArrowLeftRight, ChartBar, Fuel, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { Wallet, Menu, X, Coins, ArrowLeftRight, ChartBar, Fuel, ExternalLink, Sun, Moon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 
 const navLinks = [
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },
@@ -17,7 +18,11 @@ export function Navbar() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+  const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const formatAddress = (addr: string) =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -98,6 +103,22 @@ export function Navbar() {
                     </div>
                   </div>
                 </div>
+                {/* Theme Toggle */}
+                <button
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  aria-label="Toggle theme"
+                  className="p-2 rounded-lg bg-white dark:bg-[#121826] border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-amber-400 hover:scale-105 transition-all"
+                >
+                  {mounted ? (
+                    theme === "dark" ? (
+                      <Sun className="w-4 h-4" />
+                    ) : (
+                      <Moon className="w-4 h-4" />
+                    )
+                  ) : (
+                    <div className="w-4 h-4" />
+                  )}
+                </button>
                 <button
                   onClick={() => disconnect()}
                   className="px-3 py-2 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-500 hover:text-error hover:bg-error/5 transition-all"

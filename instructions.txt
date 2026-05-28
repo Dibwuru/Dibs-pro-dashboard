@@ -1,15 +1,16 @@
-ACT AS: A Senior Frontend Engineer and Tailwind CSS Theme Architect.
-TASK: Implement the Swiss Sovereign dual-theme styling framework, update global platform branding, and mount the structural USDC Gas tracker indicator into the Navbar layout.
+ACT AS: A Senior Web3 Frontend Engineer.
+TASK: Add an interactive, hydration-safe Light/Dark mode toggle button into the ARCTOR Terminal Navbar.
 
-CRITICAL IMPLEMENTATION & HYDRATION SAFETY RULES:
-1. HYDRATION SAFEWAY: Create a clean ThemeProvider client wrapper using 'next-themes'. Wrap the children components in src/app/layout.tsx inside the <ThemeProvider attribute="class" defaultTheme="light" enableSystem> configuration. Add the 'suppressHydrationWarning' attribute directly to the root <html> tag in layout.tsx to prevent Next.js 14 rendering mismatches.
-2. GLOBAL REBRANDING SWEEP: Perform a complete visual copy string sweep across src/app/page.tsx, src/components/Navbar.tsx, and all layouts. Change all references of "DibsCoin" or "DibsCoin Pro" to read "ARCTOR Terminal". Keep token asset text explicitly labeled as "$DIBS".
-3. SWISS SOVEREIGN STYLE INJECTION: Map out the design framework utilizing Tailwind CSS 'dark:' modifier layers.
-   - Light Mode Default: Main background 'bg-slate-50', card elements 'bg-white border-slate-200/80', primary typography 'text-slate-950', accents 'bg-blue-600' or premium 'text-amber-600 border-amber-500/20' (Brushed Gold).
-   - Dark Mode Transition: Use dark classes ('dark:bg-[#090D16]', 'dark:bg-[#121826]', 'dark:border-slate-800', 'dark:text-slate-50', 'dark:text-amber-400') to guarantee an ultra-premium, identical Midnight Navy alternate view.
-4. NATIVE USDC GAS TERMINATE PILL: Inside src/components/Navbar.tsx, build a structural visual Gas Status layout pill adjacent to the existing green Arc Testnet badge. 
-   - Label it "Gas: $0.00 USDC" as an interactive placeholder indicator.
-   - Attach a tooltip hover state or micro-link text displaying "Get Faucet Gas" pointing directly to the official Arc network testnet faucet link: https://faucet.arc.io/
-5. VERIFY & DEPLOY LOOP: Run 'npm run build' to confirm zero type errors or broken server imports exist. Once verified, run the full pipeline: git add ., git commit -m "style: overhaul to arctor swiss sovereign dual-theme and mount usdc gas indicator", and git push origin main.
+CRITICAL CODE REQUIREMENTS:
+1. COMPONENT TARGET: Open src/components/Navbar.tsx. Import 'useTheme' directly from 'next-themes'.
+2. HYDRATION MOUNT CHECK: Inside the Navbar component, implement a client-side mount state to completely eliminate React compilation mismatches:
+   const [mounted, setMounted] = React.useState(false);
+   React.useEffect(() => setMounted(true), []);
+   if (!mounted) return null;
+3. THE TOGGLE ELEMENT: Insert a styled clickable <button> element immediately adjacent to the green Arc Testnet badge and the USDC Gas pill layout row.
+4. INTERACTIVE MECHANICS: Configure the button's onClick event handler to check the active theme state:
+   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+5. VISUAL ACCENTS: Render a clean Lucide icon layout inside the button (use Sun icon when theme is dark, Moon icon when theme is light). Style the button container with crisp, institutional borders: 'p-2 rounded-lg bg-white dark:bg-[#121826] border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-amber-400 hover:scale-105 transition-all'.
+6. DEPLOYMENT PIPELINE: Run 'npm run build' to confirm a successful compilation. Execute a clean repository save sequence: git add ., git commit -m "feat: add interactive theme toggle button to navbar", and git push origin main.
 
-Execute this comprehensive visual rebrand and deployment sequence now.
+Execute this component refactor and manual push pipeline now.
