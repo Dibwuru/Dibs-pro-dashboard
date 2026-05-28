@@ -1,39 +1,14 @@
-ACT AS: A Senior Web3 Architect and Core Frontend Developer.
-TASK: Integrate the Privy Auth React SDK into ARCTOR Terminal using non-destructive, hybrid methods.
+ACT AS: A Senior Web3 Frontend Architect.
+TASK: Scrub all hardcoded Turnkey simulation remnants and force-render the active Privy auth button, Gas pill, and Theme toggle in the Navbar.
 
-CRITICAL INTEGRATION & SAFETY RULES:
-1. CUSTOM PROVIDER CREATION: Do not touch layout.tsx directly yet. Create a brand new client provider file at src/providers/PrivyAuthProvider.tsx. Paste this structural implementation:
-   'use client';
-   import { PrivyProvider } from '@privy-io/react-auth';
-   export default function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
-     return (
-       <PrivyProvider
-         appId="clpispdty00ycl80fpueukbhl"
-         config={{
-           loginMethods: ['email', 'google', 'twitter'],
-           appearance: {
-             theme: 'dark',
-             accentColor: '#D4AF37',
-             showWalletLoginFirst: false,
-           },
-           embeddedWallets: {
-             createOnLogin: 'users-without-wallets',
-           },
-         }}
-       >
-         {children}
-       </PrivyProvider>
-     );
-   }
-2. SURGICAL LAYOUT WRAP: Open src/app/layout.tsx. Import 'PrivyAuthProvider' from '@/providers/PrivyAuthProvider'. Nest it clean inside your existing ThemeProvider tree wrapping the {children} tag. Do not modify or replace any other layout tokens or class wrappers.
-3. HYBRID TOOLBAR PATHWAY: Open src/components/Navbar.tsx. Import the 'usePrivy' hook:
-   import { usePrivy } from '@privy-io/react-auth';
-   Inside the Navbar component, destructure the required control states:
-   const { login, authenticated, logout, user } = usePrivy();
-4. THE DUAL-BUTTON INJECTION: Locate your existing standard MetaMask "Connect Wallet" button code string inside the layout. Directly adjacent to it (on the left side), add a secondary button labeled "Sign In with Email". 
-   - Apply the following matching Swiss Sovereign glassmorphic styling: 'px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all mr-2'.
-   - Wire the click mechanism: onClick={login}. If the user is authenticated via Privy, change the text string layout to show a truncated portion of their email (e.g., user.email.address) or add a clean conditional check to manage logs.
-5. INTEGRITY BUILD LOOP: Execute 'npm run build' to confirm that standard extensions and Privy assets coexist perfectly with zero TypeScript warnings.
-6. SOURCE CONTROL DELIVERY: Git add, commit with message "feat: add hybrid privy email login authentication", and push directly to origin main.
+CRITICAL CORRECTION PROTOCOL:
+1. WIPE SIMULATION GHOSTS: Open src/app/page.tsx and src/components/Navbar.tsx. Locate and completely delete the hardcoded string "bangzdk@gmail.com", along with any automatic console.log or useEffect statement tracking "Turnkey login initiated".
+2. REFACTOR NAVBAR JSX: Open src/components/Navbar.tsx. Ensure the header layout explicitly returns these items on the right side of the navigation row, exactly adjacent to the standard "Connect Wallet" button:
+   - The Theme Toggle Button (Sun/Moon icon switcher via next-themes).
+   - The USDC Gas Status Pill (Displaying "Gas: -- USDC" or dynamic balance, with the tooltip/link to https://faucet.arc.io/).
+   - The Privy Authentication Button: Render a button labeled "Sign In with Email" if 'authenticated' is false. Wire it explicitly to onClick={() => login()}. If 'authenticated' is true, display a truncated version of the logged-in user's email or account address with an onClick={() => logout()} action.
+3. HYDRATION SAFE GUARD: Ensure all three elements are safely wrapped below your 'if (!mounted) return null;' statement to prevent server-side mismatches.
+4. BUILD VALIDATION: Run 'npm run build' to verify that removing the old strings doesn't break any placeholder array states.
+5. DEPLOYMENT PIPE: Run git add ., commit with message "fix: clear old auth simulation and force-render live privy navbar components", and push to origin main.
 
-Execute this surgical onboarding implementation sequence now.
+Execute this surgical cleanup and component render sync now.

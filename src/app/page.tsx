@@ -4,7 +4,6 @@ import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
 import {
   Shield,
   Wallet,
-  Mail,
   ArrowRight,
   AlertTriangle,
   Zap,
@@ -14,8 +13,6 @@ import {
   Clock,
   CheckCircle,
 } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/Button";
 import { GlassCard } from "@/components/GlassCard";
 
 const ARC_TESTNET_CHAIN_ID = 5042002;
@@ -50,19 +47,8 @@ export default function Home() {
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
 
-  const [isMockConnected, setIsMockConnected] = useState(false);
-  const [mockEmail, setMockEmail] = useState("");
   const isWrongNetwork =
     isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
-
-  const handleTurnkeyLogin = (email: string) => {
-    // Simulated Turnkey embedded login — sets mock connection state to true
-    console.log("Turnkey login initiated for:", email);
-    setMockEmail(email);
-    setIsMockConnected(true);
-  };
-
-  const isLoggedIn = isConnected || isMockConnected;
 
   return (
     <div className="flex flex-col flex-1">
@@ -77,7 +63,7 @@ export default function Home() {
         </div>
       )}
 
-      {!isLoggedIn ? (
+      {!isConnected ? (
         /* ===== NOT CONNECTED: Login Interface ===== */
         <section className="flex flex-col items-center justify-center flex-1 px-4 py-16">
           <div className="w-full max-w-md space-y-6">
@@ -92,36 +78,8 @@ export default function Home() {
                 <span className="text-gradient">ARCTOR Terminal</span>
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-                Connect your wallet or sign in with email to start trading on
-                the Arc Testnet.
+                Connect your wallet to start trading on the Arc Testnet.
               </p>
-            </div>
-
-            {/* Turnkey Email Login */}
-            <GlassCard className="p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Mail className="w-4.5 h-4.5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
-                    Email Sign-In
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Powered by Turnkey — no seed phrase needed
-                  </p>
-                </div>
-              </div>
-              <EmailLoginForm onLogin={handleTurnkeyLogin} />
-            </GlassCard>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-              <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                or connect wallet
-              </span>
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
             </div>
 
             {/* Wagmi Connectors */}
@@ -194,11 +152,9 @@ export default function Home() {
                     <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
                       <Shield className="w-3.5 h-3.5" />
                       <span>
-                        {isMockConnected
-                          ? mockEmail
-                          : address
-                            ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                            : "Connected"}
+                        {address
+                          ? `${address.slice(0, 6)}...${address.slice(-4)}`
+                          : "Connected"}
                       </span>
                     </div>
                   </div>
@@ -344,14 +300,7 @@ export default function Home() {
                 {/* Disconnect */}
                 <div className="flex justify-end">
                   <button
-                    onClick={() => {
-                      if (isMockConnected) {
-                        setIsMockConnected(false);
-                        setMockEmail("");
-                      } else {
-                        disconnect();
-                      }
-                    }}
+                    onClick={() => disconnect()}
                     className="text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-error transition-colors px-3 py-1.5 rounded-lg hover:bg-error/5"
                   >
                     Disconnect Wallet
@@ -366,60 +315,3 @@ export default function Home() {
   );
 }
 
-/** Reusable email input for Turnkey embedded login visual setup */
-function EmailLoginForm({ onLogin }: { onLogin: (email: string) => void }) {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-
-  const isValidEmail = (value: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-  };
-
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
-    if (error) setError("");
-  };
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const trimmed = email.trim();
-        if (!trimmed) {
-          setError("Please enter your email address.");
-          return;
-        }
-        if (!isValidEmail(trimmed)) {
-          setError("Please enter a valid email address.");
-          return;
-        }
-        onLogin(trimmed);
-      }}
-      className="flex flex-col gap-2"
-    >
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => handleEmailChange(e.target.value)}
-            placeholder="you@example.com"
-            className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-slate-700 text-sm text-slate-950 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500/50 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
-          />
-        </div>
-        <Button
-          size="sm"
-          icon={<ArrowRight className="w-3.5 h-3.5" />}
-          className="flex-shrink-0"
-          type="submit"
-        >
-          Sign In
-        </Button>
-      </div>
-      {error && (
-        <p className="text-xs text-error/80 pl-1">{error}</p>
-      )}
-    </form>
-  );
-}

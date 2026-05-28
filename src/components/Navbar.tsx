@@ -29,6 +29,8 @@ export function Navbar() {
   const formatAddress = (addr: string) =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
+  if (!mounted) return null;
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 dark:border-slate-800 glass-sm rounded-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -65,12 +67,12 @@ export function Navbar() {
             })}
           </div>
 
-          {/* Desktop Wallet Button */}
+          {/* Desktop Right Side Actions */}
           <div className="hidden md:flex items-center gap-3">
-            {/* Privy Sign In Button */}
+            {/* Privy Auth Button */}
             <button
-              onClick={login}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all mr-2"
+              onClick={() => (authenticated ? logout() : login())}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all"
             >
               {authenticated && user?.email?.address
                 ? user.email.address.length > 18
@@ -78,6 +80,46 @@ export function Navbar() {
                   : user.email.address
                 : "Sign In with Email"}
             </button>
+
+            {/* USDC Gas Status Pill */}
+            <div className="relative group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600/10 border border-amber-500/20 dark:bg-amber-400/10 dark:border-amber-400/20">
+              <Fuel className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+              <span className="text-xs font-medium text-amber-600 dark:text-amber-400 tracking-wide">
+                Gas: -- USDC
+              </span>
+              {/* Tooltip */}
+              <div className="absolute top-full mt-2 right-0 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="bg-slate-900 dark:bg-[#121826] border border-slate-700 dark:border-slate-800 rounded-lg p-3 shadow-xl">
+                  <p className="text-xs text-slate-300 dark:text-slate-400 mb-2">
+                    Need testnet gas tokens?
+                  </p>
+                  <a
+                    href="https://faucet.arc.io/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-500 dark:text-amber-400 hover:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Get Faucet Gas
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Toggle theme"
+              className="p-2 rounded-lg bg-white dark:bg-[#121826] border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-amber-400 hover:scale-105 transition-all"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </button>
+
+            {/* Wallet Connection */}
             {isConnected ? (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-success/20 border border-success/25">
@@ -92,46 +134,6 @@ export function Navbar() {
                     Arc Testnet
                   </span>
                 </div>
-                {/* USDC Gas Status Pill */}
-                <div className="relative group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600/10 border border-amber-500/20 dark:bg-amber-400/10 dark:border-amber-400/20">
-                  <Fuel className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400 tracking-wide">
-                    Gas: $0.00 USDC
-                  </span>
-                  {/* Tooltip */}
-                  <div className="absolute top-full mt-2 right-0 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                    <div className="bg-slate-900 dark:bg-[#121826] border border-slate-700 dark:border-slate-800 rounded-lg p-3 shadow-xl">
-                      <p className="text-xs text-slate-300 dark:text-slate-400 mb-2">
-                        Need testnet gas tokens?
-                      </p>
-                      <a
-                        href="https://faucet.arc.io/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-500 dark:text-amber-400 hover:text-amber-400 dark:hover:text-amber-300 transition-colors"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Get Faucet Gas
-                      </a>
-                    </div>
-                  </div>
-                </div>
-                {/* Theme Toggle */}
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  aria-label="Toggle theme"
-                  className="p-2 rounded-lg bg-white dark:bg-[#121826] border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-amber-400 hover:scale-105 transition-all"
-                >
-                  {mounted ? (
-                    theme === "dark" ? (
-                      <Sun className="w-4 h-4" />
-                    ) : (
-                      <Moon className="w-4 h-4" />
-                    )
-                  ) : (
-                    <div className="w-4 h-4" />
-                  )}
-                </button>
                 <button
                   onClick={() => disconnect()}
                   className="px-3 py-2 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-500 hover:text-error hover:bg-error/5 transition-all"
