@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import PrivyAuthProvider from "@/providers/PrivyAuthProvider";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
+import { SidebarProvider } from "@/components/SidebarContext";
 import { Footer } from "@/components/Footer";
 import { Toaster } from "sonner";
 
@@ -45,14 +46,16 @@ export default function RootLayout({
               <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-amber-600/[0.03] blur-[170px] dark:bg-[#10B981]/[0.05]" />
             </div>
             <Web3Provider>
-              <div className="flex min-h-screen">
-                <Sidebar />
-                <div className="flex-1 flex flex-col min-w-0">
-                  <Navbar />
-                  <main className="flex-1 flex flex-col relative z-10">{children}</main>
-                  <Footer />
+              <SidebarProvider>
+                <div className="flex min-h-screen">
+                  <Sidebar />
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <Navbar />
+                    <main className="flex-1 flex flex-col relative z-10">{children}</main>
+                    <Footer />
+                  </div>
                 </div>
-              </div>
+              </SidebarProvider>
               <Toaster position="bottom-right" theme="dark" richColors closeButton />
             </Web3Provider>
           </PrivyAuthProvider>

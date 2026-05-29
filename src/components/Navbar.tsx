@@ -5,16 +5,10 @@ import { usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http, formatEther } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Wallet, Menu, X, Coins, ArrowLeftRight, ChartBar, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
+import { Wallet, Menu, Coins, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
-
-const navLinks = [
-  { href: "/swap", label: "Swap", icon: ArrowLeftRight },
-  { href: "/stake", label: "Stake", icon: Coins },
-  { href: "/dashboard", label: "Dashboard", icon: ChartBar },
-];
+import { useSidebar } from "@/components/SidebarContext";
 
 const publicClient = createPublicClient({
   chain: arcTestnet,
@@ -22,13 +16,12 @@ const publicClient = createPublicClient({
 });
 
 export function Navbar() {
-  const pathname = usePathname();
   const { address: wagmiAddress, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { theme, setTheme } = useTheme();
   const { login, authenticated, logout, user } = usePrivy();
-  const [isOpen, setIsOpen] = useState(false);
+  const { openMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
   const [gasBalance, setGasBalance] = useState<string>("--");
   const [copied, setCopied] = useState(false);
@@ -85,179 +78,16 @@ export function Navbar() {
   if (!mounted) return null;
 
   return (
-    <>
-      {/* Drawer Backdrop Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300"
-          onClick={() => setIsOpen(false)}
-
-        />
-      )}
-
-      {/* Left Hamburger Menu Drawer */}
-      <div
-        className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#121826] shadow-xl z-50 border-r border-slate-200/80 dark:border-slate-800 p-6 transform transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Drawer Header with Close Button */}
-        <div className="flex items-center justify-between mb-8">
-          <Link
-            href="/"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-2 font-bold text-lg tracking-tight"
-          >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <Coins className="w-4.5 h-4.5 text-white" />
-            </div>
-            <span className="text-gradient">ARCTOR</span>
-          </Link>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
-            aria-label="Close menu"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Navigation Links */}
-        <nav className="space-y-1 mb-6">
-          {navLinks.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-primary/15 text-primary"
-                    : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Drawer Auth & Wallet Actions */}
-        <div className="space-y-2 pt-4 border-t border-slate-200/80 dark:border-slate-800">
-          {/* Privy Auth — Drawer */}
-          {authenticated ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50/30 dark:bg-amber-950/20 border border-amber-500/20">
-                <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                    {emailHandle.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300 truncate">
-                    {emailHandle}
-                  </p>
-                  {embeddedWalletAddress && (
-                    <button
-                      onClick={handleCopyAddress}
-                      className="text-[10px] font-mono text-amber-500/80 dark:text-amber-400/80 hover:text-amber-600 dark:hover:text-amber-300 transition-colors mt-0.5"
-                    >
-                      {copied ? "Copied!" : truncatedEmbeddedAddress}
-                    </button>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  logout();
-                  setIsOpen(false);
-                }}
-                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-error hover:bg-error/5 transition-all"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                login();
-                setIsOpen(false);
-              }}
-              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-all"
-            >
-              Sign In with Email
-            </button>
-          )}
-
-          {/* Wallet Connect / Disconnect */}
-          {isConnected ? (
-            <div className="space-y-1">
-              <div className="flex items-center gap-3 px-4 py-3">
-                <div className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
-                <span className="text-sm font-medium text-success tracking-wide">
-                  {wagmiAddress ? formatAddress(wagmiAddress) : "Connected"}
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  disconnect();
-                  setIsOpen(false);
-                }}
-                className="w-full px-4 py-3 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-error hover:bg-error/5 transition-all text-left"
-              >
-                Disconnect
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                if (connectors[0]) connect({ connector: connectors[0] });
-                setIsOpen(false);
-              }}
-              className="flex items-center gap-2 w-full px-4 py-3 rounded-lg text-sm font-semibold btn-gradient text-white"
-            >
-              <Wallet className="w-4 h-4" />
-              Connect Wallet
-            </button>
-          )}
-
-          {/* Theme Toggle in Drawer */}
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
-          >
-            {theme === "dark" ? (
-              <Sun className="w-4 h-4" />
-            ) : (
-              <Moon className="w-4 h-4" />
-            )}
-            Toggle Theme
-          </button>
-        </div>
-
-        {/* Drawer Footer */}
-        <div className="absolute bottom-6 left-6 right-6">
-          <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800">
-            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Arc Testnet • Chain 5042002
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Navbar — Sticky Glass Overlay */}
-      <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#090D16]/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-300">
+    /* Main Navbar — Sticky Glass Overlay */
+    <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#090D16]/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Hamburger + Logo */}
             <div className="flex items-center gap-3">
-              {/* Hamburger Button */}
+              {/* Hamburger Button — opens mobile sidebar drawer */}
               <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
+                onClick={openMobile}
+                className="p-2 rounded-lg lg:hidden text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
                 aria-label="Toggle navigation menu"
               >
                 <Menu className="w-5 h-5" />
@@ -400,6 +230,5 @@ export function Navbar() {
           </div>
         </div>
       </nav>
-    </>
   );
 }

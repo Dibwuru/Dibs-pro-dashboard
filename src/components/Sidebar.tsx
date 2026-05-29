@@ -1,6 +1,7 @@
 "use client";
 
 import { usePrivy } from "@privy-io/react-auth";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,9 +13,16 @@ import {
   Copy,
   Check,
   Settings,
+  Sun,
+  Moon,
+  Wallet,
 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
+import { useSidebar } from "@/components/SidebarContext";
+
+const STORAGE_KEY = "arc-profile-settings";
 
 const navLinks = [
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },
@@ -30,21 +38,65 @@ function truncateEmail(email: string): string {
   return `${local.slice(0, 4)}...${local.slice(-4)}`;
 }
 
+interface ProfileData {
+  displayName: string;
+  customBio: string;
+  pfpUrl: string;
+}
+
+function loadProfile(): ProfileData {
+  if (typeof window === "undefined") return { displayName: "", customBio: "", pfpUrl: "" };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { displayName: "", customBio: "", pfpUrl: "" };
+    return JSON.parse(raw) as ProfileData;
+  } catch {
+    return { displayName: "", customBio: "", pfpUrl: "" };
+  }
+}
+
+function saveProfile(data: ProfileData) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // storage full or unavailable
+  }
+}
+
+function formatAddress(addr: string) {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { authenticated, user, logout, login } = usePrivy();
+  const { address: wagmiAddress, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { theme, setTheme } = useTheme();
+  const { isMobileOpen, closeMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Profile editor modal state
+  // Profile editor modal state — seeded from localStorage
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [customBio, setCustomBio] = useState("");
   const [pfpUrl, setPfpUrl] = useState("");
-  // Live display name used in the sidebar capsule (updated on save)
   const [activeDisplayName, setActiveDisplayName] = useState<string | null>(null);
 
-  useEffect(() => setMounted(true), []);
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    setMounted(true);
+    const stored = loadProfile();
+    if (stored.displayName) {
+      setDisplayName(stored.displayName);
+      setActiveDisplayName(stored.displayName);
+    }
+    if (stored.customBio) setCustomBio(stored.customBio);
+    if (stored.pfpUrl) setPfpUrl(stored.pfpUrl);
+  }, []);
 
   const emailHandle =
     user?.email?.address || user?.google?.email || "Authenticated User";
@@ -66,115 +118,209 @@ export function Sidebar() {
   }, [embeddedWalletAddress]);
 
   const handleSaveProfile = useCallback(() => {
-    if (displayName.trim()) {
-      setActiveDisplayName(displayName.trim());
+    const name = displayName.trim();
+    if (name) {
+      setActiveDisplayName(name);
     }
+    saveProfile({
+      displayName: name,
+      customBio: customBio.trim(),
+      pfpUrl: pfpUrl.trim(),
+    });
     toast.success("Identity settings updated successfully!");
     setIsProfileEditorOpen(false);
-  }, [displayName]);
+  }, [displayName, customBio, pfpUrl]);
+
+  // Close mobile drawer on navigation
+  const handleNavClick = useCallback(() => {
+    closeMobile();
+  }, [closeMobile]);
 
   if (!mounted) return null;
 
+  // --- Shared sidebar content (used by both desktop and mobile) ---
+  const sidebarContent = (
+    <>
+      {/* Top: Logo + Brand */}
+      <div className="px-5 pt-6 pb-4">
+        <Link
+          href="/"
+          onClick={handleNavClick}
+          className="flex items-center gap-2.5 font-bold text-lg tracking-tight"
+        >
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+            <Coins className="w-4.5 h-4.5 text-white" />
+          </div>
+          <span className="text-gradient">ARCTOR</span>
+        </Link>
+      </div>
+
+      {/* Middle: Navigation Links */}
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+        {navLinks.map(({ href, label, icon: Icon }) => {
+          const isActive = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={handleNavClick}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                isActive
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Bottom area: Wallet + Profile + Theme + Footer */}
+      <div className="px-3 pb-5 space-y-3">
+        {/* Wagmi Wallet Connect / Disconnect */}
+        {isConnected ? (
+          <div className="rounded-xl border border-success/20 bg-success/[0.04] backdrop-blur-md overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
+              <span className="text-sm font-medium text-success tracking-wide truncate">
+                {wagmiAddress ? formatAddress(wagmiAddress) : "Connected"}
+              </span>
+            </div>
+            <button
+              onClick={() => disconnect()}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-success/10"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Disconnect Wallet
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              if (connectors[0]) connect({ connector: connectors[0] });
+            }}
+            className="flex items-center gap-2 w-full px-4 py-3 rounded-xl text-sm font-semibold btn-gradient text-white shadow-lg shadow-primary/20"
+          >
+            <Wallet className="w-4 h-4" />
+            Connect Wallet
+          </button>
+        )}
+
+        {/* Privy Identity Capsule */}
+        {authenticated ? (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
+            {/* Avatar + Info Row */}
+            <div className="flex items-center gap-3 px-4 py-3">
+              <button
+                onClick={() => setIsProfileEditorOpen(true)}
+                className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/10 border-2 border-amber-400/50 dark:border-amber-500/40 flex items-center justify-center flex-shrink-0 hover:border-amber-500 dark:hover:border-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/20 transition-all group"
+                title="Edit profile"
+              >
+                <span className="text-base font-bold text-amber-600 dark:text-amber-400 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
+                  {avatarLetter}
+                </span>
+              </button>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-300/90 truncate">
+                  {displayEmail}
+                </p>
+                {embeddedWalletAddress && (
+                  <button
+                    onClick={handleCopyAddress}
+                    className="flex items-center gap-1 text-[10px] font-mono text-amber-600/70 dark:text-amber-500/70 hover:text-amber-700 dark:hover:text-amber-400 transition-colors mt-0.5"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-2.5 h-2.5 text-success" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        {truncatedWallet}
+                        <Copy className="w-2.5 h-2.5 opacity-60" />
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => logout()}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-amber-500/10"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => login()}
+            className="w-full px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-500/[0.08] hover:border-amber-500/30 transition-all"
+          >
+            Sign In with Email
+          </button>
+        )}
+
+        {/* Theme Toggle */}
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
+        >
+          {theme === "dark" ? (
+            <Sun className="w-4 h-4" />
+          ) : (
+            <Moon className="w-4 h-4" />
+          )}
+          Toggle Theme
+        </button>
+
+        {/* Arc Testnet Footer */}
+        <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800">
+          <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            Arc Testnet • Chain 5042002
+          </p>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <>
-      {/* Persistent Left Sidebar — visible on lg+ */}
+      {/* ===== DESKTOP: Persistent Left Sidebar (lg+) ===== */}
       <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 flex-shrink-0 border-r border-amber-500/20 bg-white/80 dark:bg-[#0A0F1A]/90 backdrop-blur-xl z-40">
-        {/* Top: Logo + Brand */}
-        <div className="px-5 pt-6 pb-4">
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 font-bold text-lg tracking-tight"
-          >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <Coins className="w-4.5 h-4.5 text-white" />
-            </div>
-            <span className="text-gradient">ARCTOR</span>
-          </Link>
-        </div>
-
-        {/* Middle: Navigation Links */}
-        <nav className="flex-1 px-3 space-y-1">
-          {navLinks.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.04]"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Bottom: Profile Identity Capsule */}
-        <div className="px-3 pb-5">
-          {authenticated ? (
-            <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
-              {/* Avatar + Info Row */}
-              <div className="flex items-center gap-3 px-4 py-3">
-                {/* Alphabet Avatar Circle */}
-                <button
-                  onClick={() => setIsProfileEditorOpen(true)}
-                  className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/10 border-2 border-amber-400/50 dark:border-amber-500/40 flex items-center justify-center flex-shrink-0 hover:border-amber-500 dark:hover:border-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/20 transition-all group"
-                  title="Edit profile"
-                >
-                  <span className="text-base font-bold text-amber-600 dark:text-amber-400 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
-                    {avatarLetter}
-                  </span>
-                </button>
-
-                {/* Email + Wallet Info */}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300/90 truncate">
-                    {displayEmail}
-                  </p>
-                  {embeddedWalletAddress && (
-                    <button
-                      onClick={handleCopyAddress}
-                      className="flex items-center gap-1 text-[10px] font-mono text-amber-600/70 dark:text-amber-500/70 hover:text-amber-700 dark:hover:text-amber-400 transition-colors mt-0.5"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-2.5 h-2.5 text-success" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          {truncatedWallet}
-                          <Copy className="w-2.5 h-2.5 opacity-60" />
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Sign Out */}
-              <button
-                onClick={() => logout()}
-                className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-amber-500/10"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => login()}
-              className="w-full px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-500/[0.08] hover:border-amber-500/30 transition-all"
-            >
-              Sign In with Email
-            </button>
-          )}
-        </div>
+        {sidebarContent}
       </aside>
+
+      {/* ===== MOBILE: Slide-in Drawer (< lg) ===== */}
+      {/* Backdrop */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 lg:hidden transition-opacity duration-300"
+          onClick={closeMobile}
+        />
+      )}
+
+      {/* Drawer panel */}
+      <div          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#0A0F1A] shadow-2xl z-[100] border-r border-amber-500/20 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+            isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+      >
+        {/* Mobile close button */}
+        <div className="absolute top-4 right-4">
+          <button
+            onClick={closeMobile}
+            className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        {sidebarContent}
+      </div>
 
       {/* ===== PROFILE EDITOR MODAL ===== */}
       {isProfileEditorOpen && (
