@@ -1,10 +1,12 @@
 "use client";
 
 import { ArrowLeftRight, Info, AlertTriangle } from "lucide-react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAccount, useWriteContract, useChainId } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
-import { parseUnits } from "viem";
+import { parseUnits, createPublicClient, http, formatEther } from "viem";
+import { arcTestnet } from "@/components/Web3Provider";
+import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
 
@@ -22,6 +24,11 @@ const vaultABI = [
   },
 ] as const;
 
+const publicClient = createPublicClient({
+  chain: arcTestnet,
+  transport: http(),
+});
+
 export default function SwapPage() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
@@ -30,8 +37,45 @@ export default function SwapPage() {
     isConnected || (authenticated && !!user?.wallet?.address);
   const isWrongNetwork = isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
 
+  const userAddress = (user?.wallet?.address as `0x${string}` | undefined);
+
   const [usdcInput, setUsdcInput] = useState<string>("");
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
+
+  // --- Fetch native gas balance for 50%/MAX shortcuts ---
+  const [gasBalance, setGasBalance] = useState<number>(0);
+
+  useEffect(() => {
+    if (!userAddress) {
+      setGasBalance(0);
+      return;
+    }
+    let cancelled = false;
+    const fetchGas = async () => {
+      try {
+        const bal = await publicClient.getBalance({ address: userAddress });
+        if (!cancelled) {
+          setGasBalance(parseFloat(formatEther(bal)));
+        }
+      } catch {
+        if (!cancelled) setGasBalance(0);
+      }
+    };
+    fetchGas();
+    const interval = setInterval(fetchGas, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [userAddress]);
+
+  const handleFiftyPercent = useCallback(() => {
+    setUsdcInput((gasBalance * 0.5).toString());
+  }, [gasBalance]);
+
+  const handleMax = useCallback(() => {
+    setUsdcInput(Math.max(0, gasBalance - 0.01).toString());
+  }, [gasBalance]);
 
   const dibsOutput = useMemo(() => {
     const parsed = parseFloat(usdcInput);
@@ -43,15 +87,27 @@ export default function SwapPage() {
 
   const isValidInput = usdcInput !== "" && parseFloat(usdcInput) > 0;
 
-  const handleSwap = useCallback(() => {
+  const handleSwap = useCallback(async () => {
     if (!isValidInput) return;
-    writeContract({
-      address: VAULT_ADDRESS,
-      abi: vaultABI,
-      functionName: "swapUsdcForDibs",
-      value: parseUnits(usdcInput, 6),
-    });
-  }, [usdcInput, isValidInput, writeContract]);
+    try {
+      await toast.promise(
+        writeContractAsync({
+          address: VAULT_ADDRESS,
+          abi: vaultABI,
+          functionName: "swapUsdcForDibs",
+          value: parseUnits(usdcInput, 6),
+        }),
+        {
+          loading: "Swapping USDC for DIBS...",
+          success: "Swap completed successfully!",
+          error: (err) => `Swap failed: ${(err as Error).message.slice(0, 80)}`,
+        }
+      );
+      setUsdcInput("");
+    } catch {
+      // toast already handled
+    }
+  }, [usdcInput, isValidInput, writeContractAsync]);
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center px-4 py-24">
@@ -78,9 +134,25 @@ export default function SwapPage() {
         <GlassCard className="space-y-4">
           {/* You Pay — USDC */}
           <div>
-            <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
-              You Pay
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                You Pay
+              </label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleFiftyPercent}
+                  className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                >
+                  50%
+                </button>
+                <button
+                  onClick={handleMax}
+                  className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                >
+                  MAX
+                </button>
+              </div>
+            </div>
             <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
               <input
                 type="number"

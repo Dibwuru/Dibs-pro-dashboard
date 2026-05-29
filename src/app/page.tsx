@@ -370,7 +370,7 @@ export default function Home() {
         }
 
         if (newEntries.length > 0 && !cancelled) {
-          setActivityLogs((prev) => [...newEntries.reverse(), ...prev].slice(0, 50));
+          setActivityLogs((prev) => [...newEntries.reverse(), ...prev].slice(0, 10));
         }
       } catch {
         // silent — no logs to display
@@ -415,6 +415,34 @@ export default function Home() {
   const { writeContractAsync: swapWriteContractAsync, isPending: swapPending } =
     useWriteContract();
 
+  // --- 50% / MAX helpers ---
+  const gasBalanceNum = useMemo(() => {
+    const native = tokenList.find((t) => t.address === "Native");
+    return native?.balance ? parseFloat(native.balance) : 0;
+  }, [tokenList]);
+
+  const dibsBalanceNum = useMemo(
+    () => (dibsBalanceFormatted ? parseFloat(dibsBalanceFormatted) : 0),
+    [dibsBalanceFormatted]
+  );
+
+  // Swap module shortcuts
+  const handleSwapFiftyPercent = useCallback(() => {
+    if (fromToken === "DIBS") {
+      setSwapInput((dibsBalanceNum * 0.5).toString());
+    } else {
+      setSwapInput((gasBalanceNum * 0.5).toString());
+    }
+  }, [fromToken, dibsBalanceNum, gasBalanceNum]);
+
+  const handleSwapMax = useCallback(() => {
+    if (fromToken === "DIBS") {
+      setSwapInput(dibsBalanceNum.toString());
+    } else {
+      setSwapInput(Math.max(0, gasBalanceNum - 0.01).toString());
+    }
+  }, [fromToken, dibsBalanceNum, gasBalanceNum]);
+
   const handleSwapExecute = useCallback(async () => {
     if (!isValidSwap || !userAddress) return;
 
@@ -458,6 +486,23 @@ export default function Home() {
     sendRecipient.trim().length === 42 &&
     sendAmount !== "" &&
     parseFloat(sendAmount) > 0;
+
+  // Send modal shortcuts
+  const handleSendFiftyPercent = useCallback(() => {
+    if (sendAsset === "DibsCoin") {
+      setSendAmount((dibsBalanceNum * 0.5).toString());
+    } else {
+      setSendAmount((gasBalanceNum * 0.5).toString());
+    }
+  }, [sendAsset, dibsBalanceNum, gasBalanceNum]);
+
+  const handleSendMax = useCallback(() => {
+    if (sendAsset === "DibsCoin") {
+      setSendAmount(dibsBalanceNum.toString());
+    } else {
+      setSendAmount(Math.max(0, gasBalanceNum - 0.01).toString());
+    }
+  }, [sendAsset, dibsBalanceNum, gasBalanceNum]);
 
   const handleSendConfirm = useCallback(async () => {
     if (!isValidSend || !userAddress) return;
@@ -504,6 +549,15 @@ export default function Home() {
   const [showStakeModal, setShowStakeModal] = useState(false);
   const [stakeAmount, setStakeAmount] = useState("");
   const [stakedBalance, setStakedBalance] = useState(0);
+
+  // Stake modal shortcuts (always DIBS)
+  const handleStakeFiftyPercent = useCallback(() => {
+    setStakeAmount((dibsBalanceNum * 0.5).toString());
+  }, [dibsBalanceNum]);
+
+  const handleStakeMax = useCallback(() => {
+    setStakeAmount(dibsBalanceNum.toString());
+  }, [dibsBalanceNum]);
 
   const handleStakeConfirm = useCallback(() => {
     const parsed = parseFloat(stakeAmount);
@@ -715,9 +769,25 @@ export default function Home() {
               <div className="space-y-4">
                 {/* From Token */}
                 <div>
-                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
-                    You Pay
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      You Pay
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={handleSwapFiftyPercent}
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                      >
+                        50%
+                      </button>
+                      <button
+                        onClick={handleSwapMax}
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                      >
+                        MAX
+                      </button>
+                    </div>
+                  </div>
                   <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
                     <input
                       type="number"
@@ -1021,9 +1091,25 @@ export default function Home() {
 
               {/* Amount */}
               <div>
-                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
-                  Amount
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Amount
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleSendFiftyPercent}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                    >
+                      50%
+                    </button>
+                    <button
+                      onClick={handleSendMax}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                    >
+                      MAX
+                    </button>
+                  </div>
+                </div>
                 <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
                   <input
                     type="number"
@@ -1101,9 +1187,25 @@ export default function Home() {
 
               {/* Stake Amount */}
               <div>
-                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
-                  Amount to Stake
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Amount to Stake
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleStakeFiftyPercent}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                    >
+                      50%
+                    </button>
+                    <button
+                      onClick={handleStakeMax}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                    >
+                      MAX
+                    </button>
+                  </div>
+                </div>
                 <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
                   <input
                     type="number"

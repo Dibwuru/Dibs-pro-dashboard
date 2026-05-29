@@ -1,46 +1,35 @@
-ACT AS: A Principal Web3 Full-Stack Architect and UI/UX Core Developer.
-TASK: Implement Sonner toasts, fix the USDC gas decimal inflation, deploy live transaction activity logs, build token flip mechanics, and fully wire the Send, Swap, and Staking interactive panels.
+ACT AS: A Principal Web3 Full-Stack Architect and Elite UI/UX Developer.
+TASK: Implement the sidebar profile layout refactor, add 50%/MAX input shortcuts, cap the live activity history stream, and complete all remaining transaction notification linkages.
 
 CRITICAL ARCHITECTURAL SPECIFICATIONS:
 
-1. INSTALL AND INITIALIZE SONNER NOTIFICATIONS:
-   - Run 'npm install sonner' to download the modern notification library.
-   - Open your master layout provider (src/app/layout.tsx or master wrapper file).
-   - Import { Toaster } from 'sonner' and render the <Toaster position="bottom-right" theme="dark" richColors closeButton /> component at the base of the framework stack so alerts can be triggered globally.
+1. SIDEBAR PROFILE RESHAPE & BOTTOM PINNING (src/components/Sidebar.tsx):
+   - PIN TO BASELINE: Restructure the left navigation panel layout to anchor the user identity card perfectly at the very bottom of the sidebar plane.
+   - SWISS SOVEREIGN GLASSMORPHISM: Apply a premium border-accented glassmorphic container style (thin translucent borders, dark blurred backdrop, white and gold text accents).
+   - TRUNCATE IDENTITY TEXT: Instead of displaying the raw, full email string (like 'diburotech@gmail.com'), implement a dynamic text trimmer that display it cleanly (e.g., 'dibu...tech').
+   - ALPHABET AVATAR SIGN: Ensure the profile icon circle renders a bold, capitalized first letter of the user's email (e.g., a gold "D") centered inside a high-end gold-ringed circle.
 
-2. FIX USDC GAS CARD DECIMAL PRECISION (src/app/page.tsx):
-   - Locate the main dashboard grid card displaying "USDC GAS".
-   - Modify the parsing logic: Native gas balances retrieved from the provider on Arc Testnet use standard 18-decimal scale format. Adjust your Viem 'formatUnits' function to parse this specific native balance using 18 decimals instead of 6 to completely eliminate the trillion-dollar card inflation.
+2. BUILD THE USER PROFILE CONFIGURATION MODAL:
+   - Wire a state toggle 'isProfileEditorOpen' to fire when a user clicks directly on the sidebar's Alphabet avatar circle.
+   - RENDER THE PROFILE EDIT WINDOW: Create a glassmorphic overlay sheet featuring:
+     * Text inputs for "Display Name / Handle" and "Custom Bio Details".
+     * An image URL text field for "Drop Custom PFP Image URL".
+     * A "Save Profile Settings" button that triggers a 'toast.success("Identity settings updated successfully!")' alert, updates local view states, and closes the modal.
 
-3. LIVE ON-CHAIN ACTIVITY TRACKING PIPELINE (src/app/page.tsx):
-   - Locate the "Recent Activity" component block. Strip out all hardcoded historical array values.
-   - Use Viem's 'publicClient.getLogs' mechanism to poll the network every 8-10 seconds for real-time ERC-20 'Transfer' event logs emitted by the $DIBS smart contract address: 0x2b0ec237e5Cf460962E3eDe88cb676d83C807912.
-   - Filter logs where either the 'from' or 'to' parameters match the logged-in user's wallet address ('user?.wallet?.address'). Map these parsed rows dynamically into your UI list:
-     * User is sender: Method = "Transfer Sent", Status = "Confirmed".
-     * User is receiver: Method = "Token Received", Status = "Confirmed".
-     * Amount: Format the bigInt value with standard 18-decimal formatting.
+3. INTEGRATE "50%" & "MAX" BALANCE SHORTCUTS (src/app/page.tsx):
+   - Embed small, clickable gold "50%" and "MAX" action items directly adjacent to the input fields on the Swap module page and inside the Send/Stake modals.
+   - DIBS TOKEN SHORTCUTS: Clicking "50%" fills the input with (dibsBalance * 0.5); clicking "MAX" fills it with the total live 'dibsBalance'.
+   - USDC GAS SHORTCUTS: Clicking "50%" fills the input with (gasBalance * 0.5); clicking "MAX" fills it with (gasBalance - 0.01) to dynamically maintain a protective safety buffer against account gas starvation.
 
-4. WIRE THE TOKEN FLIP FLOP & SWAP BUTTON (src/app/page.tsx):
-   - Wire the active toggle arrow button located between the Swap input modules to execute a function that flips the 'fromToken' and 'toToken' state selections.
-   - Connect the "Execute Swap" button action:
-     * If 'fromToken' is USDC: Trigger a live contract write using Wagmi/Viem to execute 'swapUsdcForDibs()' on the funded Vault address (0x3ed226184b4a00d1500e04f4fa89281107475597). Pass the user's typed USDC amount as the value parameter ('value: parseUnits(usdcAmount, 6)'). Wrap the transaction in a 'toast.promise()' statement tracking processing, completion, and gas error states.
-     * If 'fromToken' is DIBS: Intercept the click event and instantly trigger a 'toast.error("DIBS to USDC liquidation is locked during the Testnet Alpha phase.")' message to protect the liquidity vault.
+4. HYGIENE CLAMP FOR RECENT ACTIVITY FEED (src/app/page.tsx):
+   - Locate the data loop displaying your live on-chain contract logs via Viem.
+   - Apply a JavaScript '.slice(0, 10)' limit array boundary constraint on the incoming events data array before it renders to the DOM. This ensures the UI only tracks the 10 most recent transactions to safeguard long-term browser rendering performance.
 
-5. ACTIVATE THE SEND ASSET MODAL & TRANSACTION ENGINE:
-   - Wire the main portfolio card's "Send" button to trigger an interactive glassmorphic overlay modal block.
-   - Include a select dropdown for "USDC Gas" or "DibsCoin", a text input field for "Recipient Wallet Address (0x...)", and an "Amount" input.
-   - Connecting the "Confirm Transfer" button action:
-     * If sending USDC: Invoke walletClient.sendTransaction to route native gas tokens directly.
-     * If sending DIBS: Run a contract write calling 'transfer(address,uint256)' on the main $DIBS contract address (0x2b0ec237e5Cf460962E3eDe88cb676d83C807912).
-     * Encase the workflow within 'toast.promise()' status notifications.
+5. REINFORCE SWAP PAGE NOTIFICATIONS:
+   - Ensure the 'swapUsdcForDibs' execution pipeline on the swap interface is tightly bound to Sonner's 'toast.promise()' lifecycle hooks, firing instant loading state messages, block-confirmation successes, and explicit gas error logs.
 
-6. ACTIVATE THE GOVERNANCE STAKING MODAL FRAMEWORK:
-   - Connect the main dashboard's "Stake" action button to trigger an overlay modal capture container.
-   - Allow users to enter an amount of $DIBS they want to lock up.
-   - Wire the "Confirm Stake" submission button to a state updater that triggers a successful 'toast.success("Assets successfully committed to the Sovereign Staking Vault!")' notification, adds the input quantity to the dashboard's visual 'stakedBalance' tracker card, and closes the modal.
+6. PRODUCTION SYSTEM COMPILE & SHIP:
+   - Run 'npm run build' to clear compilation environments and guarantee a 100% flawless build loop with zero TypeScript variations.
+   - Deploy production code: git add ., commit with message "feat: launch absolute final polish sweeping sidebar user capsules, input shortcuts, and event stream caps", and push origin main.
 
-7. SYSTEM COMPILE AND DEPLOYMENT:
-   - Run 'npm run build' to clean framework logs and confirm a 100% successful compile loop with zero TypeScript errors.
-   - Run production delivery sequence: git add ., commit with message "feat: complete unified terminal engine with accurate metrics, live activity feeds, token flipping toggles, and asset transaction modals", and push origin main.
-
-Execute this comprehensive full-stack interactivity and data wiring sweep immediately.
+Execute this comprehensive full-stack engineering and layout refinement sweep now.
