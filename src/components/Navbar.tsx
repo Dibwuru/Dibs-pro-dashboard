@@ -6,7 +6,7 @@ import { createPublicClient, http, formatEther } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet, Menu, X, Coins, ArrowLeftRight, ChartBar, Fuel, ExternalLink, Sun, Moon } from "lucide-react";
+import { Wallet, Menu, X, Coins, ArrowLeftRight, ChartBar, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
 
@@ -31,6 +31,7 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [gasBalance, setGasBalance] = useState<string>("--");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -61,6 +62,25 @@ export function Navbar() {
 
   const formatAddress = (addr: string) =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+  // --- Identity capsule helpers ---
+  const emailHandle =
+    user?.email?.address || user?.google?.email || "Authenticated User";
+  const embeddedWalletAddress = user?.wallet?.address || "";
+  const truncatedEmbeddedAddress = embeddedWalletAddress
+    ? `${embeddedWalletAddress.slice(0, 6)}...${embeddedWalletAddress.slice(-4)}`
+    : "";
+
+  const handleCopyAddress = useCallback(async () => {
+    if (!embeddedWalletAddress) return;
+    try {
+      await navigator.clipboard.writeText(embeddedWalletAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API may be unavailable in insecure contexts
+    }
+  }, [embeddedWalletAddress]);
 
   if (!mounted) return null;
 
@@ -126,18 +146,51 @@ export function Navbar() {
 
         {/* Drawer Auth & Wallet Actions */}
         <div className="space-y-2 pt-4 border-t border-slate-200/80 dark:border-slate-800">
-          {/* Privy Auth */}
-          <button
-            onClick={() => {
-              authenticated ? logout() : login();
-              setIsOpen(false);
-            }}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-all"
-          >
-            {authenticated && user?.email?.address
-              ? user.email.address
-              : "Sign In with Email"}
-          </button>
+          {/* Privy Auth — Drawer */}
+          {authenticated ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50/30 dark:bg-amber-950/20 border border-amber-500/20">
+                <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                    {emailHandle.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300 truncate">
+                    {emailHandle}
+                  </p>
+                  {embeddedWalletAddress && (
+                    <button
+                      onClick={handleCopyAddress}
+                      className="text-[10px] font-mono text-amber-500/80 dark:text-amber-400/80 hover:text-amber-600 dark:hover:text-amber-300 transition-colors mt-0.5"
+                    >
+                      {copied ? "Copied!" : truncatedEmbeddedAddress}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  logout();
+                  setIsOpen(false);
+                }}
+                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-error hover:bg-error/5 transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                login();
+                setIsOpen(false);
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-all"
+            >
+              Sign In with Email
+            </button>
+          )}
 
           {/* Wallet Connect / Disconnect */}
           {isConnected ? (
@@ -263,17 +316,52 @@ export function Navbar() {
                 )}
               </button>
 
-              {/* Privy Auth Button */}
-              <button
-                onClick={() => (authenticated ? logout() : login())}
-                className="hidden sm:inline-flex px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all flex-shrink-0"
-              >
-                {authenticated && user?.email?.address
-                  ? user.email.address.length > 18
-                    ? `${user.email.address.slice(0, 15)}...`
-                    : user.email.address
-                  : "Sign In with Email"}
-              </button>
+              {/* Privy Identity Capsule / Auth Button */}
+              {authenticated ? (
+                <div className="hidden sm:flex items-center gap-1.5">
+                  {/* Dual-segmented gold glassmorphic identity capsule */}
+                  <div className="flex items-stretch rounded-lg border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 overflow-hidden shadow-sm shadow-amber-500/5">
+                    {/* Left segment: Email handle */}
+                    <span className="inline-flex items-center px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-300 border-r border-amber-500/20 max-w-[180px] truncate">
+                      {emailHandle}
+                    </span>
+                    {/* Right segment: Wallet address with copy */}
+                    {embeddedWalletAddress ? (
+                      <button
+                        onClick={handleCopyAddress}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-mono font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors group"
+                        title="Click to copy wallet address"
+                      >
+                        <span>{copied ? "Copied!" : truncatedEmbeddedAddress}</span>
+                        {copied ? (
+                          <Check className="w-3 h-3 text-success" />
+                        ) : (
+                          <Copy className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </button>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-2 text-xs font-mono text-amber-500/50 dark:text-amber-400/50 italic">
+                        No wallet
+                      </span>
+                    )}
+                  </div>
+                  {/* Logout micro-toggle */}
+                  <button
+                    onClick={() => logout()}
+                    className="p-2 rounded-lg text-amber-500/70 hover:text-error hover:bg-error/5 transition-all"
+                    title="Sign out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => login()}
+                  className="hidden sm:inline-flex px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all flex-shrink-0"
+                >
+                  Sign In with Email
+                </button>
+              )}
 
               {/* Wallet Connection */}
               {isConnected ? (

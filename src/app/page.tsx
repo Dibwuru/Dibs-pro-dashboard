@@ -13,7 +13,13 @@ import {
   Clock,
   CheckCircle,
   Zap,
+  Send,
+  ArrowDownToLine,
+  X,
+  Copy,
+  QrCode,
 } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
 import { GlassCard } from "@/components/GlassCard";
 
 const ARC_TESTNET_CHAIN_ID = 5042002;
@@ -50,6 +56,33 @@ export default function Home() {
   const isWalletConnected = isConnected || (authenticated && !!user?.wallet?.address);
   const displayAddress = wagmiAddress || user?.wallet?.address;
   const isWrongNetwork = isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
+
+  // --- Receive modal state ---
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [receiveCopied, setReceiveCopied] = useState(false);
+
+  const handleCopyReceive = useCallback(async () => {
+    if (!displayAddress) return;
+    try {
+      await navigator.clipboard.writeText(displayAddress);
+      setReceiveCopied(true);
+      setTimeout(() => setReceiveCopied(false), 2000);
+    } catch {
+      // noop
+    }
+  }, [displayAddress]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showReceiveModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showReceiveModal]);
 
   return (
     <div className="flex flex-col flex-1">
@@ -115,6 +148,23 @@ export default function Home() {
                       ? `${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}`
                       : "Connected"}
                   </span>
+                </div>
+
+                {/* Send / Receive Action Sub-Row */}
+                <div className="flex items-center gap-3 mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
+                  <button
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-950 dark:bg-slate-50 text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm flex-shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                    Send
+                  </button>
+                  <button
+                    onClick={() => setShowReceiveModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-all shadow-sm flex-shrink-0"
+                  >
+                    <ArrowDownToLine className="w-4 h-4" />
+                    Receive
+                  </button>
                 </div>
               </div>
             </GlassCard>
@@ -276,6 +326,73 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* ===== RECEIVE MODAL OVERLAY ===== */}
+      {showReceiveModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowReceiveModal(false)}
+          />
+          {/* Modal card */}
+          <div className="relative w-full max-w-md bg-white dark:bg-[#121826] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
+                Receive Funds
+              </h3>
+              <button
+                onClick={() => setShowReceiveModal(false)}
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* QR Code Placeholder */}
+            <div className="mb-6 p-8 rounded-xl bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+              <div className="w-40 h-40 rounded-xl bg-white dark:bg-[#1E293B] border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center">
+                <QrCode className="w-16 h-16 text-slate-300 dark:text-slate-600" />
+              </div>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Scan QR Code to Fund Account
+              </span>
+            </div>
+
+            {/* Wallet Address Display + Copy */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Your Wallet Address
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-3 py-2.5 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 break-all select-all">
+                  {displayAddress || "—"}
+                </code>
+                <button
+                  onClick={handleCopyReceive}
+                  className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all flex-shrink-0"
+                  title="Copy address"
+                >
+                  {receiveCopied ? (
+                    <CheckCircle className="w-4 h-4 text-success" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowReceiveModal(false)}
+              className="mt-6 w-full px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

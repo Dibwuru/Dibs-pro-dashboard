@@ -1,35 +1,30 @@
-ACT AS: A Senior Web3 Frontend Architect.
-TASK: Completely overwrite the PrivyAuthProvider file to inject the correct production App ID and completely remove the Apple track.
+ACT AS: A Principal Web3 Full-Stack Architect and UI/UX Designer.
+TASK: Expand the Navbar identity system to display both the user's authenticated email and truncated embedded wallet address with a quick-copy utility, and prepare the dashboard asset layout framework.
 
-CRITICAL HARDCODE SPECIFICATIONS:
-1. TARGET FILE: src/providers/PrivyAuthProvider.tsx
-2. FULL FILE OVERWRITE: Replace the entire contents of the file with this exact code block. Do not leave any old placeholder strings:
+CRITICAL CODE MODIFICATION SPECS:
+1. UNIFIED PRIVY EXTRACTOR (src/components/Navbar.tsx):
+   - Destructure 'authenticated', 'user', and 'logout' hooks from the Privy framework.
+   - Extract safe user identity strings:
+     - Email handle: user?.email?.address || user?.google?.email || "Authenticated User"
+     - Crypto Address: user?.wallet?.address || ""
 
-'use client';
-import { PrivyProvider } from '@privy-io/react-auth';
+2. IDENTITY CAPSULE WITH COPY PLUMBING (src/components/Navbar.tsx):
+   - Replace the generic "Sign In with Email" button layout conditionally when 'authenticated' is true.
+   - Render a dual-segmented gold glassmorphic profile badge matching the Swiss Sovereign palette:
+     - Left Segment: Displays the user's email handle.
+     - Right Segment: Displays a clean truncated view of their embedded wallet address (e.g., 0xE26...6c24) in monospace.
+   - WIRE CLICK ACTIONS: 
+     - Clicking the address segment must instantly copy the full user?.wallet?.address string to the browser clipboard using 'navigator.clipboard.writeText'.
+     - Provide a micro-dropdown toggle button or action block adjacent to the capsule that fires the 'logout()' sequence to cleanly exit the terminal session.
+   - Ensure this layout is wrapped safely beneath the component's hydration mounted safety check to avoid Next.js framework mismatch warnings.
 
-export default function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <PrivyProvider
-      appId="cmpoxpjd900ie0dl86nwbv5hw"
-      config={{
-        loginMethods: ['email', 'google', 'twitter'],
-        appearance: {
-          theme: 'dark',
-          accentColor: '#D4AF37',
-          showWalletLoginFirst: false,
-        },
-        embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-        },
-      }}
-    >
-      {children}
-    </PrivyProvider>
-  );
-}
+3. ASSET DASHBOARD AND ACTION TILES (src/app/page.tsx):
+   - Update the unblurred dashboard framework to handle active data parameters.
+   - Inside the main "Balance" metric card grid, add a dedicated functional action sub-row containing a group of two sleek buttons labeled "Send" and "Receive". 
+   - When clicked, the "Receive" button should toggle an interactive glass overlay modal that presents the user's full wallet address alongside a placeholder container box labeled "Scan QR Code to Fund Account" to establish the structural interface framework.
 
-3. BUILD VALIDATION: Run 'npm run build' to clear out Next.js cache artifacts and verify compilation.
-4. DEPLOYMENT PIPELINE: Execute git add ., commit with message "fix: hardcode production privy app id and entirely purge apple track", and push origin main.
+4. SYSTEM COMPILE AND DELIVERY:
+   - Run 'npm run build' to confirm a flawless compilation loop across all layouts with zero syntax errors.
+   - Execute production code delivery: git add ., commit with message "feat: implement unified profile identity capsule with one-click copy and dashboard receive interface bounds", and push origin main.
 
-Execute this strict file recreation and deployment loop immediately.
+Execute this comprehensive full-stack identity integration loop now.
