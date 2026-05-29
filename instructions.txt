@@ -1,38 +1,34 @@
-ACT AS: A Senior Web3 Frontend Architect and Smart Contract Engineer.
-TASK: Integrate live $DIBS ERC-20 token balance fetching using Viem and the authenticated Privy wallet address context.
+ACT AS: A Principal Web3 Full-Stack Architect and UI/UX Designer.
+TASK: Implement a dynamic custom token registry asset tracker, wire the frontend Swap interface to the deployed Vault, and integrate live SVG QR rendering for the Receive modal.
 
-CRITICAL TECHNICAL SPECIFICATIONS:
+CRITICAL IMPLEMENTATION SPECS:
 
-1. CONTRACT CONFIGURATION CONFIG:
-   - Contract Address: '0x2b0ec237e5Cf460962E3eDe88cb676d83C807912'
-   - Network Context: Arc Testnet (Chain ID: 5042002)
-   - Minimal ERC-20 ABI Fragment to use for reading:
-     [
-       {
-         "inputs": [{"name": "account", "type": "address"}],
-         "name": "balanceOf",
-         "outputs": [{"name": "", "type": "uint256"}],
-         "stateMutability": "view",
-         "type": "function"
-       }
-     ]
+1. DYNAMIC TOKEN REGISTRY ENGINE (src/app/page.tsx):
+   - Refactor the dashboard asset display matrix to read from a reactive state array named 'tokenList'.
+   - INITIAL ASSETS CONFIGURATION: Pre-populate the registry with standard known entities on Arc Testnet:
+     * Native Gas Asset: Name: "USDC Gas", Decimals: 6, Address: "Native"
+     * Platform Utility Asset: Name: "DibsCoin", Symbol: "DIBS", Decimals: 18, Address: "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912"
+   - IMPLEMENT IMPORT FUNCTIONALITY: Add a clean visual text input form row labeled "Import Custom Token Address".
+   - When a user inputs an arbitrary 0x token contract address and clicks "Import":
+     * Use Viem's multicall or publicClient to dynamically query standard ERC-20 read functions: 'symbol()', 'decimals()', and 'balanceOf(userAddress)'.
+     * Gracefully append this newly discovered token object metadata into the 'tokenList' UI rendering state array so it updates the dashboard instantly.
 
-2. RETRIEVE USER EMBEDDED WALLET ADDRESS (src/app/page.tsx):
-   - Access the active authenticated user context using Privy's 'usePrivy()' hook setup.
-   - Safely capture the current wallet address string: 'const userAddress = user?.wallet?.address;'
+2. SWAP CONTRACT WIRING INTEGRATION:
+   - Target Swap Vault Address: 0x3ed226184b4a00d1500e04f4fa89281107475597
+   - Fixed Exchange Ratio: 1 USDC = 10 $DIBS
+   - Hook up the input metrics: typing a USDC value must update the target $DIBS output card automatically (Input * 10).
+   - Wire the "Execute Swap" action button to trigger an on-chain contract write calling 'swapUsdcForDibs()' [payable], transmitting the user's typed USDC amount as the active 'value' parameter payload ('value: parseUnits(usdcInput, 6)').
 
-3. REACTIVE ON-CHAIN BALANCE HOOK IMPLEMENTATION (src/app/page.tsx):
-   - Utilize your project's active public client instance (Viem publicClient) or standard Wagmi 'useReadContract' hook configuration to query the 'balanceOf' function.
-   - Pass 'userAddress' as the single argument input.
-   - Set up active background polling intervals (e.g., watch: true or refresh every 8 to 10 seconds) to ensure that if a user receives $DIBS, the dashboard metric card auto-updates immediately without a manual browser page reload.
+3. INSTALL & RENDER LIVE QR CODES:
+   - Run 'npm install react-qr-code' to bring in a lightweight type-safe SVG rendering library.
+   - Open your dashboard Receive modal layout container.
+   - Import QRCode from 'react-qr-code'.
+   - Swap the static placeholder row out with:
+     <QRCode value={user?.wallet?.address || ""} size={180} fgColor="#D4AF37" bgColor="transparent" style={{ height: "auto", maxWidth: "100%", width: "100%" }} />
+   - Pass the full un-truncated 'user?.wallet?.address' string string directly into the value property.
 
-4. TEXT VALUE REPLACEMENT & DECIMAL FORMATTING:
-   - Take the raw bigInt return from the blockchain and format it down safely into standard human readable decimals using Viem's 'formatUnits(balance, 18)' layout hook.
-   - Replace the static placeholder text string "$0.00 / 0 DIBS" inside your main balance overview dashboard card block. Render the newly formatted live token state value cleanly inside your layout markup string.
-   - Handle empty state gates: If 'authenticated' is false or data is loading, display standard fallback states smoothly.
+4. BUNDLE TESTING & PRODUCTION DELIVERY:
+   - Run 'npm run build' to clear cache and guarantee zero compilation, type-mismatch, or module registry breaks.
+   - Execute production branch push: git add ., commit with message "feat: complete automated swap engine, live address qr code generator, and custom erc20 asset import registry", and push origin main.
 
-5. VERIFY SYSTEM STABILITY AND DEPLOY:
-   - Run 'npm run build' to clear Next.js compile trees and verify that no TypeScript or missing dependency breaks occur.
-   - Execute production branch deployment sequence: git add ., commit with message "feat: link live on-chain $DIBS balance fetching engine via viem hooks", and push origin main.
-
-Execute this smart contract backend synchronization update immediately.
+Execute this comprehensive full-stack token mechanics and layout loop immediately.
