@@ -1,10 +1,11 @@
 "use client";
 
-import { useAccount, useChainId, useReadContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useWriteContract, useSendTransaction } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
-import { formatUnits, createPublicClient, http } from "viem";
+import { formatUnits, parseUnits, createPublicClient, http } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
+import { toast } from "sonner";
 import {
   Shield,
   Lock,
@@ -20,14 +21,18 @@ import {
   X,
   Copy,
   Plus,
+  ArrowLeftRight,
+  Info,
 } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { GlassCard } from "@/components/GlassCard";
 
 const ARC_TESTNET_CHAIN_ID = 5042002;
 
 // $DIBS ERC-20 Token Configuration
 const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
+const VAULT_ADDRESS = "0x3ed226184b4a00d1500e04f4fa89281107475597";
+
 const dibsBalanceOfABI = [
   {
     inputs: [{ name: "account", type: "address" }],
@@ -68,6 +73,42 @@ const erc20ReadABI = [
   },
 ] as const;
 
+// Vault ABI for swap
+const vaultABI = [
+  {
+    type: "function",
+    name: "swapUsdcForDibs",
+    stateMutability: "payable",
+    inputs: [],
+    outputs: [],
+  },
+] as const;
+
+// ERC-20 transfer ABI for Send modal
+const erc20TransferABI = [
+  {
+    type: "function",
+    name: "transfer",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
+// ERC-20 Transfer event for getLogs
+const transferEvent = {
+  type: "event" as const,
+  name: "Transfer" as const,
+  inputs: [
+    { indexed: true, name: "from", type: "address" },
+    { indexed: true, name: "to", type: "address" },
+    { indexed: false, name: "value", type: "uint256" },
+  ],
+};
+
 interface TokenEntry {
   name: string;
   symbol: string;
@@ -77,29 +118,14 @@ interface TokenEntry {
   isLoading: boolean;
 }
 
-const transactions = [
-  {
-    type: "Contract Interaction (Stake)",
-    date: "May 24, 2026",
-    amount: "50,000.00 DIBS",
-    status: "Confirmed" as const,
-    hash: "0x1a2b...3c4d",
-  },
-  {
-    type: "Transfer Sent",
-    date: "May 23, 2026",
-    amount: "12,500.00 DIBS",
-    status: "Confirmed" as const,
-    hash: "0x5e6f...7g8h",
-  },
-  {
-    type: "Token Received",
-    date: "May 22, 2026",
-    amount: "25,000.00 DIBS",
-    status: "Pending" as const,
-    hash: "0x9i0j...1k2l",
-  },
-];
+interface ActivityEntry {
+  type: string;
+  hash: string;
+  amount: string;
+  status: "Confirmed";
+}
+
+const EXCHANGE_RATE = 10; // 1 USDC = 10 DIBS
 
 export default function Home() {
   const { address: wagmiAddress, isConnected } = useAccount();
@@ -151,7 +177,7 @@ export default function Home() {
     {
       name: "USDC Gas",
       symbol: "USDC",
-      decimals: 6,
+      decimals: 18,
       address: "Native",
       balance: null,
       isLoading: true,
@@ -166,7 +192,7 @@ export default function Home() {
     },
   ]);
 
-  // Sync native gas balance into tokenList
+  // Sync native gas balance into tokenList (18 decimals)
   useEffect(() => {
     if (!userAddress) return;
     let cancelled = false;
@@ -174,7 +200,7 @@ export default function Home() {
       try {
         const bal = await publicClient.getBalance({ address: userAddress });
         if (!cancelled) {
-          const formatted = formatUnits(bal, 6);
+          const formatted = formatUnits(bal, 18);
           setTokenList((prev) =>
             prev.map((t) =>
               t.address === "Native"
@@ -254,7 +280,8 @@ export default function Home() {
               abi: erc20ReadABI,
               functionName: "balanceOf",
               args: [userAddress],
-            })            : Promise.resolve(BigInt(0)),
+            })
+          : Promise.resolve(BigInt(0)),
       ]);
       const balanceFormatted = formatUnits(balance as bigint, decimals as number);
       setTokenList((prev) => [
@@ -276,9 +303,221 @@ export default function Home() {
     }
   }, [importAddress, userAddress, tokenList]);
 
-  // Lock body scroll when modal is open
+  // --- Live On-Chain Activity Tracking ---
+  const [activityLogs, setActivityLogs] = useState<ActivityEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const seenHashes = useRef<Set<string>>(new Set());
+
   useEffect(() => {
-    if (showReceiveModal) {
+    if (!userAddress) {
+      setActivityLogs([]);
+      seenHashes.current.clear();
+      return;
+    }
+
+    let cancelled = false;
+
+    const pollActivity = async () => {
+      if (cancelled) return;
+      setActivityLoading(true);
+      try {
+        const currentBlock = await publicClient.getBlockNumber();
+        const fromBlock = currentBlock - BigInt(10000) > BigInt(0) ? currentBlock - BigInt(10000) : BigInt(0);
+
+        const logs = await publicClient.getLogs({
+          address: DIBS_CONTRACT_ADDRESS,
+          event: transferEvent,
+          fromBlock,
+          toBlock: currentBlock,
+        });
+
+        const userAddr = userAddress.toLowerCase();
+
+        const newEntries: ActivityEntry[] = [];
+
+        for (const log of logs) {
+          const logArgs = (log as unknown as { args: { from: string; to: string; value: bigint } }).args;
+          const fromAddr = logArgs.from.toLowerCase();
+          const toAddr = logArgs.to.toLowerCase();
+          const value = logArgs.value;
+
+          if (fromAddr !== userAddr && toAddr !== userAddr) continue;
+
+          const hash = log.transactionHash;
+          if (seenHashes.current.has(hash)) continue;
+          seenHashes.current.add(hash);
+
+          const amount = formatUnits(value, 18);
+          const displayAmount = `${Number(amount).toLocaleString(undefined, {
+            maximumFractionDigits: 2,
+          })} DIBS`;
+
+          if (fromAddr === userAddr) {
+            newEntries.push({
+              type: "Transfer Sent",
+              hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+              amount: displayAmount,
+              status: "Confirmed",
+            });
+          } else {
+            newEntries.push({
+              type: "Token Received",
+              hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+              amount: displayAmount,
+              status: "Confirmed",
+            });
+          }
+        }
+
+        if (newEntries.length > 0 && !cancelled) {
+          setActivityLogs((prev) => [...newEntries.reverse(), ...prev].slice(0, 50));
+        }
+      } catch {
+        // silent — no logs to display
+      } finally {
+        if (!cancelled) setActivityLoading(false);
+      }
+    };
+
+    pollActivity();
+    const interval = setInterval(pollActivity, 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [userAddress]);
+
+  // --- Swap Module State ---
+  const [fromToken, setFromToken] = useState<"USDC" | "DIBS">("USDC");
+  const [toToken, setToToken] = useState<"USDC" | "DIBS">("DIBS");
+  const [swapInput, setSwapInput] = useState("");
+
+  const flipTokens = useCallback(() => {
+    setFromToken(toToken);
+    setToToken(fromToken);
+    setSwapInput("");
+  }, [fromToken, toToken]);
+
+  const swapOutput = useMemo(() => {
+    const parsed = parseFloat(swapInput);
+    if (isNaN(parsed) || parsed <= 0) return "0";
+    if (fromToken === "USDC") {
+      return (parsed * EXCHANGE_RATE).toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      });
+    }
+    // DIBS to USDC not available, but show ratio for UI
+    return "0";
+  }, [swapInput, fromToken]);
+
+  const isValidSwap = swapInput !== "" && parseFloat(swapInput) > 0;
+
+  const { writeContractAsync: swapWriteContractAsync, isPending: swapPending } =
+    useWriteContract();
+
+  const handleSwapExecute = useCallback(async () => {
+    if (!isValidSwap || !userAddress) return;
+
+    if (fromToken === "DIBS") {
+      toast.error("DIBS to USDC liquidation is locked during the Testnet Alpha phase.");
+      return;
+    }
+
+    // USDC → DIBS swap via vault
+    try {
+      await toast.promise(
+        swapWriteContractAsync({
+          address: VAULT_ADDRESS,
+          abi: vaultABI,
+          functionName: "swapUsdcForDibs",
+          value: parseUnits(swapInput, 6),
+        }),
+        {
+          loading: "Swapping USDC for DIBS...",
+          success: "Swap completed successfully!",
+          error: (err) => `Swap failed: ${(err as Error).message.slice(0, 80)}`,
+        }
+      );
+      setSwapInput("");
+    } catch {
+      // toast already handled
+    }
+  }, [isValidSwap, userAddress, fromToken, swapInput, swapWriteContractAsync]);
+
+  // --- Send Asset Modal ---
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendAsset, setSendAsset] = useState<"USDC Gas" | "DibsCoin">("USDC Gas");
+  const [sendRecipient, setSendRecipient] = useState("");
+  const [sendAmount, setSendAmount] = useState("");
+
+  const { sendTransactionAsync } = useSendTransaction();
+  const { writeContractAsync: sendErc20WriteContractAsync } = useWriteContract();
+
+  const isValidSend =
+    sendRecipient.trim().startsWith("0x") &&
+    sendRecipient.trim().length === 42 &&
+    sendAmount !== "" &&
+    parseFloat(sendAmount) > 0;
+
+  const handleSendConfirm = useCallback(async () => {
+    if (!isValidSend || !userAddress) return;
+
+    try {
+      if (sendAsset === "USDC Gas") {
+        // Native gas transfer
+        await toast.promise(
+          sendTransactionAsync({
+            to: sendRecipient.trim() as `0x${string}`,
+            value: parseUnits(sendAmount, 18),
+          }),
+          {
+            loading: "Sending USDC Gas...",
+            success: "Transfer completed successfully!",
+            error: (err) => `Transfer failed: ${(err as Error).message.slice(0, 80)}`,
+          }
+        );
+      } else {
+        // DIBS ERC-20 transfer
+        await toast.promise(
+          sendErc20WriteContractAsync({
+            address: DIBS_CONTRACT_ADDRESS,
+            abi: erc20TransferABI,
+            functionName: "transfer",
+            args: [sendRecipient.trim() as `0x${string}`, parseUnits(sendAmount, 18)],
+          }),
+          {
+            loading: "Sending DIBS tokens...",
+            success: "DIBS transfer completed successfully!",
+            error: (err) => `Transfer failed: ${(err as Error).message.slice(0, 80)}`,
+          }
+        );
+      }
+      setShowSendModal(false);
+      setSendRecipient("");
+      setSendAmount("");
+    } catch {
+      // toast already handled
+    }
+  }, [isValidSend, userAddress, sendAsset, sendRecipient, sendAmount, sendTransactionAsync, sendErc20WriteContractAsync]);
+
+  // --- Stake Modal ---
+  const [showStakeModal, setShowStakeModal] = useState(false);
+  const [stakeAmount, setStakeAmount] = useState("");
+  const [stakedBalance, setStakedBalance] = useState(0);
+
+  const handleStakeConfirm = useCallback(() => {
+    const parsed = parseFloat(stakeAmount);
+    if (isNaN(parsed) || parsed <= 0) return;
+
+    setStakedBalance((prev) => prev + parsed);
+    toast.success("Assets successfully committed to the Sovereign Staking Vault!");
+    setShowStakeModal(false);
+    setStakeAmount("");
+  }, [stakeAmount]);
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (showReceiveModal || showSendModal || showStakeModal) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -286,7 +525,7 @@ export default function Home() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [showReceiveModal]);
+  }, [showReceiveModal, showSendModal, showStakeModal]);
 
   return (
     <div className="flex flex-col flex-1">
@@ -351,6 +590,17 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+
+                {/* Staked Balance Tracker */}
+                {stakedBalance > 0 && (
+                  <div className="flex items-center gap-2 mb-4 text-xs text-slate-500 dark:text-slate-400">
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>
+                      Staked: {stakedBalance.toLocaleString()} DIBS
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <Shield className="w-3.5 h-3.5" />
                   <span>
@@ -360,9 +610,10 @@ export default function Home() {
                   </span>
                 </div>
 
-                {/* Send / Receive Action Sub-Row */}
+                {/* Send / Receive / Stake Action Sub-Row */}
                 <div className="flex items-center gap-3 mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
                   <button
+                    onClick={() => setShowSendModal(true)}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-950 dark:bg-slate-50 text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm flex-shrink-0"
                   >
                     <Send className="w-4 h-4" />
@@ -374,6 +625,13 @@ export default function Home() {
                   >
                     <ArrowDownToLine className="w-4 h-4" />
                     Receive
+                  </button>
+                  <button
+                    onClick={() => setShowStakeModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-primary/20 text-primary bg-primary/[0.05] hover:bg-primary/[0.1] transition-all shadow-sm flex-shrink-0"
+                  >
+                    <Lock className="w-4 h-4" />
+                    Stake
                   </button>
                 </div>
               </div>
@@ -449,89 +707,169 @@ export default function Home() {
               </div>
             </div>
 
+            {/* ===== QUICK SWAP MODULE ===== */}
+            <GlassCard className="p-8">
+              <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50 mb-6">
+                Quick Swap
+              </h3>
+              <div className="space-y-4">
+                {/* From Token */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+                    You Pay
+                  </label>
+                  <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                    <input
+                      type="number"
+                      placeholder="0.0"
+                      value={swapInput}
+                      onChange={(e) => setSwapInput(e.target.value)}
+                      className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary">
+                      {fromToken}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Flip Arrow Toggle */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={flipTokens}
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-[#121826] border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-primary hover:scale-110 hover:border-primary/30 transition-all"
+                    title="Flip tokens"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* To Token */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+                    You Receive
+                  </label>
+                  <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                    <input
+                      type="text"
+                      readOnly
+                      value={swapOutput}
+                      className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none pr-20 tabular-nums"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary">
+                      {toToken}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-[#121826]/30 border border-slate-200 dark:border-slate-800">
+                  <Info className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    1 USDC = {EXCHANGE_RATE} DIBS
+                  </span>
+                </div>
+
+                {/* Execute Swap */}
+                <button
+                  onClick={handleSwapExecute}
+                  disabled={!isWalletConnected || !isValidSwap || swapPending || isWrongNetwork}
+                  className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all duration-200 ${
+                    !isWalletConnected || !isValidSwap || swapPending || isWrongNetwork
+                      ? "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
+                      : "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01]"
+                  }`}
+                >
+                  {swapPending ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Swapping...
+                    </>
+                  ) : !isWalletConnected ? (
+                    "Connect Wallet to Swap"
+                  ) : (
+                    <>
+                      <ArrowLeftRight className="w-4 h-4" />
+                      Execute Swap
+                    </>
+                  )}
+                </button>
+              </div>
+            </GlassCard>
+
             {/* Recent Activity */}
             <GlassCard className="p-8">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
                   Recent Activity
                 </h3>
-                <button className="text-xs font-medium text-primary hover:text-primary-hover transition-colors">
-                  View All
-                </button>
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  Live $DIBS transfers
+                </span>
               </div>
               <div className="overflow-x-auto -mx-2">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800">
-                      <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Transaction
-                      </th>
-                      <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:table-cell">
-                        Date
-                      </th>
-                      <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Amount
-                      </th>
-                      <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map((tx, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
-                      >
-                        <td className="py-3.5 px-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-slate-800 flex items-center justify-center flex-shrink-0">
-                              {tx.type.includes("Stake") ? (
-                                <Coins className="w-3.5 h-3.5 text-primary" />
-                              ) : tx.type.includes("Sent") ? (
-                                <ArrowRight className="w-3.5 h-3.5 text-warning -rotate-45" />
-                              ) : (
-                                <ArrowDown className="w-3.5 h-3.5 text-success" />
-                              )}
-                            </div>
-                            <span className="text-xs font-medium text-slate-950 dark:text-slate-50 truncate max-w-[140px]">
-                              {tx.type}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-2 hidden sm:table-cell">
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
-                            <span className="text-xs text-slate-600 dark:text-slate-300">
-                              {tx.date}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-2 text-right">
-                          <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
-                            {tx.amount}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-2 text-right">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                              tx.status === "Confirmed"
-                                ? "bg-success/10 text-success border border-success/20"
-                                : "bg-warning/10 text-warning border border-warning/20"
-                            }`}
-                          >
-                            {tx.status === "Confirmed" ? (
-                              <CheckCircle className="w-2.5 h-2.5" />
-                            ) : (
-                              <Clock className="w-2.5 h-2.5" />
-                            )}
-                            {tx.status}
-                          </span>
-                        </td>
+                {activityLogs.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Clock className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {activityLoading
+                        ? "Scanning on-chain activity..."
+                        : "No $DIBS transfer activity detected for your wallet yet"}
+                    </p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800">
+                        <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          Transaction
+                        </th>
+                        <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          Amount
+                        </th>
+                        <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          Status
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {activityLogs.map((tx, i) => (
+                        <tr
+                          key={tx.hash + i}
+                          className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+                        >
+                          <td className="py-3.5 px-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-slate-800 flex items-center justify-center flex-shrink-0">
+                                {tx.type.includes("Sent") ? (
+                                  <ArrowRight className="w-3.5 h-3.5 text-warning -rotate-45" />
+                                ) : (
+                                  <ArrowDown className="w-3.5 h-3.5 text-success" />
+                                )}
+                              </div>
+                              <span className="text-xs font-medium text-slate-950 dark:text-slate-50 truncate max-w-[140px]">
+                                {tx.type}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-2 text-right">
+                            <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
+                              {tx.amount}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-2 text-right">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/10 text-success border border-success/20">
+                              <CheckCircle className="w-2.5 h-2.5" />
+                              {tx.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </GlassCard>
           </div>
@@ -623,6 +961,198 @@ export default function Home() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== SEND ASSET MODAL ===== */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowSendModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-[#121826] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
+                Send Assets
+              </h3>
+              <button
+                onClick={() => {
+                  setShowSendModal(false);
+                  setSendRecipient("");
+                  setSendAmount("");
+                }}
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Asset Selection */}
+              <div>
+                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+                  Select Asset
+                </label>
+                <select
+                  value={sendAsset}
+                  onChange={(e) => setSendAsset(e.target.value as "USDC Gas" | "DibsCoin")}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826] border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-950 dark:text-slate-50 outline-none focus:border-primary/50 transition-colors"
+                >
+                  <option value="USDC Gas">USDC Gas</option>
+                  <option value="DibsCoin">DibsCoin (DIBS)</option>
+                </select>
+              </div>
+
+              {/* Recipient Address */}
+              <div>
+                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+                  Recipient Wallet Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  value={sendRecipient}
+                  onChange={(e) => setSendRecipient(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826] border border-slate-200 dark:border-slate-800 text-sm font-mono text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 focus:border-primary/50 transition-colors"
+                />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+                  Amount
+                </label>
+                <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                  <input
+                    type="number"
+                    placeholder="0.0"
+                    value={sendAmount}
+                    onChange={(e) => setSendAmount(e.target.value)}
+                    className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary">
+                    {sendAsset === "USDC Gas" ? "USDC" : "DIBS"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Confirm Button */}
+              <button
+                onClick={handleSendConfirm}
+                disabled={!isValidSend}
+                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all ${
+                  isValidSend
+                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30"
+                    : "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
+                }`}
+              >
+                <Send className="w-4 h-4" />
+                Confirm Transfer
+              </button>
+
+              {/* Close */}
+              <button
+                onClick={() => {
+                  setShowSendModal(false);
+                  setSendRecipient("");
+                  setSendAmount("");
+                }}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== STAKE MODAL ===== */}
+      {showStakeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowStakeModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-[#121826] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
+                Stake DIBS
+              </h3>
+              <button
+                onClick={() => setShowStakeModal(false)}
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Your Balance */}
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826]/60 border border-slate-200 dark:border-slate-800">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Available Balance
+                </span>
+                <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
+                  {dibsBalanceDisplay ?? "0"} DIBS
+                </span>
+              </div>
+
+              {/* Stake Amount */}
+              <div>
+                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+                  Amount to Stake
+                </label>
+                <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                  <input
+                    type="number"
+                    placeholder="0.0"
+                    value={stakeAmount}
+                    onChange={(e) => setStakeAmount(e.target.value)}
+                    className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary">
+                    DIBS
+                  </span>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                  <span>Estimated APY</span>
+                  <span className="text-success font-medium">12.5%</span>
+                </div>
+                <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                  <span>Lock Period</span>
+                  <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                    <Clock className="w-3.5 h-3.5" />7 days
+                  </span>
+                </div>
+              </div>
+
+              {/* Confirm Stake */}
+              <button
+                onClick={handleStakeConfirm}
+                disabled={!stakeAmount || parseFloat(stakeAmount) <= 0}
+                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all ${
+                  stakeAmount && parseFloat(stakeAmount) > 0
+                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30"
+                    : "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+                Confirm Stake
+              </button>
+
+              <button
+                onClick={() => setShowStakeModal(false)}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
