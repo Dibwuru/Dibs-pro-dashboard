@@ -35,4 +35,5 @@ CRITICAL TECHNICAL SPECIFICATIONS:
    - Run 'npm run build' to clear Next.js compile trees and verify that no TypeScript or missing dependency breaks occur.
    - Execute production branch deployment sequence: git add ., commit with message "feat: link live on-chain $DIBS balance fetching engine via viem hooks", and push origin main.
 
+
 Execute this smart contract backend synchronization update immediately.

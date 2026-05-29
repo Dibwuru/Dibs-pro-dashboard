@@ -1,7 +1,8 @@
 "use client";
 
-import { useAccount, useChainId } from "wagmi";
+import { useAccount, useChainId, useReadContract } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
+import { formatUnits } from "viem";
 import {
   Shield,
   Lock,
@@ -23,6 +24,18 @@ import { useState, useCallback, useEffect } from "react";
 import { GlassCard } from "@/components/GlassCard";
 
 const ARC_TESTNET_CHAIN_ID = 5042002;
+
+// $DIBS ERC-20 Token Configuration
+const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
+const dibsBalanceOfABI = [
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 const transactions = [
   {
@@ -55,7 +68,28 @@ export default function Home() {
 
   const isWalletConnected = isConnected || (authenticated && !!user?.wallet?.address);
   const displayAddress = wagmiAddress || user?.wallet?.address;
+  const userAddress = (user?.wallet?.address as `0x${string}` | undefined) ??
+    (wagmiAddress as `0x${string}` | undefined);
   const isWrongNetwork = isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
+
+  // --- Live $DIBS Balance Fetching (polls every 8 seconds) ---
+  const { data: dibsBalanceRaw, isLoading: dibsBalanceLoading } = useReadContract({
+    address: DIBS_CONTRACT_ADDRESS,
+    abi: dibsBalanceOfABI,
+    functionName: "balanceOf",
+    args: userAddress ? [userAddress] : undefined,
+    query: {
+      enabled: !!userAddress,
+      refetchInterval: 8000,
+    },
+  });
+
+  const dibsBalanceFormatted = dibsBalanceRaw != null
+    ? formatUnits(dibsBalanceRaw, 18)
+    : null;
+  const dibsBalanceDisplay = dibsBalanceFormatted !== null
+    ? Number(dibsBalanceFormatted).toLocaleString(undefined, { maximumFractionDigits: 2 })
+    : null;
 
   // --- Receive modal state ---
   const [showReceiveModal, setShowReceiveModal] = useState(false);
@@ -122,7 +156,9 @@ export default function Home() {
                             "0 0 40px rgba(124, 58, 237, 0.15)",
                         }}
                       >
-                        145,230.50
+                        {dibsBalanceLoading
+                          ? "..."
+                          : dibsBalanceDisplay ?? "—"}
                       </h1>
                       <span className="text-xl sm:text-2xl font-semibold text-slate-600 dark:text-slate-300">
                         DIBS
@@ -130,8 +166,12 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="sm:text-right">
-                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">
-                      $218,492.75
+                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-50 tabular-nums">
+                      {dibsBalanceDisplay !== null
+                        ? `${dibsBalanceDisplay} DIBS`
+                        : dibsBalanceLoading
+                          ? "Loading..."
+                          : "—"}
                     </p>
                     <div className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full bg-success/10 border border-success/20">
                       <TrendingUp className="w-3 h-3 text-success" />
