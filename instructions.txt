@@ -1,8 +1,12 @@
-"The vercel.json looks perfect. Please perform the following final steps for this phase:
-GIT PUSH: Execute the following commands to update the live site:
-git add .
-git commit -m 'Fix: Add vercel.json for CSP header override to fix Privy modal'
-git push origin main
-VERIFICATION: Once the push is complete, tell me explicitly that the code is live on GitHub.
-NEXT STEP: After the push, I will test the Privy modal in a new Incognito window. If it works, we will move on to the 'Suggested Followups' to further harden the security of the site.
-Please proceed with the Git push now."
+ACT AS: A Senior Web3 Frontend Engineer.
+TASK: Remove the unconfigured Apple authentication method from the Privy Provider instance to resolve the initialization crash.
+
+CRITICAL MODIFICATION SPECS:
+1. TARGET FILE: Open src/providers/PrivyAuthProvider.tsx.
+2. CLEAN CONFIG ARRAY: Inside the 'config' object, locate the 'loginMethods' parameter array. Modify it to remove 'apple' completely. It must look exactly like this:
+   loginMethods: ['email', 'google', 'twitter'],
+3. PRESERVE ALL OTHERS: Leave your production App ID ('cmpoxpjd900ie0dl86nwbv5hw'), the glassmorphic gold appearance accents, and the embedded wallet creation configuration completely untouched.
+4. BUILD AND VERIFY: Run 'npm run build' to confirm a clean compilation pass.
+5. PUSH REPOSITORY: Execute git add ., commit with message "fix: remove unconfigured apple oauth track from privy provider", and push origin main.
+
+Execute this code adjustment and deployment loop now.

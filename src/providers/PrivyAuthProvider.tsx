@@ -7,7 +7,7 @@ export default function PrivyAuthProvider({ children }: { children: React.ReactN
     <PrivyProvider
       appId="clpispdty00ycl80fpueukbhl"
       config={{
-        loginMethods: ['email', 'google', 'twitter', 'apple'],
+        loginMethods: ['email', 'google', 'twitter'],
         appearance: {
           theme: 'dark',
           accentColor: '#D4AF37',
