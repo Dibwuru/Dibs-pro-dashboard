@@ -1,12 +1,35 @@
-ACT AS: A Senior Web3 Frontend Engineer.
-TASK: Remove the unconfigured Apple authentication method from the Privy Provider instance to resolve the initialization crash.
+ACT AS: A Senior Web3 Frontend Architect.
+TASK: Completely overwrite the PrivyAuthProvider file to inject the correct production App ID and completely remove the Apple track.
 
-CRITICAL MODIFICATION SPECS:
-1. TARGET FILE: Open src/providers/PrivyAuthProvider.tsx.
-2. CLEAN CONFIG ARRAY: Inside the 'config' object, locate the 'loginMethods' parameter array. Modify it to remove 'apple' completely. It must look exactly like this:
-   loginMethods: ['email', 'google', 'twitter'],
-3. PRESERVE ALL OTHERS: Leave your production App ID ('cmpoxpjd900ie0dl86nwbv5hw'), the glassmorphic gold appearance accents, and the embedded wallet creation configuration completely untouched.
-4. BUILD AND VERIFY: Run 'npm run build' to confirm a clean compilation pass.
-5. PUSH REPOSITORY: Execute git add ., commit with message "fix: remove unconfigured apple oauth track from privy provider", and push origin main.
+CRITICAL HARDCODE SPECIFICATIONS:
+1. TARGET FILE: src/providers/PrivyAuthProvider.tsx
+2. FULL FILE OVERWRITE: Replace the entire contents of the file with this exact code block. Do not leave any old placeholder strings:
 
-Execute this code adjustment and deployment loop now.
+'use client';
+import { PrivyProvider } from '@privy-io/react-auth';
+
+export default function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <PrivyProvider
+      appId="cmpoxpjd900ie0dl86nwbv5hw"
+      config={{
+        loginMethods: ['email', 'google', 'twitter'],
+        appearance: {
+          theme: 'dark',
+          accentColor: '#D4AF37',
+          showWalletLoginFirst: false,
+        },
+        embeddedWallets: {
+          createOnLogin: 'users-without-wallets',
+        },
+      }}
+    >
+      {children}
+    </PrivyProvider>
+  );
+}
+
+3. BUILD VALIDATION: Run 'npm run build' to clear out Next.js cache artifacts and verify compilation.
+4. DEPLOYMENT PIPELINE: Execute git add ., commit with message "fix: hardcode production privy app id and entirely purge apple track", and push origin main.
+
+Execute this strict file recreation and deployment loop immediately.
