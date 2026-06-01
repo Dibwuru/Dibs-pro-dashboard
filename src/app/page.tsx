@@ -511,12 +511,46 @@ export default function Home() {
       });
 
       await toast.promise(
-        walletClient.writeContract({
-          address: VAULT_ADDRESS,
-          abi: vaultABI,
-          functionName: "swapUsdcForDibs",
-          value: parseUnits(swapInput, 6),
-        }),
+        (async () => {
+          const hash = await walletClient.writeContract({
+            address: VAULT_ADDRESS,
+            abi: vaultABI,
+            functionName: "swapUsdcForDibs",
+            value: parseUnits(swapInput, 6),
+          });
+
+          // Wait for on-chain confirmation before resolving the toast
+          const receipt = await publicClient.waitForTransactionReceipt({ hash });
+          if (receipt.status !== "success") {
+            throw new Error("Transaction reverted on-chain");
+          }
+
+          // Immediately refresh balances so dashboard numbers update
+          if (userAddress) {
+            try {
+              const [newGas, newDibs] = await Promise.all([
+                publicClient.getBalance({ address: userAddress }),
+                publicClient.readContract({
+                  address: DIBS_CONTRACT_ADDRESS,
+                  abi: dibsBalanceOfABI,
+                  functionName: "balanceOf",
+                  args: [userAddress],
+                }),
+              ]);
+              const formattedGas = formatUnits(newGas, 18);
+              setDibsBalanceRaw(newDibs);
+              setTokenList((prev) =>
+                prev.map((t) =>
+                  t.address === "Native"
+                    ? { ...t, balance: formattedGas, isLoading: false }
+                    : t
+                )
+              );
+            } catch {
+              // Non-critical — polling will catch up
+            }
+          }
+        })(),
         {
           loading: "Swapping USDC for DIBS...",
           success: "Swap completed successfully!",
@@ -583,10 +617,44 @@ export default function Home() {
       if (sendAsset === "USDC Gas") {
         // Native gas transfer
         await toast.promise(
-          walletClient.sendTransaction({
-            to: sendRecipient.trim() as `0x${string}`,
-            value: parseUnits(sendAmount, 18),
-          }),
+          (async () => {
+            const sendHash = await walletClient.sendTransaction({
+              to: sendRecipient.trim() as `0x${string}`,
+              value: parseUnits(sendAmount, 18),
+            });
+
+            // Wait for on-chain confirmation before resolving the toast
+            const sendReceipt = await publicClient.waitForTransactionReceipt({ hash: sendHash });
+            if (sendReceipt.status !== "success") {
+              throw new Error("Transaction reverted on-chain");
+            }
+
+            // Immediately refresh balances
+            if (userAddress) {
+              try {
+                const [newGas, newDibs] = await Promise.all([
+                  publicClient.getBalance({ address: userAddress }),
+                  publicClient.readContract({
+                    address: DIBS_CONTRACT_ADDRESS,
+                    abi: dibsBalanceOfABI,
+                    functionName: "balanceOf",
+                    args: [userAddress],
+                  }),
+                ]);
+                const formattedGas = formatUnits(newGas, 18);
+                setDibsBalanceRaw(newDibs);
+                setTokenList((prev) =>
+                  prev.map((t) =>
+                    t.address === "Native"
+                      ? { ...t, balance: formattedGas, isLoading: false }
+                      : t
+                  )
+                );
+              } catch {
+                // Non-critical — polling will catch up
+              }
+            }
+          })(),
           {
             loading: "Sending USDC Gas...",
             success: "Transfer completed successfully!",
@@ -596,12 +664,46 @@ export default function Home() {
       } else {
         // DIBS ERC-20 transfer
         await toast.promise(
-          walletClient.writeContract({
-            address: DIBS_CONTRACT_ADDRESS,
-            abi: erc20TransferABI,
-            functionName: "transfer",
-            args: [sendRecipient.trim() as `0x${string}`, parseUnits(sendAmount, 18)],
-          }),
+          (async () => {
+            const transferHash = await walletClient.writeContract({
+              address: DIBS_CONTRACT_ADDRESS,
+              abi: erc20TransferABI,
+              functionName: "transfer",
+              args: [sendRecipient.trim() as `0x${string}`, parseUnits(sendAmount, 18)],
+            });
+
+            // Wait for on-chain confirmation before resolving the toast
+            const transferReceipt = await publicClient.waitForTransactionReceipt({ hash: transferHash });
+            if (transferReceipt.status !== "success") {
+              throw new Error("Transaction reverted on-chain");
+            }
+
+            // Immediately refresh balances
+            if (userAddress) {
+              try {
+                const [newGas, newDibs] = await Promise.all([
+                  publicClient.getBalance({ address: userAddress }),
+                  publicClient.readContract({
+                    address: DIBS_CONTRACT_ADDRESS,
+                    abi: dibsBalanceOfABI,
+                    functionName: "balanceOf",
+                    args: [userAddress],
+                  }),
+                ]);
+                const formattedGas = formatUnits(newGas, 18);
+                setDibsBalanceRaw(newDibs);
+                setTokenList((prev) =>
+                  prev.map((t) =>
+                    t.address === "Native"
+                      ? { ...t, balance: formattedGas, isLoading: false }
+                      : t
+                  )
+                );
+              } catch {
+                // Non-critical — polling will catch up
+              }
+            }
+          })(),
           {
             loading: "Sending DIBS tokens...",
             success: "DIBS transfer completed successfully!",
@@ -941,8 +1043,9 @@ export default function Home() {
                 <div className="flex justify-center">
                   <button
                     onClick={flipTokens}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-[#121826] border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-primary hover:scale-110 hover:border-primary/30 transition-all"
+                    className="cursor-pointer select-none active:scale-95 p-2 rounded-xl bg-slate-100 dark:bg-[#121826] border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-primary hover:scale-110 hover:border-primary/30 transition-all"
                     title="Flip tokens"
+                    aria-label="Flip token direction"
                   >
                     <ArrowLeftRight className="w-4 h-4" />
                   </button>

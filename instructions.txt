@@ -1,58 +1,43 @@
-ACT AS: A Lead Web3 Core Systems Engineer and Full-Stack Architect.
-TASK: Completely remove Wagmi from the swap and send execution paths to eliminate the '@wagmi/core' chain mismatch error, and configure the custom chain inside the Privy provider framework.
+ACT AS: A Senior Web3 Frontend Architect and Mobile UI/UX Engineer.
+TASK: Resolve the infinite loading toast via Viem block receipt confirmations, trigger live state refreshes, wire the token flip arrow logic, and guarantee strict mobile/desktop parity.
 
 CRITICAL ARCHITECTURAL REPAIRS:
 
-1. CONFIGURE CUSTOM CHAIN IN PRIVY PROVIDER (src/app/layout.tsx or master provider configuration file):
-   - Locate the <PrivyProvider> component wrapper.
-   - Define your custom Arc Testnet chain object explicitly:
+1. IMPLEMENT VIEM TRANSACTION RECEIPT WAITING (src/app/page.tsx & src/app/swap/page.tsx):
+   - Locate the standalone Viem 'walletClient.writeContract' execution paths in BOTH your Swap and Send handlers.
+   - Fix the infinite toast hang by instantiating a standalone public client directly beneath your wallet client setup:
 ```typescript
-     const arcTestnet = {
-       id: 5042002,
-       name: 'Arc Testnet',
-       network: 'arc-testnet',
-       nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-       rpcUrls: { default: { http: ['YOUR_ARC_RPC_URL'] }, public: { http: ['YOUR_ARC_RPC_URL'] } }
-     };
+     import { createPublicClient, custom } from 'viem';
+     
+     const publicClient = createPublicClient({
+       chain: arcTestnet,
+       transport: custom(provider)
+     });
+     
+     const hash = await walletClient.writeContract({ ... });
+     
+     // WAIT for the blockchain to mine the block before advancing:
+     const receipt = await publicClient.waitForTransactionReceipt({ hash });
+     
+     if (receipt.status !== 'success') throw new Error('Transaction reverted on-chain');
      ```
-   - Pass this chain directly into Privy's initialization configuration: `config={{ supportedChains: [arcTestnet], embeddedWallets: { createOnLogin: 'users-without-wallets' } }}`. This ensures Privy natively recognizes the network for chain-switching prompts.
 
-2. TOTAL PURGE OF WAGMI WRITE HOOKS (src/app/swap/page.tsx & src/app/page.tsx):
-   - Locate your transaction handlers: 'handleSwapExecute', 'handleSendConfirm', and 'handleSwap'.
-   - COMPLETELY REMOVE 'useWriteContract' or any other transaction execution hooks imported from 'wagmi' or '@wagmi/core'.
-   - IMPLEMENT CLEAN STANDALONE VIEM WRITES:
-     * Pull the active wallet array using Privy's 'useWallets()'.
-     * Run the explicit asynchronous chain-switching check against the embedded provider:
-```typescript
-       const { wallets } = useWallets();
-       const activeWallet = wallets[0];
-       if (activeWallet) {
-         const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
-         if (currentChainId !== 5042002) {
-           await activeWallet.switchChain(5042002);
-         }
-         
-         // Build a PURE Viem client completely independent of Wagmi:
-         const provider = await activeWallet.getProvider();
-         const walletClient = createWalletClient({
-           account: activeWallet.address as `0x${string}`,
-           chain: arcTestnet,
-           transport: custom(provider)
-         });
-         
-         // Trigger execution directly via the standalone Viem wallet client:
-         const hash = await walletClient.writeContract({
-           address: '0x3ed226184b4a00d1500e04f4fa89281107475597', // Vault Address
-           abi: SWAP_VAULT_ABI,
-           functionName: 'swapUsdcForDibs',
-           value: parseUnits(usdcInput, 6)
-         });
-       }
-       ```
-- Re-wrap this clean Viem pipeline inside your existing Sonner 'toast.promise()' notifications. Because Wagmi is no longer involved in the write path, the `@wagmi/core` error is completely avoided.
+2. TRIGGER FRONTEND STATE REFRESH:
+   - Immediately after 'waitForTransactionReceipt' confirms successfully, and BEFORE resolving the Sonner promise toast, invoke the component's data-fetching routines (re-running the read states for 'dibsBalance' and 'gasBalance').
+   - This guarantees the user's dashboard numbers update instantaneously on both mobile and desktop screens the moment a block confirms.
 
-3. PRODUCTION SYSTEM COMPILE AND SHIP:
-- Run 'npm run build' to clear out Next.js framework build layers and confirm 100% compilation safety with zero TypeScript errors.
-- Deploy code updates: git add ., commit with message "fix: completely remove wagmi from execution path to fix core chain mismatch errors", and push origin main.
+3. WIRE THE TOKEN FLIP ARROWS ENGINE:
+   - Locate the toggle arrow button positioned between the "You Pay" and "You Receive" input fields in the Swap interface.
+   - Implement a state toggle function 'handleTokenFlip': Clicking the arrow must cleanly swap the 'fromToken' and 'toToken' state variables and their respective input values.
+   - SWAP EXECUTION GUARD: If 'fromToken' is flipped to DIBS, intercept the "Execute Swap" click trigger and immediately return 'toast.error("DIBS to USDC liquidation is locked during the Testnet Alpha phase.")' to prevent contract reverts.
 
-Execute this full-stack code isolation loop immediately.
+4. CROSS-PLATFORM TOUCH & RESPONSIVE MANDATE:
+   - Ensure the new Token Flip Arrow button natively supports mobile touch interactions by adding 'cursor-pointer select-none active:scale-95 p-2' utilities.
+   - Verify that this interaction, along with the 'Execute Swap' button and toast notifications, are fully accessible on viewport widths under 768px without being intercepted by invisible flex or grid containers. 
+   - Ensure the UI logic seamlessly syncs whether triggered from the desktop sidebar layout or the mobile BottomNav view.
+
+5. PRODUCTION VERIFICATION:
+   - Run 'npm run build' to confirm 100% compilation safety with zero missing Viem imports or type mismatches.
+   - Deploy code updates: git add ., commit with message "fix: implement cross-platform publicClient receipt waiting, instant state refreshing, and touch-optimized token flip interactions", and push origin main.
+
+Execute this precise synchronization and interaction loop immediately.
