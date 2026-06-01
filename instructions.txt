@@ -1,42 +1,36 @@
-ACT AS: A Lead Web3 Smart Contract Integration Engineer and Full-Stack Architect.
-TASK: Resolve the Wagmi "Connector not connected" runtime swap error by bridging Privy's wallet provider directly to Viem client actions, and implement local storage profile persistence.
+ACT AS: A Principal Web3 UI/UX Architect and Mobile Frontend Engineer.
+TASK: Deploy a full-screen conditional 'AuthGateway' onboarding view for logged-out sessions, build a premium fixed mobile bottom navigation bar, and fix responsive touch-target grid overlays.
 
-CRITICAL REPAIR SPECIFICATIONS:
+CRITICAL ARCHITECTURAL SPECIFICATIONS:
 
-1. REFACTOR TRANSACTION SIGNING PIPELINE (src/app/page.tsx & src/app/swap/page.tsx):
-   - ROOT CAUSE: Wagmi's 'useWriteContract' fails because it cannot detect Privy's embedded Google wallet connector natively without an explicit provider handshake.
-   - THE FIX: Switch from Wagmi's 'useWriteContract' to Privy's native 'useWallets()' hook array to capture the active wallet interface.
-   - IMPLEMENTATION LOGIC:
-     ```typescript
-     const { wallets } = useWallets();
-     const activeWallet = wallets; // Captures the logged-in embedded or external wallet
-     
-     // When executing the transaction:
-     const provider = await activeWallet.getProvider();
-     const walletClient = createWalletClient({
-       account: activeWallet.address as `0x${string}`,
-       chain: arcTestnet, // Chain ID: 5042002
-       transport: custom(provider)
-     });
-     
-     // Trigger the write action directly on the client:
-     const hash = await walletClient.writeContract({
-       address: VAULT_ADDRESS, // 0x3ed226184b4a00d1500e04f4fa89281107475597
-       abi: SWAP_VAULT_ABI,
-       functionName: 'swapUsdcForDibs',
-       value: parseUnits(usdcInput, 6)
-     });
-     ```
-   - Bind this exact client write execution structure to BOTH the Swap page button and the Send asset modal to guarantee unified transaction execution. Wrap the entire sequence cleanly within your existing Sonner 'toast.promise()' status cycles.
+1. IMPLEMENT FULL-SCREEN 'AUTHGATEWAY' FOR LOGGED-OUT STATES (src/app/page.tsx):
+   - Use Privy's 'ready' and 'authenticated' flags to track session state.
+   - OBLITERATE THE BLUR LOCK: Replace the partial blurry "ARCTOR Terminal Locked" modal entirely. If 'ready' is true and 'authenticated' is false, hide the dashboard shell, top navbar, and sidebars completely. 
+   - RENDER THE GATEWAY VIEW: Return a clean, full-screen centered hero landing container.
+     * Main Title: "ARCTOR Terminal" styled in a bold metallic gold gradient.
+     * Subtitle: "The Sovereign Decentralized Portal for the $DIBS Ecosystem."
+   - ULTRAPREMIUM CALL TO ACTION (CTA) BUTTON: Place a prominent, large interactive button directly in the center of the viewport.
+     * Button Text: "Launch Terminal (Sign In / Sign Up)"
+     * Interaction: Bind the 'onClick' event directly to trigger Privy's native 'login()' function.
+     * Styling: Soft dark glassmorphism with high-contrast gold border accents, clear drop-shadows, and an active click-scale transformation.
 
-2. PROFILE UPDATE PERSISTENCE LAYER (src/components/Sidebar.tsx):
-   - Locate the Profile Bio/PFP editor modal state handlers.
-   - Replace temporary React memory state variables with a persistent 'localStorage' synchronization utility.
-   - On component mount, pull any saved credentials using 'localStorage.getItem("arctor_profile")'.
-   - When a user saves their custom Display Name, Bio, or PFP URL details, save the structured JSON object directly using 'localStorage.setItem("arctor_profile", JSON.stringify(profileData))' so changes survive page refreshes and re-logins.
+2. DEPLOY A MOBILE BOTTOM NAVIGATION BAR (src/components/BottomNav.tsx):
+   - Create a brand-new navigation utility file named 'BottomNav.tsx'.
+   - RESPONSIVE VISIBILITY: Apply strict Tailwind constraints ('fixed bottom-0 left-0 right-0 z-50 block md:hidden') so it is invisible on desktop layouts but pins beautifully to the bottom viewport on mobile screens.
+   - UI AESTHETIC: Style with a premium blurred glassmorphic theme (dark translucent backdrop, subtle gold top border, high-fidelity iconography layout).
+   - GRID NAVIGATION: Map out four touch-responsive action targets that shift frontend view states smoothly or trigger parameters:
+     * Tab 1: "Dashboard" (Home Icon)
+     * Tab 2: "Swap" (Arrows Icon)
+     * Tab 3: "Stake" (Lock Icon)
+     * Tab 4: "Profile" (Avatar circle triggering the local 'isProfileEditorOpen' state)
+   - Render this component globally within your primary layout tree (src/app/layout.tsx).
 
-3. VERIFY AND DEPLOY:
-   - Run 'npm run build' to clear compiler cache lines and verify 100% type safety with zero runtime or configuration export errors.
-   - Execute production branch deployment: git add ., commit with message "fix: eliminate wagmi connector errors by wrapping privy providers natively via viem clients and add profile persistence", and push origin main.
+3. REPAIR RESPONSIVE TOUCH TARGET GRID OVERLAYS (src/app/page.tsx & src/app/swap/page.tsx):
+   - Refactor rigid desktop-first row layouts to adaptive flex layouts ('flex flex-col md:grid md:grid-cols-3 gap-4') to prevent components from stacking and intercepting click propagation events on mobile screens.
+   - Ensure all trading utility elements ("Execute Swap", "Confirm Transfer", "50%", "MAX") natively handle touch gestures by adding smooth hover/active scale states.
 
-Execute this comprehensive core web3 infrastructure repair now.
+4. SYSTEM COMPILE AND PRODUCTION DELIVERY:
+   - Run 'npm run build' to clear compilation environments and guarantee a 100% flawless build loop with zero TypeScript errors.
+   - Deploy code updates: git add ., commit with message "feat: deploy full-screen auth onboarding gateway and responsive mobile bottom navigation grid layout", and push origin main.
+
+Execute this comprehensive onboarding gateway and mobile experience integration loop immediately.

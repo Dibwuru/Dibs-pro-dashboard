@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import PrivyAuthProvider from "@/providers/PrivyAuthProvider";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
+import { BottomNav } from "@/components/BottomNav";
 import { SidebarProvider } from "@/components/SidebarContext";
 import { Footer } from "@/components/Footer";
 import { Toaster } from "sonner";
@@ -51,7 +52,8 @@ export default function RootLayout({
                   <Sidebar />
                   <div className="flex-1 flex flex-col min-w-0">
                     <Navbar />
-                    <main className="flex-1 flex flex-col relative z-10">{children}</main>
+                    <main className="flex-1 flex flex-col relative z-10 pb-16 md:pb-0">{children}</main>
+                    <BottomNav />
                     <Footer />
                   </div>
                 </div>

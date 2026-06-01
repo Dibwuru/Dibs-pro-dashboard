@@ -75,12 +75,11 @@ export function Sidebar() {
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { theme, setTheme } = useTheme();
-  const { isMobileOpen, closeMobile } = useSidebar();
+  const { isMobileOpen, closeMobile, isProfileEditorOpen, openProfileEditor, closeProfileEditor } = useSidebar();
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Profile editor modal state — seeded from localStorage
-  const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
+  // Profile editor modal state — seeded from localStorage (open/close via SidebarContext)
   const [displayName, setDisplayName] = useState("");
   const [customBio, setCustomBio] = useState("");
   const [pfpUrl, setPfpUrl] = useState("");
@@ -128,8 +127,8 @@ export function Sidebar() {
       pfpUrl: pfpUrl.trim(),
     });
     toast.success("Identity settings updated successfully!");
-    setIsProfileEditorOpen(false);
-  }, [displayName, customBio, pfpUrl]);
+    closeProfileEditor();
+  }, [displayName, customBio, pfpUrl, closeProfileEditor]);
 
   // Close mobile drawer on navigation
   const handleNavClick = useCallback(() => {
@@ -214,7 +213,7 @@ export function Sidebar() {
             {/* Avatar + Info Row */}
             <div className="flex items-center gap-3 px-4 py-3">
               <button
-                onClick={() => setIsProfileEditorOpen(true)}
+                onClick={openProfileEditor}
                 className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/10 border-2 border-amber-400/50 dark:border-amber-500/40 flex items-center justify-center flex-shrink-0 hover:border-amber-500 dark:hover:border-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/20 transition-all group"
                 title="Edit profile"
               >
@@ -328,7 +327,7 @@ export function Sidebar() {
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setIsProfileEditorOpen(false)}
+            onClick={closeProfileEditor}
           />
 
           {/* Modal Sheet */}
@@ -339,7 +338,7 @@ export function Sidebar() {
                 Profile Settings
               </h3>
               <button
-                onClick={() => setIsProfileEditorOpen(false)}
+                onClick={closeProfileEditor}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
               >
                 <X className="w-5 h-5" />
@@ -400,7 +399,7 @@ export function Sidebar() {
 
               {/* Cancel */}
               <button
-                onClick={() => setIsProfileEditorOpen(false)}
+                onClick={closeProfileEditor}
                 className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
               >
                 Cancel

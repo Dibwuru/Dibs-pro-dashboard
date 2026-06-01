@@ -130,7 +130,7 @@ const EXCHANGE_RATE = 10; // 1 USDC = 10 DIBS
 export default function Home() {
   const { address: wagmiAddress, isConnected } = useAccount();
   const chainId = useChainId();
-  const { authenticated, user } = usePrivy();
+  const { authenticated, ready, user, login } = usePrivy();
 
   const isWalletConnected = isConnected || (authenticated && !!user?.wallet?.address);
   const displayAddress = wagmiAddress || user?.wallet?.address;
@@ -601,6 +601,71 @@ export default function Home() {
     };
   }, [showReceiveModal, showSendModal, showStakeModal]);
 
+  // ===== AUTH GATEWAY: Full-screen locked view for logged-out sessions =====
+  if (ready && !authenticated) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#090D16] overflow-hidden">
+        {/* Atmospheric glow behind the gateway */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-amber-500/[0.04] blur-[180px]" />
+          <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-amber-600/[0.03] blur-[170px]" />
+          <div className="absolute top-[40%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-amber-400/[0.02] blur-[150px]" />
+        </div>
+
+        {/* Hero content */}
+        <div className="relative z-10 flex flex-col items-center justify-center px-6 text-center max-w-lg mx-auto">
+          {/* Animated gold accent line above title */}
+          <div className="mb-8 w-16 h-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
+
+          {/* Main Title — Metallic Gold Gradient */}
+          <h1
+            className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6"
+            style={{
+              background: "linear-gradient(135deg, #F59E0B 0%, #FBBF24 25%, #FDE68A 50%, #D97706 75%, #F59E0B 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              textShadow: "0 0 60px rgba(245, 158, 11, 0.15)",
+            }}
+          >
+            ARCTOR Terminal
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-base sm:text-lg text-slate-400 max-w-md mb-10 leading-relaxed">
+            The Sovereign Decentralized Portal for the $DIBS Ecosystem.
+          </p>
+
+          {/* CTA Button — Ultra-premium glassmorphic with gold accents */}
+          <button
+            onClick={login}
+            className="group relative inline-flex items-center gap-3 px-10 py-4 rounded-2xl text-lg font-bold text-amber-100 bg-white/[0.03] backdrop-blur-xl border border-amber-500/30 shadow-[0_0_40px_rgba(245,158,11,0.1),0_8px_32px_rgba(0,0,0,0.4)] hover:border-amber-400/50 hover:shadow-[0_0_60px_rgba(245,158,11,0.2),0_12px_40px_rgba(0,0,0,0.5)] active:scale-[0.97] transition-all duration-300 overflow-hidden"
+          >
+            {/* Inner glow on hover */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-amber-500/[0.06] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            {/* Gold left accent */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-gradient-to-b from-amber-400 to-amber-600 opacity-60 group-hover:opacity-100 transition-opacity" />
+            {/* Content */}
+            <span className="relative z-10">Launch Terminal</span>
+            <span className="relative z-10 text-sm font-medium text-amber-400/70 group-hover:text-amber-300/90 transition-colors">
+              (Sign In / Sign Up)
+            </span>
+          </button>
+
+          {/* Bottom subtle indicator */}
+          <p className="mt-10 text-xs text-slate-600">
+            Powered by Arc Testnet • Chain 5042002
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // During initial load (ready === false), render nothing to avoid flash
+  if (!ready) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col flex-1">
       {/* Wrong Network Warning Banner */}
@@ -617,11 +682,7 @@ export default function Home() {
       <section className="relative flex-1 overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10">
           {/* ===== DASHBOARD VIEW ===== */}
-          <div
-            className={`space-y-8 transition-all duration-500 ${
-              !isWalletConnected ? "blur-[4px] select-none pointer-events-none" : ""
-            }`}
-          >
+          <div className="space-y-8">
             {/* Balance Hero Card */}
             <GlassCard className="p-8 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.04] rounded-full blur-[80px] pointer-events-none" />
@@ -688,21 +749,21 @@ export default function Home() {
                 <div className="flex items-center gap-3 mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
                   <button
                     onClick={() => setShowSendModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-950 dark:bg-slate-50 text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm flex-shrink-0"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-950 dark:bg-slate-50 text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-200 active:scale-[0.97] transition-all shadow-sm flex-shrink-0"
                   >
                     <Send className="w-4 h-4" />
                     Send
                   </button>
                   <button
                     onClick={() => setShowReceiveModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-all shadow-sm flex-shrink-0"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] active:scale-[0.97] transition-all shadow-sm flex-shrink-0"
                   >
                     <ArrowDownToLine className="w-4 h-4" />
                     Receive
                   </button>
                   <button
                     onClick={() => setShowStakeModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-primary/20 text-primary bg-primary/[0.05] hover:bg-primary/[0.1] transition-all shadow-sm flex-shrink-0"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-primary/20 text-primary bg-primary/[0.05] hover:bg-primary/[0.1] active:scale-[0.97] transition-all shadow-sm flex-shrink-0"
                   >
                     <Lock className="w-4 h-4" />
                     Stake
@@ -712,7 +773,7 @@ export default function Home() {
             </GlassCard>
 
             {/* Token Registry Asset Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
               {tokenList.map((token) => (
                 <div
                   key={token.address}
@@ -796,13 +857,13 @@ export default function Home() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={handleSwapFiftyPercent}
-                        className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
                       >
                         50%
                       </button>
                       <button
                         onClick={handleSwapMax}
-                        className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
                       >
                         MAX
                       </button>
@@ -866,7 +927,7 @@ export default function Home() {
                   className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all duration-200 ${
                     !isWalletConnected || !isValidSwap || isSwapping || isWrongNetwork
                       ? "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
-                      : "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01]"
+                      : "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01] active:scale-[0.98]"
                   }`}
                 >
                   {isSwapping ? (
@@ -964,23 +1025,7 @@ export default function Home() {
             </GlassCard>
           </div>
 
-          {/* ===== LOCKED OVERLAY (when no wallet connected) ===== */}
-          {!isWalletConnected && (
-            <div className="absolute inset-0 flex items-center justify-center z-10">
-              <div className="bg-white/90 dark:bg-[#090D16]/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700/60 rounded-2xl px-8 py-7 text-center max-w-md mx-4 shadow-2xl">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <Lock className="w-6 h-6 text-primary" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-950 dark:text-slate-50 mb-2">
-                  ARCTOR Terminal Locked
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Use the command bar options above to connect your institutional
-                  wallet or sign in via email.
-                </p>
-              </div>
-            </div>
-          )}
+
         </div>
       </section>
 
@@ -1118,13 +1163,13 @@ export default function Home() {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={handleSendFiftyPercent}
-                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
                     >
                       50%
                     </button>
                     <button
                       onClick={handleSendMax}
-                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
                     >
                       MAX
                     </button>
@@ -1150,7 +1195,7 @@ export default function Home() {
                 disabled={!isValidSend || isSending}
                 className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all ${
                   isValidSend && !isSending
-                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30"
+                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]"
                     : "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
                 }`}
               >
@@ -1214,13 +1259,13 @@ export default function Home() {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={handleStakeFiftyPercent}
-                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
                     >
                       50%
                     </button>
                     <button
                       onClick={handleStakeMax}
-                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all"
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
                     >
                       MAX
                     </button>
@@ -1260,7 +1305,7 @@ export default function Home() {
                 disabled={!stakeAmount || parseFloat(stakeAmount) <= 0}
                 className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all ${
                   stakeAmount && parseFloat(stakeAmount) > 0
-                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30"
+                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]"
                     : "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
                 }`}
               >
