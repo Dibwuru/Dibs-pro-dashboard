@@ -1,43 +1,25 @@
-ACT AS: A Senior Web3 Frontend Architect and Mobile UI/UX Engineer.
-TASK: Resolve the infinite loading toast via Viem block receipt confirmations, trigger live state refreshes, wire the token flip arrow logic, and guarantee strict mobile/desktop parity.
+ACT AS: A Principal UI/UX Designer and Lead Tailwind Frontend Engineer.
+TASK: Overhaul the unauthenticated gateway onboarding background theme and fix light/dark mode contrast color properties across all mobile and desktop portfolio grid cards.
 
-CRITICAL ARCHITECTURAL REPAIRS:
+CRITICAL DESIGN SPECIFICATIONS:
 
-1. IMPLEMENT VIEM TRANSACTION RECEIPT WAITING (src/app/page.tsx & src/app/swap/page.tsx):
-   - Locate the standalone Viem 'walletClient.writeContract' execution paths in BOTH your Swap and Send handlers.
-   - Fix the infinite toast hang by instantiating a standalone public client directly beneath your wallet client setup:
-```typescript
-     import { createPublicClient, custom } from 'viem';
-     
-     const publicClient = createPublicClient({
-       chain: arcTestnet,
-       transport: custom(provider)
-     });
-     
-     const hash = await walletClient.writeContract({ ... });
-     
-     // WAIT for the blockchain to mine the block before advancing:
-     const receipt = await publicClient.waitForTransactionReceipt({ hash });
-     
-     if (receipt.status !== 'success') throw new Error('Transaction reverted on-chain');
-     ```
+1. OBLITERATE LIGHT THEME TEXT BLINDNESS (src/app/page.tsx or card sub-components):
+   - Locate all metrics display cards ("BALANCE", "STAKED", "SENT", "RECEIVED") shown on the primary dashboard.
+   - FIX THE CONTRAST: Ensure no text relies on unstyled defaults or hardcoded light hex values against light backgrounds. Apply explicit adaptive Tailwind color mapping classes to all typography layers:
+     * Card Titles (e.g., BALANCE, STAKED): Change text layout styling to 'text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase'.
+     * Core Numeric Values (e.g., 0 DIBS / 0 ETH): Ensure complete readability in both display modes by applying 'text-xl font-bold text-slate-900 dark:text-white'.
+     * Secondary Meta Labels (e.g., Total transactions, earned): Set explicitly to 'text-sm text-slate-400 dark:text-slate-500'.
 
-2. TRIGGER FRONTEND STATE REFRESH:
-   - Immediately after 'waitForTransactionReceipt' confirms successfully, and BEFORE resolving the Sonner promise toast, invoke the component's data-fetching routines (re-running the read states for 'dibsBalance' and 'gasBalance').
-   - This guarantees the user's dashboard numbers update instantaneously on both mobile and desktop screens the moment a block confirms.
+2. LUXURY OVERHAUL OF THE 'AUTHGATEWAY' ONBOARDING BACKDROP (src/app/page.tsx):
+   - Locate the full-screen layout wrapper for the unauthenticated landing view.
+   - REMOVE ROOKIE GRADIENTS: Strip away any generic light, bright blue, or basic background configurations that mismatch our app profile.
+   - IMPLEMENT MATTE OBSIDIAN DESIGN: Style the onboarding page wrapper with a deep premium dark framework matching our active dashboard context:
+     * Background Class: 'bg-[#0B0F17] text-white min-h-screen flex flex-col items-center justify-center relative overflow-hidden'
+     * AMBIENT GLOW: Inject an absolute-positioned ambient radial lighting element in the center background to add premium depth: '<div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.04),transparent_65%)] pointer-events-none" />'
+   - CARD GLASSMORPHISM: Style the centered login card overlay to use ultra-clean premium transparency definitions: 'bg-slate-900/40 backdrop-blur-xl border border-white/5 dark:border-amber-500/10 p-8 rounded-2xl max-w-sm w-full shadow-2xl relative z-10'.
 
-3. WIRE THE TOKEN FLIP ARROWS ENGINE:
-   - Locate the toggle arrow button positioned between the "You Pay" and "You Receive" input fields in the Swap interface.
-   - Implement a state toggle function 'handleTokenFlip': Clicking the arrow must cleanly swap the 'fromToken' and 'toToken' state variables and their respective input values.
-   - SWAP EXECUTION GUARD: If 'fromToken' is flipped to DIBS, intercept the "Execute Swap" click trigger and immediately return 'toast.error("DIBS to USDC liquidation is locked during the Testnet Alpha phase.")' to prevent contract reverts.
+3. PRODUCTION SYSTEM VERIFICATION AND DEPLOYMENT:
+   - Run 'npm run build' to clean Next.js cache definitions and verify 100% successful compile cycles with zero styling or property mismatches.
+   - Execute production delivery sequence: git add ., commit with message "design: overhaul auth gateway aesthetic to matte obsidian and repair light theme card contrast properties", and push origin main.
 
-4. CROSS-PLATFORM TOUCH & RESPONSIVE MANDATE:
-   - Ensure the new Token Flip Arrow button natively supports mobile touch interactions by adding 'cursor-pointer select-none active:scale-95 p-2' utilities.
-   - Verify that this interaction, along with the 'Execute Swap' button and toast notifications, are fully accessible on viewport widths under 768px without being intercepted by invisible flex or grid containers. 
-   - Ensure the UI logic seamlessly syncs whether triggered from the desktop sidebar layout or the mobile BottomNav view.
-
-5. PRODUCTION VERIFICATION:
-   - Run 'npm run build' to confirm 100% compilation safety with zero missing Viem imports or type mismatches.
-   - Deploy code updates: git add ., commit with message "fix: implement cross-platform publicClient receipt waiting, instant state refreshing, and touch-optimized token flip interactions", and push origin main.
-
-Execute this precise synchronization and interaction loop immediately.
+Execute this visual polish and theme synchronization sweep now.

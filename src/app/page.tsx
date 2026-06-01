@@ -757,25 +757,21 @@ export default function Home() {
     };
   }, [showReceiveModal, showSendModal, showStakeModal]);
 
-  // ===== AUTH GATEWAY: Full-screen locked view for logged-out sessions =====
+  // ===== AUTH GATEWAY: Matte Obsidian Onboarding Gateway =====
   if (ready && !authenticated) {
     return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#090D16] overflow-hidden">
-        {/* Atmospheric glow behind the gateway */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-amber-500/[0.04] blur-[180px]" />
-          <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-amber-600/[0.03] blur-[170px]" />
-          <div className="absolute top-[40%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-amber-400/[0.02] blur-[150px]" />
-        </div>
+      <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#0B0F17] text-white relative overflow-hidden">
+        {/* Ambient radial lighting element */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.04),transparent_65%)] pointer-events-none" />
 
-        {/* Hero content */}
-        <div className="relative z-10 flex flex-col items-center justify-center px-6 text-center max-w-lg mx-auto">
+        {/* Glassmorphic login card overlay */}
+        <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 dark:border-amber-500/10 p-8 rounded-2xl max-w-sm w-full shadow-2xl relative z-10 flex flex-col items-center text-center mx-4">
           {/* Animated gold accent line above title */}
           <div className="mb-8 w-16 h-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
 
           {/* Main Title — Metallic Gold Gradient */}
           <h1
-            className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6"
+            className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-6"
             style={{
               background: "linear-gradient(135deg, #F59E0B 0%, #FBBF24 25%, #FDE68A 50%, #D97706 75%, #F59E0B 100%)",
               WebkitBackgroundClip: "text",
@@ -809,7 +805,7 @@ export default function Home() {
           </button>
 
           {/* Bottom subtle indicator */}
-          <p className="mt-10 text-xs text-slate-600">
+          <p className="mt-8 text-xs text-slate-400 dark:text-slate-500">
             Powered by Arc Testnet • Chain 5042002
           </p>
         </div>
@@ -845,7 +841,7 @@ export default function Home() {
               <div className="relative">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <p className="text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
                       Portfolio Value
                     </p>
                     <div className="flex items-baseline gap-3 mt-1">
@@ -940,12 +936,12 @@ export default function Home() {
                       <Coins className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <p className="text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
                         {token.name}
                       </p>
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-slate-950 dark:text-slate-50 tabular-nums">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">
                     {token.isLoading
                       ? "..."
                       : token.balance !== null
@@ -954,7 +950,7 @@ export default function Home() {
                           })
                         : "—"}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
                     {token.symbol}
                   </p>
                 </div>
