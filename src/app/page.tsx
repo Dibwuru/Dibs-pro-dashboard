@@ -2,7 +2,7 @@
 
 import { useAccount, useChainId, useReadContract } from "wagmi";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom } from "viem";
+import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
@@ -97,17 +97,6 @@ const erc20TransferABI = [
     stateMutability: "nonpayable",
   },
 ] as const;
-
-// ERC-20 Transfer event for getLogs
-const transferEvent = {
-  type: "event" as const,
-  name: "Transfer" as const,
-  inputs: [
-    { indexed: true, name: "from", type: "address" },
-    { indexed: true, name: "to", type: "address" },
-    { indexed: false, name: "value", type: "uint256" },
-  ],
-};
 
 interface TokenEntry {
   name: string;
@@ -324,49 +313,66 @@ export default function Home() {
         const currentBlock = await publicClient.getBlockNumber();
         const fromBlock = currentBlock - BigInt(10000) > BigInt(0) ? currentBlock - BigInt(10000) : BigInt(0);
 
-        const logs = await publicClient.getLogs({
-          address: DIBS_CONTRACT_ADDRESS,
-          event: transferEvent,
-          fromBlock,
-          toBlock: currentBlock,
-        });
+        const transferEventAbi = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)');
 
-        const userAddr = userAddress.toLowerCase();
+        // Viem handles standard 32-byte hexadecimal padding natively via args compilation
+        const [sentLogs, receivedLogs] = await Promise.all([
+          publicClient.getLogs({
+            address: DIBS_CONTRACT_ADDRESS,
+            event: transferEventAbi,
+            args: { from: userAddress },
+            fromBlock,
+            toBlock: currentBlock,
+          }),
+          publicClient.getLogs({
+            address: DIBS_CONTRACT_ADDRESS,
+            event: transferEventAbi,
+            args: { to: userAddress },
+            fromBlock,
+            toBlock: currentBlock,
+          }),
+        ]);
 
         const newEntries: ActivityEntry[] = [];
 
-        for (const log of logs) {
-          const logArgs = (log as unknown as { args: { from: string; to: string; value: bigint } }).args;
-          const fromAddr = logArgs.from.toLowerCase();
-          const toAddr = logArgs.to.toLowerCase();
-          const value = logArgs.value;
-
-          if (fromAddr !== userAddr && toAddr !== userAddr) continue;
-
-          const hash = log.transactionHash;
+        for (const log of sentLogs) {
+          const { transactionHash, args } = log as unknown as { transactionHash: string; args: { from: string; to: string; value: bigint } };
+          const hash = transactionHash;
           if (seenHashes.current.has(hash)) continue;
           seenHashes.current.add(hash);
 
-          const amount = formatUnits(value, 18);
+          const amount = formatUnits(args.value, 18);
           const displayAmount = `${Number(amount).toLocaleString(undefined, {
             maximumFractionDigits: 2,
           })} DIBS`;
 
-          if (fromAddr === userAddr) {
-            newEntries.push({
-              type: "Transfer Sent",
-              hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
-              amount: displayAmount,
-              status: "Confirmed",
-            });
-          } else {
-            newEntries.push({
-              type: "Token Received",
-              hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
-              amount: displayAmount,
-              status: "Confirmed",
-            });
-          }
+          newEntries.push({
+            type: "Transfer Sent",
+            hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+            amount: displayAmount,
+            status: "Confirmed",
+          });
+        }
+
+        for (const log of receivedLogs) {
+          const { transactionHash, args } = log as unknown as { transactionHash: string; args: { from: string; to: string; value: bigint } };
+          const hash = transactionHash;
+          // Skip self-transfers already captured in sentLogs
+          if (args.from.toLowerCase() === userAddress.toLowerCase()) continue;
+          if (seenHashes.current.has(hash)) continue;
+          seenHashes.current.add(hash);
+
+          const amount = formatUnits(args.value, 18);
+          const displayAmount = `${Number(amount).toLocaleString(undefined, {
+            maximumFractionDigits: 2,
+          })} DIBS`;
+
+          newEntries.push({
+            type: "Token Received",
+            hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+            amount: displayAmount,
+            status: "Confirmed",
+          });
         }
 
         if (newEntries.length > 0 && !cancelled) {
@@ -456,6 +462,13 @@ export default function Home() {
     setIsSwapping(true);
     try {
       const activeWallet = wallets[0];
+
+      // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
+      const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
+      if (currentChainId !== ARC_TESTNET_CHAIN_ID) {
+        await activeWallet.switchChain(ARC_TESTNET_CHAIN_ID);
+      }
+
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
         account: activeWallet.address as `0x${string}`,
@@ -519,6 +532,13 @@ export default function Home() {
     setIsSending(true);
     try {
       const activeWallet = wallets[0];
+
+      // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
+      const currentSendChainId = Number(activeWallet.chainId.replace('eip155:', ''));
+      if (currentSendChainId !== ARC_TESTNET_CHAIN_ID) {
+        await activeWallet.switchChain(ARC_TESTNET_CHAIN_ID);
+      }
+
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
         account: activeWallet.address as `0x${string}`,

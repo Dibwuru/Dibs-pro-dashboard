@@ -93,6 +93,13 @@ export default function SwapPage() {
     setIsSwapping(true);
     try {
       const activeWallet = wallets[0];
+
+      // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
+      const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
+      if (currentChainId !== ARC_TESTNET_CHAIN_ID) {
+        await activeWallet.switchChain(ARC_TESTNET_CHAIN_ID);
+      }
+
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
         account: activeWallet.address as `0x${string}`,

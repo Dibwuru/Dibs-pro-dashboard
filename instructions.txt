@@ -1,36 +1,45 @@
-ACT AS: A Principal Web3 UI/UX Architect and Mobile Frontend Engineer.
-TASK: Deploy a full-screen conditional 'AuthGateway' onboarding view for logged-out sessions, build a premium fixed mobile bottom navigation bar, and fix responsive touch-target grid overlays.
+ACT AS: A Principal Web3 Core Systems Engineer and Full-Stack Architect.
+TASK: Integrate programmatic chain switching for Privy embedded wallets, fix Viem log topic padding for the Recent Activity tracker, and ensure multi-viewport transactional safety.
 
-CRITICAL ARCHITECTURAL SPECIFICATIONS:
+CRITICAL CODE MODIFICATIONS:
 
-1. IMPLEMENT FULL-SCREEN 'AUTHGATEWAY' FOR LOGGED-OUT STATES (src/app/page.tsx):
-   - Use Privy's 'ready' and 'authenticated' flags to track session state.
-   - OBLITERATE THE BLUR LOCK: Replace the partial blurry "ARCTOR Terminal Locked" modal entirely. If 'ready' is true and 'authenticated' is false, hide the dashboard shell, top navbar, and sidebars completely. 
-   - RENDER THE GATEWAY VIEW: Return a clean, full-screen centered hero landing container.
-     * Main Title: "ARCTOR Terminal" styled in a bold metallic gold gradient.
-     * Subtitle: "The Sovereign Decentralized Portal for the $DIBS Ecosystem."
-   - ULTRAPREMIUM CALL TO ACTION (CTA) BUTTON: Place a prominent, large interactive button directly in the center of the viewport.
-     * Button Text: "Launch Terminal (Sign In / Sign Up)"
-     * Interaction: Bind the 'onClick' event directly to trigger Privy's native 'login()' function.
-     * Styling: Soft dark glassmorphism with high-contrast gold border accents, clear drop-shadows, and an active click-scale transformation.
+1. DEPLOY AUTOMATED PRIVY CHAIN-SWITCHING GUARD (src/app/page.tsx & src/app/swap/page.tsx):
+   - Locate the submission event handlers for BOTH the Swap execution action and the Send asset modal.
+   - Extract the primary user wallet array utilizing Privy's native 'useWallets()' hook.
+   - MANDATORY NETWORK VALIDATION: Before instantiating any custom Viem 'createWalletClient' instances, execute an automated network verification:
+```typescript
+     const { wallets } = useWallets();
+     const activeWallet = wallets[0];
+     
+     if (activeWallet) {
+       const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
+       if (currentChainId !== 5042002) {
+         // Programmatically forces the Privy embedded wallet to shift from Ethereum (1) to Arc Testnet (5042002)
+         await activeWallet.switchChain(5042002);
+       }
+     }
+     ```
+   - Once the network targets match, route the provider context smoothly into your custom Viem client instances to sign transactions cleanly under your existing Sonner 'toast.promise()' lifecycles.
 
-2. DEPLOY A MOBILE BOTTOM NAVIGATION BAR (src/components/BottomNav.tsx):
-   - Create a brand-new navigation utility file named 'BottomNav.tsx'.
-   - RESPONSIVE VISIBILITY: Apply strict Tailwind constraints ('fixed bottom-0 left-0 right-0 z-50 block md:hidden') so it is invisible on desktop layouts but pins beautifully to the bottom viewport on mobile screens.
-   - UI AESTHETIC: Style with a premium blurred glassmorphic theme (dark translucent backdrop, subtle gold top border, high-fidelity iconography layout).
-   - GRID NAVIGATION: Map out four touch-responsive action targets that shift frontend view states smoothly or trigger parameters:
-     * Tab 1: "Dashboard" (Home Icon)
-     * Tab 2: "Swap" (Arrows Icon)
-     * Tab 3: "Stake" (Lock Icon)
-     * Tab 4: "Profile" (Avatar circle triggering the local 'isProfileEditorOpen' state)
-   - Render this component globally within your primary layout tree (src/app/layout.tsx).
+2. REFIX AUTOMATED TOPIC PADDING FOR LIVE ACTIVITY FEEDS (src/app/page.tsx):
+   - Locate your background block scanner inside the Recent Activity panel layout.
+   - OBLITERATE MANUAL HEX STRING FILTERS: Do not pass unpadded address strings directly into the raw topics filter array. Instead, pass your variables using Viem's native 'args' compilation parameters targeting the $DIBS contract:
+```typescript
+     const logs = await publicClient.getLogs({
+       address: '0x2b0ec237e5Cf460962E3eDe88cb676d83C807912',
+       event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)'),
+       args: {
+         // Viem handles standard 32-byte hexadecimal padding for these parameters natively
+         from: userAddress,
+         to: userAddress
+       },
+       fromBlock: 'earliest'
+     });
+     ```
+- Slice the output cleanly using '.slice(0, 10)' to preserve DOM frame rendering performance, and map the items to your activity layout.
 
-3. REPAIR RESPONSIVE TOUCH TARGET GRID OVERLAYS (src/app/page.tsx & src/app/swap/page.tsx):
-   - Refactor rigid desktop-first row layouts to adaptive flex layouts ('flex flex-col md:grid md:grid-cols-3 gap-4') to prevent components from stacking and intercepting click propagation events on mobile screens.
-   - Ensure all trading utility elements ("Execute Swap", "Confirm Transfer", "50%", "MAX") natively handle touch gestures by adding smooth hover/active scale states.
+3. PRODUCTION SYSTEM VERIFICATION:
+- Execute 'npm run build' to clear compilation pipelines and confirm 100% type safety with zero linting or scope errors.
+- Ship to production: git add ., commit with message "fix: implement automated embedded wallet chain switching and resolve log address topic padding parameters", and push origin main.
 
-4. SYSTEM COMPILE AND PRODUCTION DELIVERY:
-   - Run 'npm run build' to clear compilation environments and guarantee a 100% flawless build loop with zero TypeScript errors.
-   - Deploy code updates: git add ., commit with message "feat: deploy full-screen auth onboarding gateway and responsive mobile bottom navigation grid layout", and push origin main.
-
-Execute this comprehensive onboarding gateway and mobile experience integration loop immediately.
+Execute this comprehensive full-stack blockchain interaction repair loop immediately.
