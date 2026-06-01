@@ -2,9 +2,9 @@
 
 import { ArrowLeftRight, Info, AlertTriangle } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useAccount, useWriteContract, useChainId } from "wagmi";
-import { usePrivy } from "@privy-io/react-auth";
-import { parseUnits, createPublicClient, http, formatEther } from "viem";
+import { useAccount, useChainId } from "wagmi";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { parseUnits, createPublicClient, http, formatEther, createWalletClient, custom } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
@@ -40,7 +40,8 @@ export default function SwapPage() {
   const userAddress = (user?.wallet?.address as `0x${string}` | undefined);
 
   const [usdcInput, setUsdcInput] = useState<string>("");
-  const { writeContractAsync, isPending } = useWriteContract();
+  const [isSwapping, setIsSwapping] = useState(false);
+  const { wallets } = useWallets();
 
   // --- Fetch native gas balance for 50%/MAX shortcuts ---
   const [gasBalance, setGasBalance] = useState<number>(0);
@@ -88,10 +89,19 @@ export default function SwapPage() {
   const isValidInput = usdcInput !== "" && parseFloat(usdcInput) > 0;
 
   const handleSwap = useCallback(async () => {
-    if (!isValidInput) return;
+    if (!isValidInput || wallets.length === 0) return;
+    setIsSwapping(true);
     try {
+      const activeWallet = wallets[0];
+      const provider = await activeWallet.getEthereumProvider();
+      const walletClient = createWalletClient({
+        account: activeWallet.address as `0x${string}`,
+        chain: arcTestnet,
+        transport: custom(provider),
+      });
+
       await toast.promise(
-        writeContractAsync({
+        walletClient.writeContract({
           address: VAULT_ADDRESS,
           abi: vaultABI,
           functionName: "swapUsdcForDibs",
@@ -106,8 +116,10 @@ export default function SwapPage() {
       setUsdcInput("");
     } catch {
       // toast already handled
+    } finally {
+      setIsSwapping(false);
     }
-  }, [usdcInput, isValidInput, writeContractAsync]);
+  }, [usdcInput, isValidInput, wallets]);
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center px-4 py-24">
@@ -205,17 +217,17 @@ export default function SwapPage() {
             size="lg"
             className="w-full"
             disabled={
-              !isWalletConnected || !isValidInput || isPending || isWrongNetwork
+              !isWalletConnected || !isValidInput || isSwapping || isWrongNetwork
             }
-            loading={isPending}
+            loading={isSwapping}
             onClick={handleSwap}
             icon={
-              !isPending ? <ArrowLeftRight className="w-4 h-4" /> : undefined
+              !isSwapping ? <ArrowLeftRight className="w-4 h-4" /> : undefined
             }
           >
             {!isWalletConnected
               ? "Connect Wallet to Swap"
-              : isPending
+              : isSwapping
                 ? "Swapping..."
                 : "Execute Swap"}
           </Button>

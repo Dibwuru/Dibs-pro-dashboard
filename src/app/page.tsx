@@ -1,8 +1,8 @@
 "use client";
 
-import { useAccount, useChainId, useReadContract, useWriteContract, useSendTransaction } from "wagmi";
-import { usePrivy } from "@privy-io/react-auth";
-import { formatUnits, parseUnits, createPublicClient, http } from "viem";
+import { useAccount, useChainId, useReadContract } from "wagmi";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
@@ -412,8 +412,9 @@ export default function Home() {
 
   const isValidSwap = swapInput !== "" && parseFloat(swapInput) > 0;
 
-  const { writeContractAsync: swapWriteContractAsync, isPending: swapPending } =
-    useWriteContract();
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const { wallets } = useWallets();
 
   // --- 50% / MAX helpers ---
   const gasBalanceNum = useMemo(() => {
@@ -444,7 +445,7 @@ export default function Home() {
   }, [fromToken, dibsBalanceNum, gasBalanceNum]);
 
   const handleSwapExecute = useCallback(async () => {
-    if (!isValidSwap || !userAddress) return;
+    if (!isValidSwap || !userAddress || wallets.length === 0) return;
 
     if (fromToken === "DIBS") {
       toast.error("DIBS to USDC liquidation is locked during the Testnet Alpha phase.");
@@ -452,9 +453,18 @@ export default function Home() {
     }
 
     // USDC → DIBS swap via vault
+    setIsSwapping(true);
     try {
+      const activeWallet = wallets[0];
+      const provider = await activeWallet.getEthereumProvider();
+      const walletClient = createWalletClient({
+        account: activeWallet.address as `0x${string}`,
+        chain: arcTestnet,
+        transport: custom(provider),
+      });
+
       await toast.promise(
-        swapWriteContractAsync({
+        walletClient.writeContract({
           address: VAULT_ADDRESS,
           abi: vaultABI,
           functionName: "swapUsdcForDibs",
@@ -469,17 +479,16 @@ export default function Home() {
       setSwapInput("");
     } catch {
       // toast already handled
+    } finally {
+      setIsSwapping(false);
     }
-  }, [isValidSwap, userAddress, fromToken, swapInput, swapWriteContractAsync]);
+  }, [isValidSwap, userAddress, fromToken, swapInput, wallets]);
 
   // --- Send Asset Modal ---
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendAsset, setSendAsset] = useState<"USDC Gas" | "DibsCoin">("USDC Gas");
   const [sendRecipient, setSendRecipient] = useState("");
   const [sendAmount, setSendAmount] = useState("");
-
-  const { sendTransactionAsync } = useSendTransaction();
-  const { writeContractAsync: sendErc20WriteContractAsync } = useWriteContract();
 
   const isValidSend =
     sendRecipient.trim().startsWith("0x") &&
@@ -505,13 +514,22 @@ export default function Home() {
   }, [sendAsset, dibsBalanceNum, gasBalanceNum]);
 
   const handleSendConfirm = useCallback(async () => {
-    if (!isValidSend || !userAddress) return;
+    if (!isValidSend || !userAddress || wallets.length === 0) return;
 
+    setIsSending(true);
     try {
+      const activeWallet = wallets[0];
+      const provider = await activeWallet.getEthereumProvider();
+      const walletClient = createWalletClient({
+        account: activeWallet.address as `0x${string}`,
+        chain: arcTestnet,
+        transport: custom(provider),
+      });
+
       if (sendAsset === "USDC Gas") {
         // Native gas transfer
         await toast.promise(
-          sendTransactionAsync({
+          walletClient.sendTransaction({
             to: sendRecipient.trim() as `0x${string}`,
             value: parseUnits(sendAmount, 18),
           }),
@@ -524,7 +542,7 @@ export default function Home() {
       } else {
         // DIBS ERC-20 transfer
         await toast.promise(
-          sendErc20WriteContractAsync({
+          walletClient.writeContract({
             address: DIBS_CONTRACT_ADDRESS,
             abi: erc20TransferABI,
             functionName: "transfer",
@@ -542,8 +560,10 @@ export default function Home() {
       setSendAmount("");
     } catch {
       // toast already handled
+    } finally {
+      setIsSending(false);
     }
-  }, [isValidSend, userAddress, sendAsset, sendRecipient, sendAmount, sendTransactionAsync, sendErc20WriteContractAsync]);
+  }, [isValidSend, userAddress, sendAsset, sendRecipient, sendAmount, wallets]);
 
   // --- Stake Modal ---
   const [showStakeModal, setShowStakeModal] = useState(false);
@@ -842,14 +862,14 @@ export default function Home() {
                 {/* Execute Swap */}
                 <button
                   onClick={handleSwapExecute}
-                  disabled={!isWalletConnected || !isValidSwap || swapPending || isWrongNetwork}
+                  disabled={!isWalletConnected || !isValidSwap || isSwapping || isWrongNetwork}
                   className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all duration-200 ${
-                    !isWalletConnected || !isValidSwap || swapPending || isWrongNetwork
+                    !isWalletConnected || !isValidSwap || isSwapping || isWrongNetwork
                       ? "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
                       : "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01]"
                   }`}
                 >
-                  {swapPending ? (
+                  {isSwapping ? (
                     <>
                       <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -1127,9 +1147,9 @@ export default function Home() {
               {/* Confirm Button */}
               <button
                 onClick={handleSendConfirm}
-                disabled={!isValidSend}
+                disabled={!isValidSend || isSending}
                 className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all ${
-                  isValidSend
+                  isValidSend && !isSending
                     ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30"
                     : "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
                 }`}

@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/SidebarContext";
 
-const STORAGE_KEY = "arc-profile-settings";
+const STORAGE_KEY = "arctor_profile";
 
 const navLinks = [
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },

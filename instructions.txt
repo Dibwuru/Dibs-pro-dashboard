@@ -1,35 +1,42 @@
-ACT AS: A Principal Web3 Full-Stack Architect and Elite UI/UX Developer.
-TASK: Implement the sidebar profile layout refactor, add 50%/MAX input shortcuts, cap the live activity history stream, and complete all remaining transaction notification linkages.
+ACT AS: A Lead Web3 Smart Contract Integration Engineer and Full-Stack Architect.
+TASK: Resolve the Wagmi "Connector not connected" runtime swap error by bridging Privy's wallet provider directly to Viem client actions, and implement local storage profile persistence.
 
-CRITICAL ARCHITECTURAL SPECIFICATIONS:
+CRITICAL REPAIR SPECIFICATIONS:
 
-1. SIDEBAR PROFILE RESHAPE & BOTTOM PINNING (src/components/Sidebar.tsx):
-   - PIN TO BASELINE: Restructure the left navigation panel layout to anchor the user identity card perfectly at the very bottom of the sidebar plane.
-   - SWISS SOVEREIGN GLASSMORPHISM: Apply a premium border-accented glassmorphic container style (thin translucent borders, dark blurred backdrop, white and gold text accents).
-   - TRUNCATE IDENTITY TEXT: Instead of displaying the raw, full email string (like 'diburotech@gmail.com'), implement a dynamic text trimmer that display it cleanly (e.g., 'dibu...tech').
-   - ALPHABET AVATAR SIGN: Ensure the profile icon circle renders a bold, capitalized first letter of the user's email (e.g., a gold "D") centered inside a high-end gold-ringed circle.
+1. REFACTOR TRANSACTION SIGNING PIPELINE (src/app/page.tsx & src/app/swap/page.tsx):
+   - ROOT CAUSE: Wagmi's 'useWriteContract' fails because it cannot detect Privy's embedded Google wallet connector natively without an explicit provider handshake.
+   - THE FIX: Switch from Wagmi's 'useWriteContract' to Privy's native 'useWallets()' hook array to capture the active wallet interface.
+   - IMPLEMENTATION LOGIC:
+     ```typescript
+     const { wallets } = useWallets();
+     const activeWallet = wallets; // Captures the logged-in embedded or external wallet
+     
+     // When executing the transaction:
+     const provider = await activeWallet.getProvider();
+     const walletClient = createWalletClient({
+       account: activeWallet.address as `0x${string}`,
+       chain: arcTestnet, // Chain ID: 5042002
+       transport: custom(provider)
+     });
+     
+     // Trigger the write action directly on the client:
+     const hash = await walletClient.writeContract({
+       address: VAULT_ADDRESS, // 0x3ed226184b4a00d1500e04f4fa89281107475597
+       abi: SWAP_VAULT_ABI,
+       functionName: 'swapUsdcForDibs',
+       value: parseUnits(usdcInput, 6)
+     });
+     ```
+   - Bind this exact client write execution structure to BOTH the Swap page button and the Send asset modal to guarantee unified transaction execution. Wrap the entire sequence cleanly within your existing Sonner 'toast.promise()' status cycles.
 
-2. BUILD THE USER PROFILE CONFIGURATION MODAL:
-   - Wire a state toggle 'isProfileEditorOpen' to fire when a user clicks directly on the sidebar's Alphabet avatar circle.
-   - RENDER THE PROFILE EDIT WINDOW: Create a glassmorphic overlay sheet featuring:
-     * Text inputs for "Display Name / Handle" and "Custom Bio Details".
-     * An image URL text field for "Drop Custom PFP Image URL".
-     * A "Save Profile Settings" button that triggers a 'toast.success("Identity settings updated successfully!")' alert, updates local view states, and closes the modal.
+2. PROFILE UPDATE PERSISTENCE LAYER (src/components/Sidebar.tsx):
+   - Locate the Profile Bio/PFP editor modal state handlers.
+   - Replace temporary React memory state variables with a persistent 'localStorage' synchronization utility.
+   - On component mount, pull any saved credentials using 'localStorage.getItem("arctor_profile")'.
+   - When a user saves their custom Display Name, Bio, or PFP URL details, save the structured JSON object directly using 'localStorage.setItem("arctor_profile", JSON.stringify(profileData))' so changes survive page refreshes and re-logins.
 
-3. INTEGRATE "50%" & "MAX" BALANCE SHORTCUTS (src/app/page.tsx):
-   - Embed small, clickable gold "50%" and "MAX" action items directly adjacent to the input fields on the Swap module page and inside the Send/Stake modals.
-   - DIBS TOKEN SHORTCUTS: Clicking "50%" fills the input with (dibsBalance * 0.5); clicking "MAX" fills it with the total live 'dibsBalance'.
-   - USDC GAS SHORTCUTS: Clicking "50%" fills the input with (gasBalance * 0.5); clicking "MAX" fills it with (gasBalance - 0.01) to dynamically maintain a protective safety buffer against account gas starvation.
+3. VERIFY AND DEPLOY:
+   - Run 'npm run build' to clear compiler cache lines and verify 100% type safety with zero runtime or configuration export errors.
+   - Execute production branch deployment: git add ., commit with message "fix: eliminate wagmi connector errors by wrapping privy providers natively via viem clients and add profile persistence", and push origin main.
 
-4. HYGIENE CLAMP FOR RECENT ACTIVITY FEED (src/app/page.tsx):
-   - Locate the data loop displaying your live on-chain contract logs via Viem.
-   - Apply a JavaScript '.slice(0, 10)' limit array boundary constraint on the incoming events data array before it renders to the DOM. This ensures the UI only tracks the 10 most recent transactions to safeguard long-term browser rendering performance.
-
-5. REINFORCE SWAP PAGE NOTIFICATIONS:
-   - Ensure the 'swapUsdcForDibs' execution pipeline on the swap interface is tightly bound to Sonner's 'toast.promise()' lifecycle hooks, firing instant loading state messages, block-confirmation successes, and explicit gas error logs.
-
-6. PRODUCTION SYSTEM COMPILE & SHIP:
-   - Run 'npm run build' to clear compilation environments and guarantee a 100% flawless build loop with zero TypeScript variations.
-   - Deploy production code: git add ., commit with message "feat: launch absolute final polish sweeping sidebar user capsules, input shortcuts, and event stream caps", and push origin main.
-
-Execute this comprehensive full-stack engineering and layout refinement sweep now.
+Execute this comprehensive core web3 infrastructure repair now.
