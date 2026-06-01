@@ -2,7 +2,6 @@
 
 import { ArrowLeftRight, Info, AlertTriangle } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useAccount, useChainId } from "wagmi";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { parseUnits, createPublicClient, http, formatEther, createWalletClient, custom } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
@@ -30,18 +29,24 @@ const publicClient = createPublicClient({
 });
 
 export default function SwapPage() {
-  const { isConnected } = useAccount();
-  const chainId = useChainId();
   const { authenticated, user } = usePrivy();
-  const isWalletConnected =
-    isConnected || (authenticated && !!user?.wallet?.address);
-  const isWrongNetwork = isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
+  const { wallets: swapWallets } = useWallets();
+
+  const isWalletConnected = authenticated && !!user?.wallet?.address;
+
+  const activeSwapWallet = swapWallets[0];
+  const activeSwapChainId = activeSwapWallet
+    ? Number(activeSwapWallet.chainId.replace('eip155:', ''))
+    : null;
+  const isWrongNetwork =
+    isWalletConnected &&
+    activeSwapChainId !== null &&
+    activeSwapChainId !== ARC_TESTNET_CHAIN_ID;
 
   const userAddress = (user?.wallet?.address as `0x${string}` | undefined);
 
   const [usdcInput, setUsdcInput] = useState<string>("");
   const [isSwapping, setIsSwapping] = useState(false);
-  const { wallets } = useWallets();
 
   // --- Fetch native gas balance for 50%/MAX shortcuts ---
   const [gasBalance, setGasBalance] = useState<number>(0);
@@ -89,10 +94,10 @@ export default function SwapPage() {
   const isValidInput = usdcInput !== "" && parseFloat(usdcInput) > 0;
 
   const handleSwap = useCallback(async () => {
-    if (!isValidInput || wallets.length === 0) return;
+    if (!isValidInput || swapWallets.length === 0) return;
     setIsSwapping(true);
     try {
-      const activeWallet = wallets[0];
+      const activeWallet = swapWallets[0];
 
       // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
       const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
@@ -126,7 +131,7 @@ export default function SwapPage() {
     } finally {
       setIsSwapping(false);
     }
-  }, [usdcInput, isValidInput, wallets]);
+  }, [usdcInput, isValidInput, swapWallets]);
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center px-4 py-24">

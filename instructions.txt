@@ -1,45 +1,58 @@
-ACT AS: A Principal Web3 Core Systems Engineer and Full-Stack Architect.
-TASK: Integrate programmatic chain switching for Privy embedded wallets, fix Viem log topic padding for the Recent Activity tracker, and ensure multi-viewport transactional safety.
+ACT AS: A Lead Web3 Core Systems Engineer and Full-Stack Architect.
+TASK: Completely remove Wagmi from the swap and send execution paths to eliminate the '@wagmi/core' chain mismatch error, and configure the custom chain inside the Privy provider framework.
 
-CRITICAL CODE MODIFICATIONS:
+CRITICAL ARCHITECTURAL REPAIRS:
 
-1. DEPLOY AUTOMATED PRIVY CHAIN-SWITCHING GUARD (src/app/page.tsx & src/app/swap/page.tsx):
-   - Locate the submission event handlers for BOTH the Swap execution action and the Send asset modal.
-   - Extract the primary user wallet array utilizing Privy's native 'useWallets()' hook.
-   - MANDATORY NETWORK VALIDATION: Before instantiating any custom Viem 'createWalletClient' instances, execute an automated network verification:
+1. CONFIGURE CUSTOM CHAIN IN PRIVY PROVIDER (src/app/layout.tsx or master provider configuration file):
+   - Locate the <PrivyProvider> component wrapper.
+   - Define your custom Arc Testnet chain object explicitly:
 ```typescript
-     const { wallets } = useWallets();
-     const activeWallet = wallets[0];
-     
-     if (activeWallet) {
-       const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
-       if (currentChainId !== 5042002) {
-         // Programmatically forces the Privy embedded wallet to shift from Ethereum (1) to Arc Testnet (5042002)
-         await activeWallet.switchChain(5042002);
+     const arcTestnet = {
+       id: 5042002,
+       name: 'Arc Testnet',
+       network: 'arc-testnet',
+       nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+       rpcUrls: { default: { http: ['YOUR_ARC_RPC_URL'] }, public: { http: ['YOUR_ARC_RPC_URL'] } }
+     };
+     ```
+   - Pass this chain directly into Privy's initialization configuration: `config={{ supportedChains: [arcTestnet], embeddedWallets: { createOnLogin: 'users-without-wallets' } }}`. This ensures Privy natively recognizes the network for chain-switching prompts.
+
+2. TOTAL PURGE OF WAGMI WRITE HOOKS (src/app/swap/page.tsx & src/app/page.tsx):
+   - Locate your transaction handlers: 'handleSwapExecute', 'handleSendConfirm', and 'handleSwap'.
+   - COMPLETELY REMOVE 'useWriteContract' or any other transaction execution hooks imported from 'wagmi' or '@wagmi/core'.
+   - IMPLEMENT CLEAN STANDALONE VIEM WRITES:
+     * Pull the active wallet array using Privy's 'useWallets()'.
+     * Run the explicit asynchronous chain-switching check against the embedded provider:
+```typescript
+       const { wallets } = useWallets();
+       const activeWallet = wallets[0];
+       if (activeWallet) {
+         const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
+         if (currentChainId !== 5042002) {
+           await activeWallet.switchChain(5042002);
+         }
+         
+         // Build a PURE Viem client completely independent of Wagmi:
+         const provider = await activeWallet.getProvider();
+         const walletClient = createWalletClient({
+           account: activeWallet.address as `0x${string}`,
+           chain: arcTestnet,
+           transport: custom(provider)
+         });
+         
+         // Trigger execution directly via the standalone Viem wallet client:
+         const hash = await walletClient.writeContract({
+           address: '0x3ed226184b4a00d1500e04f4fa89281107475597', // Vault Address
+           abi: SWAP_VAULT_ABI,
+           functionName: 'swapUsdcForDibs',
+           value: parseUnits(usdcInput, 6)
+         });
        }
-     }
-     ```
-   - Once the network targets match, route the provider context smoothly into your custom Viem client instances to sign transactions cleanly under your existing Sonner 'toast.promise()' lifecycles.
+       ```
+- Re-wrap this clean Viem pipeline inside your existing Sonner 'toast.promise()' notifications. Because Wagmi is no longer involved in the write path, the `@wagmi/core` error is completely avoided.
 
-2. REFIX AUTOMATED TOPIC PADDING FOR LIVE ACTIVITY FEEDS (src/app/page.tsx):
-   - Locate your background block scanner inside the Recent Activity panel layout.
-   - OBLITERATE MANUAL HEX STRING FILTERS: Do not pass unpadded address strings directly into the raw topics filter array. Instead, pass your variables using Viem's native 'args' compilation parameters targeting the $DIBS contract:
-```typescript
-     const logs = await publicClient.getLogs({
-       address: '0x2b0ec237e5Cf460962E3eDe88cb676d83C807912',
-       event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)'),
-       args: {
-         // Viem handles standard 32-byte hexadecimal padding for these parameters natively
-         from: userAddress,
-         to: userAddress
-       },
-       fromBlock: 'earliest'
-     });
-     ```
-- Slice the output cleanly using '.slice(0, 10)' to preserve DOM frame rendering performance, and map the items to your activity layout.
+3. PRODUCTION SYSTEM COMPILE AND SHIP:
+- Run 'npm run build' to clear out Next.js framework build layers and confirm 100% compilation safety with zero TypeScript errors.
+- Deploy code updates: git add ., commit with message "fix: completely remove wagmi from execution path to fix core chain mismatch errors", and push origin main.
 
-3. PRODUCTION SYSTEM VERIFICATION:
-- Execute 'npm run build' to clear compilation pipelines and confirm 100% type safety with zero linting or scope errors.
-- Ship to production: git add ., commit with message "fix: implement automated embedded wallet chain switching and resolve log address topic padding parameters", and push origin main.
-
-Execute this comprehensive full-stack blockchain interaction repair loop immediately.
+Execute this full-stack code isolation loop immediately.

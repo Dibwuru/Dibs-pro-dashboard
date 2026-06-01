@@ -1,6 +1,5 @@
 "use client";
 
-import { useAccount, useChainId, useReadContract } from "wagmi";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
@@ -117,27 +116,63 @@ interface ActivityEntry {
 const EXCHANGE_RATE = 10; // 1 USDC = 10 DIBS
 
 export default function Home() {
-  const { address: wagmiAddress, isConnected } = useAccount();
-  const chainId = useChainId();
   const { authenticated, ready, user, login } = usePrivy();
+  const { wallets: dashboardWallets } = useWallets();
 
-  const isWalletConnected = isConnected || (authenticated && !!user?.wallet?.address);
-  const displayAddress = wagmiAddress || user?.wallet?.address;
-  const userAddress = (user?.wallet?.address as `0x${string}` | undefined) ??
-    (wagmiAddress as `0x${string}` | undefined);
-  const isWrongNetwork = isConnected && chainId !== ARC_TESTNET_CHAIN_ID;
+  const isWalletConnected = authenticated && !!user?.wallet?.address;
+
+  const activeDashboardWallet = dashboardWallets[0];
+  const activeDashboardChainId = activeDashboardWallet
+    ? Number(activeDashboardWallet.chainId.replace('eip155:', ''))
+    : null;
+  const isWrongNetwork =
+    isWalletConnected &&
+    activeDashboardChainId !== null &&
+    activeDashboardChainId !== ARC_TESTNET_CHAIN_ID;
+
+  const displayAddress = user?.wallet?.address;
+  const userAddress = (user?.wallet?.address as `0x${string}` | undefined);
 
   // --- Live $DIBS Balance Fetching (polls every 8 seconds) ---
-  const { data: dibsBalanceRaw, isLoading: dibsBalanceLoading } = useReadContract({
-    address: DIBS_CONTRACT_ADDRESS,
-    abi: dibsBalanceOfABI,
-    functionName: "balanceOf",
-    args: userAddress ? [userAddress] : undefined,
-    query: {
-      enabled: !!userAddress,
-      refetchInterval: 8000,
-    },
-  });
+  const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
+  const [dibsBalanceLoading, setDibsBalanceLoading] = useState(false);
+
+  useEffect(() => {
+    if (!userAddress) {
+      setDibsBalanceRaw(null);
+      setDibsBalanceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const fetchDibsBalance = async () => {
+      if (dibsBalanceRaw === null) {
+        setDibsBalanceLoading(true);
+      }
+      try {
+        const balance = await publicClient.readContract({
+          address: DIBS_CONTRACT_ADDRESS,
+          abi: dibsBalanceOfABI,
+          functionName: "balanceOf",
+          args: [userAddress],
+        });
+        if (!cancelled) {
+          setDibsBalanceRaw(balance);
+          setDibsBalanceLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setDibsBalanceRaw(null);
+          setDibsBalanceLoading(false);
+        }
+      }
+    };
+    fetchDibsBalance();
+    const interval = setInterval(fetchDibsBalance, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [userAddress]);
 
   const dibsBalanceFormatted = dibsBalanceRaw != null
     ? formatUnits(dibsBalanceRaw, 18)
@@ -420,7 +455,6 @@ export default function Home() {
 
   const [isSwapping, setIsSwapping] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const { wallets } = useWallets();
 
   // --- 50% / MAX helpers ---
   const gasBalanceNum = useMemo(() => {
@@ -451,7 +485,7 @@ export default function Home() {
   }, [fromToken, dibsBalanceNum, gasBalanceNum]);
 
   const handleSwapExecute = useCallback(async () => {
-    if (!isValidSwap || !userAddress || wallets.length === 0) return;
+    if (!isValidSwap || !userAddress || dashboardWallets.length === 0) return;
 
     if (fromToken === "DIBS") {
       toast.error("DIBS to USDC liquidation is locked during the Testnet Alpha phase.");
@@ -461,7 +495,7 @@ export default function Home() {
     // USDC → DIBS swap via vault
     setIsSwapping(true);
     try {
-      const activeWallet = wallets[0];
+      const activeWallet = dashboardWallets[0];
 
       // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
       const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
@@ -495,7 +529,7 @@ export default function Home() {
     } finally {
       setIsSwapping(false);
     }
-  }, [isValidSwap, userAddress, fromToken, swapInput, wallets]);
+  }, [isValidSwap, userAddress, fromToken, swapInput, dashboardWallets]);
 
   // --- Send Asset Modal ---
   const [showSendModal, setShowSendModal] = useState(false);
@@ -527,11 +561,11 @@ export default function Home() {
   }, [sendAsset, dibsBalanceNum, gasBalanceNum]);
 
   const handleSendConfirm = useCallback(async () => {
-    if (!isValidSend || !userAddress || wallets.length === 0) return;
+    if (!isValidSend || !userAddress || dashboardWallets.length === 0) return;
 
     setIsSending(true);
     try {
-      const activeWallet = wallets[0];
+      const activeWallet = dashboardWallets[0];
 
       // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
       const currentSendChainId = Number(activeWallet.chainId.replace('eip155:', ''));
@@ -583,7 +617,7 @@ export default function Home() {
     } finally {
       setIsSending(false);
     }
-  }, [isValidSend, userAddress, sendAsset, sendRecipient, sendAmount, wallets]);
+  }, [isValidSend, userAddress, sendAsset, sendRecipient, sendAmount, dashboardWallets]);
 
   // --- Stake Modal ---
   const [showStakeModal, setShowStakeModal] = useState(false);
