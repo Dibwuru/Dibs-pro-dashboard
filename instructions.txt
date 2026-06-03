@@ -1,18 +1,19 @@
-ACT AS: A Lead UI/UX Frontend Developer.
-TASK: Fix the horizontal and vertical alignment of the main content areas in the application so they sit perfectly centered within the viewport.
+ACT AS: A Senior Frontend Architect and Accessibility Specialist.
+TASK: Implement layout centering and optimize mobile contrast ratios simultaneously, building directly upon the newly merged designer UI.
 
-CRITICAL LAYOUT CORRECTIONS:
-1. CENTER THE AUTH GATEWAY (Landing Page):
-   - Locate the unauthenticated landing page view (the Arctor Terminal login card) in 'src/app/page.tsx'.
-   - Update its outermost wrapper div to use strict Flexbox centering. It must occupy the full available height and center its children.
-   - Required Tailwind classes for the wrapper: 'flex flex-col items-center justify-center min-h-[80vh] w-full'.
+CRITICAL PROTOCOLS:
 
-2. CENTER THE DASHBOARD CONTENT:
-   - Locate the authenticated dashboard view (where the Balance, Staked, Sent cards are displayed).
-   - The content is currently hugging the left edge. Wrap the main dashboard content (Title, Grid cards, Recent Activity) inside a constrained, centered container.
-   - Required Tailwind classes for the wrapper: 'max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8'.
-   
-3. VERIFICATION & DEPLOY:
-   - Do NOT alter any Web3 logic, Privy hooks, or Viem configurations.
-   - Run 'npm run build' to ensure zero errors.
-   - Git commit with message: "ui: align landing page and dashboard containers for perfect center positioning" and push origin main.
+1. HORIZONTAL & VERTICAL CENTERING:
+   - USER INTERFACE GATEWAY (src/app/page.tsx): Update the outermost wrapper div for the unauthenticated landing card to use strict Flexbox centering. It must span the full available viewport height. Required Tailwind: 'flex flex-col items-center justify-center min-h-[80vh] w-full'.
+   - DASHBOARD VIEW: Wrap the main authenticated dashboard content layout (Title, Grid cards, Recent Activity) inside a constrained, horizontally centered container so it does not hug the left wall. Required Tailwind: 'max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8'.
+
+2. LANDING PAGE & MOBILE CONTRAST FIXES:
+   - BOTTOM NAVIGATION BAR: Locate the mobile bottom navigation component. The unselected icons/text (Swap, Stake) are rendering dark-on-dark. Force the inactive text/icons to be clearly visible using 'text-zinc-400' or 'text-white/60'.
+   - CARD FOOTER TEXT: Locate the "Powered by Arc Testnet" text on the landing page card (src/app/page.tsx). It is washing out on the white card. Ensure it uses a darker text class like 'text-zinc-500' in light mode, and 'dark:text-zinc-400' for dark mode so it is always legible.
+
+3. ABSOLUTE LOGIC PRESERVATION:
+   - Do NOT modify, alter, or re-route any underlying Web3 execution paths, Privy hooks ('useWallets()'), or standalone Viem client configurations.
+
+4. BUILD & DEPLOY:
+   - Run 'npm run build' to verify a flawless compilation.
+   - Commit and push to main with message: "ui: align layout containers and fix landing page / bottom nav contrast visibility".

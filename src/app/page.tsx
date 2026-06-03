@@ -831,10 +831,7 @@ export default function Home() {
           </button>
 
           {/* Footer */}
-          <p
-            className="mt-8 text-xs tracking-wide"
-            style={{ color: isDark ? "#475569" : "#94A3B8" }}
-          >
+          <p className="mt-8 text-xs tracking-wide text-zinc-500 dark:text-zinc-400">
             Powered by Arc Testnet • Chain 5042002
           </p>
         </div>

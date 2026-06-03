@@ -31,7 +31,7 @@ export function BottomNav() {
               <button
                 key="profile"
                 onClick={openProfileEditor}
-                className="flex-1 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-amber-400 active:text-amber-300 transition-all duration-150 active:scale-90"
+                className="flex-1 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-amber-400 active:text-amber-300 transition-all duration-150 active:scale-90"
                 aria-label="Open profile settings"
               >
                 <div className="w-7 h-7 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center hover:border-amber-500/40 transition-colors">
@@ -55,7 +55,7 @@ export function BottomNav() {
               className={`relative flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-150 active:scale-90 ${
                 isActive
                   ? "text-amber-400"
-                  : "text-slate-500 hover:text-slate-300"
+                  : "text-zinc-400 hover:text-white/70"
               }`}
             >
               <Icon
