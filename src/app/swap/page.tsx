@@ -3,7 +3,7 @@
 import { ArrowLeftRight, Info, AlertTriangle } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { parseUnits, createPublicClient, http, formatEther, formatUnits, createWalletClient, custom } from "viem";
+import { parseUnits, createPublicClient, http, formatEther, formatUnits, createWalletClient, custom, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
@@ -22,7 +22,18 @@ const vaultABI = [
     inputs: [],
     outputs: [],
   },
+  {
+    type: "event",
+    name: "AssetSwapped",
+    inputs: [
+      { name: "user", type: "address", indexed: true },
+      { name: "usdcSpent", type: "uint256", indexed: false },
+      { name: "dibsReceived", type: "uint256", indexed: false },
+    ],
+  },
 ] as const;
+
+const ARC_EXPLORER_URL = "https://testnet.explorer.arc.network";
 
 const dibsBalanceOfABI = [
   {
@@ -156,19 +167,30 @@ export default function SwapPage() {
         maximumFractionDigits: 2,
       });
     }
-    // DIBS to USDC not available
-    return "0";
+    // DIBS to USDC: show approximate USDC output
+    return (parsed / EXCHANGE_RATE).toLocaleString(undefined, {
+      maximumFractionDigits: 6,
+    });
   }, [swapInput, fromToken]);
 
   const isValidInput = swapInput !== "" && parseFloat(swapInput) > 0;
 
+  // --- Balance overdraw check ---
+  const swapInputNum = parseFloat(swapInput) || 0;
+  const isOverBalance =
+    fromToken === "DIBS"
+      ? swapInputNum > dibsBalanceNum
+      : swapInputNum > gasBalance;
+
+  const canSwap = isValidInput && !isOverBalance;
+
   // --- Execute swap with receipt waiting and balance refresh ---
   const handleSwap = useCallback(async () => {
-    if (!isValidInput || swapWallets.length === 0) return;
+    if (!canSwap || swapWallets.length === 0) return;
 
-    // DIBS-to-USDC guard: prevent contract reverts during Testnet Alpha
+    // DIBS-to-USDC: vault contract does not support reverse swaps
     if (fromToken === "DIBS") {
-      toast.error("DIBS to USDC liquidation is locked during the Testnet Alpha phase.");
+      toast.error("DIBS → USDC swap is not yet supported by the vault contract. Coming soon.");
       return;
     }
 
@@ -195,7 +217,7 @@ export default function SwapPage() {
             address: VAULT_ADDRESS,
             abi: vaultABI,
             functionName: "swapUsdcForDibs",
-            value: parseUnits(swapInput, 6),
+            value: parseUnits(swapInput, 18),
           });
 
           // Wait for on-chain confirmation before resolving the toast
@@ -203,6 +225,25 @@ export default function SwapPage() {
           if (receipt.status !== "success") {
             throw new Error("Transaction reverted on-chain");
           }
+
+          // Parse AssetSwapped event to get actual DIBS received
+          let actualDibsReceived = "";
+          try {
+            for (const log of receipt.logs) {
+              try {
+                const decoded = decodeEventLog({
+                  abi: vaultABI,
+                  data: log.data,
+                  topics: log.topics,
+                });
+                if (decoded.eventName === "AssetSwapped") {
+                  const args = decoded.args as unknown as { dibsReceived: bigint };
+                  actualDibsReceived = formatUnits(args.dibsReceived, 18);
+                  break;
+                }
+              } catch { /* not this event */ }
+            }
+          } catch { /* event parsing non-critical */ }
 
           // Immediately refresh balances so dashboard numbers update
           if (userAddress) {
@@ -222,6 +263,23 @@ export default function SwapPage() {
               // Non-critical — polling will catch up
             }
           }
+
+          // Show explorer link as follow-up toast
+          if (hash) {
+            toast.success(
+              actualDibsReceived
+                ? `Received ${Number(actualDibsReceived).toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS`
+                : "Transaction confirmed",
+              {
+                action: {
+                  label: "Explorer",
+                  onClick: () => window.open(`${ARC_EXPLORER_URL}/tx/${hash}`, "_blank"),
+                },
+              }
+            );
+          }
+
+          return hash;
         })(),
         {
           loading: "Swapping USDC for DIBS...",
@@ -331,16 +389,24 @@ export default function SwapPage() {
             <span className="text-xs text-slate-500 dark:text-slate-400">
               {fromToken === "USDC"
                 ? `1 USDC = ${EXCHANGE_RATE} DIBS`
-                : "DIBS → USDC locked during Alpha"}
+                : `1 DIBS ≈ ${(1 / EXCHANGE_RATE).toFixed(2)} USDC`}
             </span>
           </div>
+
+          {/* Action */}
+          {/* Balance error */}
+          {isOverBalance && (
+            <p className="text-xs font-semibold text-error px-1">
+              Insufficient {fromToken} balance.
+            </p>
+          )}
 
           {/* Action */}
           <Button
             size="lg"
             className="w-full"
             disabled={
-              !isWalletConnected || !isValidInput || isSwapping || isWrongNetwork
+              !isWalletConnected || !canSwap || isSwapping || isWrongNetwork
             }
             loading={isSwapping}
             onClick={handleSwap}

@@ -1,19 +1,23 @@
-ACT AS: A Senior Web3 React Developer.
-TASK: Rewire the existing Web3 state and logic hooks back into the newly merged UI components.
+ACT AS: A Senior Web3 React Developer & UX Architect.
+TASK: Implement critical state validation, bi-directional logic, and user-feedback loops in the Swap and Stake components.
 
-CRITICAL REWIRING PROTOCOLS:
-1. AUTHENTICATION BINDING:
-   - Locate the 'Connect Wallet' and 'Sign In' buttons in the new landing page and Navbar components.
-   - Reattach the Privy 'login()' and 'logout()' execution hooks to these specific buttons' onClick handlers.
+CRITICAL LOGIC UPGRADES:
 
-2. INPUT & STATE REATTACHMENT:
-   - In the Swap and Stake views, ensure the user's live token balances are successfully passed into the new UI text displays.
-   - Bind the new text input fields (where users type amounts) back to the React state variables that track input values.
+1. STAKE BALANCE VALIDATION:
+   - In the Stake component, implement strict input validation. If the user's inputted stake amount exceeds their 'Available Balance', dynamically disable the 'Confirm Stake' button and display an inline red text error: "Insufficient $DIBS balance."
 
-3. TRANSACTION EXECUTION:
-   - Reattach the Viem transaction calls to the primary 'Swap' and 'Stake' submission buttons.
-   - Ensure the 'waitForTransactionReceipt' logic correctly triggers the new UI loading spinners or success states.
+2. MULTI-PERIOD STAKE SELECTION & CONFIRMATION:
+   - Replace the static "7 days" lock period with a selectable UI group (e.g., clickable pills or a dropdown for 7, 30, and 90 days).
+   - Implement a Confirmation Modal state. When a user clicks 'Confirm Stake', pop up a modal warning: "Are you sure? Your tokens will be locked for [Selected] days." Require a second confirmation click inside this modal before triggering the Viem writeContract call.
 
-4. BUILD & DEPLOY:
-   - Run 'npm run build' to verify all hooks are correctly imported and bound.
-   - Commit and push to main with message: "fix: rewire Viem and Privy logic to new designer UI components".
+3. BI-DIRECTIONAL SWAP & ZERO-VALUE FIX:
+   - Update the Swap component UI to feature a toggle/switch arrow, allowing users to swap direction (USDC -> $DIBS, and $DIBS -> USDC).
+   - Audit the Viem contract execution for the Swap function. Ensure the correct 'amount' arguments are passed so the transaction returns actual tokens instead of registering as "0 DIBS". Update the local state to correctly reflect the received amount upon the 'waitForTransactionReceipt' success.
+
+4. BLOCK EXPLORER RECEIPT LINKS:
+   - On successful transaction completion in both Swap and Stake, capture the 'txHash'.
+   - Add a "View on Explorer" external link to the success modals/toasts using the transaction hash. (Format dynamically using the Arc Testnet chain ID 5042002 explorer URL).
+
+5. BUILD & DEPLOY:
+   - Run 'npm run build' to ensure zero compilation errors.
+   - Git commit with message: "feat: add stake validation, bi-directional swaps, lock periods, and explorer links" and push to main.

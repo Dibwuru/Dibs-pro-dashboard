@@ -1,16 +1,25 @@
 "use client";
 
-import { Coins, TrendingUp, Clock, Lock, AlertTriangle, Loader2 } from "lucide-react";
+import { Coins, TrendingUp, Clock, Lock, AlertTriangle, Loader2, X } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { createPublicClient, http, formatUnits } from "viem";
+import { createPublicClient, http, formatUnits, parseUnits, createWalletClient, custom } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
 
 const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
+const VAULT_ADDRESS = "0x3ed226184b4a00d1500e04f4fa89281107475597";
 const ARC_TESTNET_CHAIN_ID = 5042002;
+const ARC_EXPLORER_URL = "https://testnet.explorer.arc.network";
+
+const LOCK_PERIODS = [
+  { days: 7, label: "7 Days", apy: "8.5%" },
+  { days: 30, label: "30 Days", apy: "12.5%" },
+  { days: 90, label: "90 Days", apy: "18.0%" },
+  { days: 180, label: "180 Days", apy: "24.0%" },
+] as const;
 
 const dibsBalanceOfABI = [
   {
@@ -19,6 +28,32 @@ const dibsBalanceOfABI = [
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
+  },
+] as const;
+
+const erc20ApproveABI = [
+  {
+    type: "function",
+    name: "approve",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
+const erc20TransferABI = [
+  {
+    type: "function",
+    name: "transfer",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
   },
 ] as const;
 
@@ -96,6 +131,10 @@ export default function StakePage() {
   const [stakeAmount, setStakeAmount] = useState("");
   const [stakedBalance, setStakedBalance] = useState(0);
   const [isStaking, setIsStaking] = useState(false);
+  const [lockPeriodDays, setLockPeriodDays] = useState<number>(7);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  const selectedLockPeriod = LOCK_PERIODS.find((lp) => lp.days === lockPeriodDays) ?? LOCK_PERIODS[0];
 
   // --- 50% / MAX shortcuts ---
   const handleFiftyPercent = useCallback(() => {
@@ -106,27 +145,113 @@ export default function StakePage() {
     setStakeAmount(dibsBalanceNum.toString());
   }, [dibsBalanceNum]);
 
-  const isValidStake = stakeAmount !== "" && parseFloat(stakeAmount) > 0;
+  const stakeAmountNum = parseFloat(stakeAmount) || 0;
+  const isValidStake = stakeAmount !== "" && stakeAmountNum > 0;
+  const isOverBalance = stakeAmountNum > dibsBalanceNum;
+  const canStake = isValidStake && !isOverBalance;
 
-  // --- Execute Stake ---
-  const handleStake = useCallback(async () => {
-    if (!isValidStake) return;
+  // --- Execute Stake (via Viem) ---
+  const executeStake = useCallback(async () => {
+    if (!canStake || stakeWallets.length === 0) return;
 
     setIsStaking(true);
-    try {
-      // Simulate on-chain staking delay for UX feedback
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+    setShowConfirmModal(false);
 
-      const parsed = parseFloat(stakeAmount);
-      setStakedBalance((prev) => prev + parsed);
-      toast.success("Assets successfully committed to the Sovereign Staking Vault!");
+    try {
+      const activeWallet = stakeWallets[0];
+
+      const currentChainId = Number(activeWallet.chainId.replace("eip155:", ""));
+      if (currentChainId !== ARC_TESTNET_CHAIN_ID) {
+        await activeWallet.switchChain(ARC_TESTNET_CHAIN_ID);
+      }
+
+      const provider = await activeWallet.getEthereumProvider();
+      const walletClient = createWalletClient({
+        account: activeWallet.address as `0x${string}`,
+        chain: arcTestnet,
+        transport: custom(provider),
+      });
+
+      const amountWei = parseUnits(stakeAmount, 18);
+
+      await toast.promise(
+        (async () => {
+          // Step 1: Approve vault to spend DIBS
+          const approveHash = await walletClient.writeContract({
+            address: DIBS_CONTRACT_ADDRESS,
+            abi: erc20ApproveABI,
+            functionName: "approve",
+            args: [VAULT_ADDRESS, amountWei],
+          });
+          await publicClient.waitForTransactionReceipt({ hash: approveHash });
+
+          // Step 2: Transfer DIBS to vault (staking deposit)
+          const stakeHash = await walletClient.writeContract({
+            address: DIBS_CONTRACT_ADDRESS,
+            abi: erc20TransferABI,
+            functionName: "transfer",
+            args: [VAULT_ADDRESS, amountWei],
+          });
+
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash });
+          if (receipt.status !== "success") {
+            throw new Error("Transaction reverted on-chain");
+          }
+
+          // Refresh DIBS balance
+          if (userAddress) {
+            try {
+              const newDibs = await publicClient.readContract({
+                address: DIBS_CONTRACT_ADDRESS,
+                abi: dibsBalanceOfABI,
+                functionName: "balanceOf",
+                args: [userAddress],
+              });
+              setDibsBalanceRaw(newDibs);
+            } catch { /* polling will catch up */ }
+          }
+
+          setStakedBalance((prev) => prev + stakeAmountNum);
+
+          // Show explorer link as follow-up toast
+          toast.success(
+            `${stakeAmountNum.toLocaleString()} DIBS locked for ${lockPeriodDays} days`,
+            {
+              action: {
+                label: "Explorer",
+                onClick: () => window.open(`${ARC_EXPLORER_URL}/tx/${stakeHash}`, "_blank"),
+              },
+            }
+          );
+
+          return stakeHash;
+        })(),
+        {
+          loading: `Staking DIBS for ${lockPeriodDays} days...`,
+          success: "Stake confirmed!",
+          error: (err) => `Staking failed: ${(err as Error).message.slice(0, 80)}`,
+        }
+      );
+
       setStakeAmount("");
     } catch {
-      toast.error("Staking failed. Please try again.");
+      // toast already handled
     } finally {
       setIsStaking(false);
     }
-  }, [stakeAmount, isValidStake]);
+  }, [canStake, stakeWallets, stakeAmount, lockPeriodDays, userAddress, stakeAmountNum]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showConfirmModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showConfirmModal]);
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center px-4 py-24">
@@ -155,7 +280,7 @@ export default function StakePage() {
         <div className="grid grid-cols-2 gap-3 mb-6">
           <GlassCard className="p-4 text-center">
             <TrendingUp className="w-4 h-4 text-success mx-auto mb-1" />
-            <p className="text-lg font-bold text-slate-950 dark:text-slate-50">12.5%</p>
+            <p className="text-lg font-bold text-slate-950 dark:text-slate-50">{selectedLockPeriod.apy}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500">APY</p>
           </GlassCard>
           <GlassCard className="p-4 text-center">
@@ -229,20 +354,51 @@ export default function StakePage() {
             </div>
           </div>
 
+          {/* Balance error */}
+          {isOverBalance && (
+            <p className="text-xs font-semibold text-error px-1">
+              Insufficient $DIBS balance.
+            </p>
+          )}
+
+          {/* Lock Period Selection */}
+          <div>
+            <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+              Lock Period
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {LOCK_PERIODS.map((period) => (
+                <button
+                  key={period.days}
+                  type="button"
+                  onClick={() => setLockPeriodDays(period.days)}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer select-none border ${
+                    lockPeriodDays === period.days
+                      ? "bg-primary/15 border-primary/40 text-primary shadow-sm shadow-primary/10"
+                      : "bg-slate-100 dark:bg-[#121826]/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-primary/20 hover:text-primary"
+                  }`}
+                >
+                  <div>{period.label}</div>
+                  <div className="text-[10px] opacity-70 mt-0.5">{period.apy}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Info */}
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-slate-500 dark:text-slate-400">
               <span>Estimated Rewards</span>
               <span className="text-success font-medium">
                 {isValidStake
-                  ? `${((parseFloat(stakeAmount) * 0.125) / 365).toFixed(4)} DIBS/day`
+                  ? `${((stakeAmountNum * parseFloat(selectedLockPeriod.apy) / 100) / 365).toFixed(4)} DIBS/day`
                   : "0.00 DIBS/day"}
               </span>
             </div>
             <div className="flex justify-between text-slate-500 dark:text-slate-400">
               <span>Lock Period</span>
               <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                <Clock className="w-3.5 h-3.5" />7 days
+                <Clock className="w-3.5 h-3.5" />{selectedLockPeriod.label}
               </span>
             </div>
           </div>
@@ -252,9 +408,9 @@ export default function StakePage() {
             <Button
               size="lg"
               className="w-full"
-              disabled={!isValidStake || isStaking || isWrongNetwork}
+              disabled={!canStake || isStaking || isWrongNetwork}
               loading={isStaking}
-              onClick={handleStake}
+              onClick={() => setShowConfirmModal(true)}
               icon={!isStaking ? <Lock className="w-4 h-4" /> : undefined}
             >
               {isStaking ? "Staking..." : "Confirm Stake"}
@@ -271,6 +427,88 @@ export default function StakePage() {
           )}
         </GlassCard>
       </div>
+
+      {/* ===== CONFIRMATION MODAL ===== */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowConfirmModal(false)}
+          />
+          {/* Modal */}
+          <div className="tooltip-card relative w-full max-w-sm rounded-2xl shadow-2xl p-6 z-10">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
+                Confirm Stake
+              </h3>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Warning content */}
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200/90 mb-1">
+                    Are you sure?
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-200/70">
+                    Your tokens will be locked for{" "}
+                    <span className="font-bold">{selectedLockPeriod.days} days</span>.
+                    This action cannot be undone during the lock period.
+                  </p>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826]/60 border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Amount</span>
+                  <span className="font-semibold text-slate-950 dark:text-slate-50">
+                    {stakeAmountNum.toLocaleString()} DIBS
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Lock Period</span>
+                  <span className="font-semibold text-slate-950 dark:text-slate-50">
+                    {selectedLockPeriod.days} days
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">APY</span>
+                  <span className="font-semibold text-success">{selectedLockPeriod.apy}</span>
+                </div>
+              </div>
+
+              {/* Confirm button */}
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={executeStake}
+                loading={isStaking}
+                icon={!isStaking ? <Lock className="w-4 h-4" /> : undefined}
+              >
+                {isStaking ? "Confirming..." : "Confirm & Lock Tokens"}
+              </Button>
+
+              {/* Cancel */}
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
