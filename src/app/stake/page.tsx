@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins, TrendingUp, Clock, Lock, AlertTriangle, Loader2, X } from "lucide-react";
+import { Coins, TrendingUp, Clock, Lock, AlertTriangle, Loader2, X, Unlock, ArrowDown } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { createPublicClient, http, formatUnits, parseUnits, createWalletClient, custom } from "viem";
@@ -8,11 +8,15 @@ import { arcTestnet } from "@/components/Web3Provider";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
-
-const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
-const VAULT_ADDRESS = "0x3ed226184b4a00d1500e04f4fa89281107475597";
-const ARC_TESTNET_CHAIN_ID = 5042002;
-const ARC_EXPLORER_URL = "https://testnet.explorer.arc.network";
+import {
+  VAULT_ADDRESS,
+  DIBS_CONTRACT_ADDRESS,
+  ARC_TESTNET_CHAIN_ID,
+  ARC_EXPLORER_URL,
+  vaultABI,
+  dibsBalanceOfABI,
+  erc20ApproveABI,
+} from "@/vaultConfig";
 
 const LOCK_PERIODS = [
   { days: 7, label: "7 Days", apy: "8.5%" },
@@ -21,46 +25,35 @@ const LOCK_PERIODS = [
   { days: 180, label: "180 Days", apy: "24.0%" },
 ] as const;
 
-const dibsBalanceOfABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const erc20ApproveABI = [
-  {
-    type: "function",
-    name: "approve",
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [{ type: "bool" }],
-    stateMutability: "nonpayable",
-  },
-] as const;
-
-const erc20TransferABI = [
-  {
-    type: "function",
-    name: "transfer",
-    inputs: [
-      { name: "to", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [{ type: "bool" }],
-    stateMutability: "nonpayable",
-  },
-] as const;
-
 const publicClient = createPublicClient({
   chain: arcTestnet,
   transport: http(),
 });
+
+type UserStake = {
+  index: number;
+  amount: bigint;
+  releaseTime: bigint;
+  claimed: boolean;
+};
+
+function formatLockDays(releaseTime: bigint): string {
+  const now = Math.floor(Date.now() / 1000);
+  const release = Number(releaseTime);
+  const secondsRemaining = release - now;
+  if (secondsRemaining <= 0) return "Unlocked";
+  const days = Math.ceil(secondsRemaining / 86400);
+  if (days <= 1) return "< 1 day";
+  return `${days} days`;
+}
+
+function formatReleaseDate(releaseTime: bigint): string {
+  return new Date(Number(releaseTime) * 1000).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export default function StakePage() {
   const { authenticated, user, login } = usePrivy();
@@ -78,6 +71,9 @@ export default function StakePage() {
     activeStakeChainId !== ARC_TESTNET_CHAIN_ID;
 
   const userAddress = user?.wallet?.address as `0x${string}` | undefined;
+
+  // --- Tab state: stake or unstake ---
+  const [activeTab, setActiveTab] = useState<"stake" | "unstake">("stake");
 
   // --- Fetch DIBS balance ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
@@ -129,7 +125,6 @@ export default function StakePage() {
 
   // --- Stake State ---
   const [stakeAmount, setStakeAmount] = useState("");
-  const [stakedBalance, setStakedBalance] = useState(0);
   const [isStaking, setIsStaking] = useState(false);
   const [lockPeriodDays, setLockPeriodDays] = useState<number>(7);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -150,7 +145,7 @@ export default function StakePage() {
   const isOverBalance = stakeAmountNum > dibsBalanceNum;
   const canStake = isValidStake && !isOverBalance;
 
-  // --- Execute Stake (via Viem) ---
+  // --- Execute Stake (via vault.stake) ---
   const executeStake = useCallback(async () => {
     if (!canStake || stakeWallets.length === 0) return;
 
@@ -176,21 +171,24 @@ export default function StakePage() {
 
       await toast.promise(
         (async () => {
-          // Step 1: Approve vault to spend DIBS
+          // Step 1: Approve vault to spend DIBS (required for transferFrom in stake())
           const approveHash = await walletClient.writeContract({
             address: DIBS_CONTRACT_ADDRESS,
             abi: erc20ApproveABI,
             functionName: "approve",
             args: [VAULT_ADDRESS, amountWei],
           });
-          await publicClient.waitForTransactionReceipt({ hash: approveHash });
+          const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+          if (approveReceipt.status !== "success") {
+            throw new Error("DIBS approval reverted on-chain");
+          }
 
-          // Step 2: Transfer DIBS to vault (staking deposit)
+          // Step 2: Call vault.stake(amount, lockDays)
           const stakeHash = await walletClient.writeContract({
-            address: DIBS_CONTRACT_ADDRESS,
-            abi: erc20TransferABI,
-            functionName: "transfer",
-            args: [VAULT_ADDRESS, amountWei],
+            address: VAULT_ADDRESS,
+            abi: vaultABI,
+            functionName: "stake",
+            args: [amountWei, BigInt(lockPeriodDays)],
           });
 
           const receipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash });
@@ -198,7 +196,7 @@ export default function StakePage() {
             throw new Error("Transaction reverted on-chain");
           }
 
-          // Refresh DIBS balance
+          // Refresh DIBS balance and user stakes
           if (userAddress) {
             try {
               const newDibs = await publicClient.readContract({
@@ -209,9 +207,9 @@ export default function StakePage() {
               });
               setDibsBalanceRaw(newDibs);
             } catch { /* polling will catch up */ }
+            // Trigger stakes refetch
+            setStakesCacheBuster((v) => v + 1);
           }
-
-          setStakedBalance((prev) => prev + stakeAmountNum);
 
           // Show explorer link as follow-up toast
           toast.success(
@@ -240,6 +238,138 @@ export default function StakePage() {
       setIsStaking(false);
     }
   }, [canStake, stakeWallets, stakeAmount, lockPeriodDays, userAddress, stakeAmountNum]);
+
+  // --- Unstake State ---
+  const [userStakes, setUserStakes] = useState<UserStake[]>([]);
+  const [stakesLoading, setStakesLoading] = useState(false);
+  const [stakesCacheBuster, setStakesCacheBuster] = useState(0);
+  const [unstakingIndex, setUnstakingIndex] = useState<number | null>(null);
+
+  // Fetch user stakes from the vault
+  useEffect(() => {
+    if (!userAddress) {
+      setUserStakes([]);
+      return;
+    }
+    let cancelled = false;
+    const fetchStakes = async () => {
+      setStakesLoading(true);
+      try {
+        const count = await publicClient.readContract({
+          address: VAULT_ADDRESS,
+          abi: vaultABI,
+          functionName: "getUserStakesCount",
+          args: [userAddress],
+        }) as bigint;
+
+        const stakes: UserStake[] = [];
+        for (let i = 0; i < Number(count); i++) {
+          const raw = await publicClient.readContract({
+            address: VAULT_ADDRESS,
+            abi: vaultABI,
+            functionName: "userStakes",
+            args: [userAddress, BigInt(i)],
+          }) as [bigint, bigint, boolean];
+
+          stakes.push({
+            index: i,
+            amount: raw[0],
+            releaseTime: raw[1],
+            claimed: raw[2],
+          });
+        }
+        if (!cancelled) {
+          setUserStakes(stakes);
+        }
+      } catch {
+        if (!cancelled) setUserStakes([]);
+      } finally {
+        if (!cancelled) setStakesLoading(false);
+      }
+    };
+    fetchStakes();
+    const interval = setInterval(fetchStakes, 12000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [userAddress, stakesCacheBuster]);
+
+  // --- Execute Unstake ---
+  const executeUnstake = useCallback(async (stakeIndex: number) => {
+    if (stakeWallets.length === 0) return;
+
+    setUnstakingIndex(stakeIndex);
+    try {
+      const activeWallet = stakeWallets[0];
+
+      const currentChainId = Number(activeWallet.chainId.replace("eip155:", ""));
+      if (currentChainId !== ARC_TESTNET_CHAIN_ID) {
+        await activeWallet.switchChain(ARC_TESTNET_CHAIN_ID);
+      }
+
+      const provider = await activeWallet.getEthereumProvider();
+      const walletClient = createWalletClient({
+        account: activeWallet.address as `0x${string}`,
+        chain: arcTestnet,
+        transport: custom(provider),
+      });
+
+      await toast.promise(
+        (async () => {
+          const unstakeHash = await walletClient.writeContract({
+            address: VAULT_ADDRESS,
+            abi: vaultABI,
+            functionName: "unstake",
+            args: [BigInt(stakeIndex)],
+          });
+
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: unstakeHash });
+          if (receipt.status !== "success") {
+            throw new Error("Unstake reverted on-chain");
+          }
+
+          // Refresh balances and stakes
+          if (userAddress) {
+            try {
+              const newDibs = await publicClient.readContract({
+                address: DIBS_CONTRACT_ADDRESS,
+                abi: dibsBalanceOfABI,
+                functionName: "balanceOf",
+                args: [userAddress],
+              });
+              setDibsBalanceRaw(newDibs);
+            } catch { /* polling will catch up */ }
+            setStakesCacheBuster((v) => v + 1);
+          }
+
+          if (unstakeHash) {
+            toast.success("Tokens unstaked successfully!", {
+              action: {
+                label: "Explorer",
+                onClick: () => window.open(`${ARC_EXPLORER_URL}/tx/${unstakeHash}`, "_blank"),
+              },
+            });
+          }
+
+          return unstakeHash;
+        })(),
+        {
+          loading: "Unstaking DIBS...",
+          success: "Unstake confirmed!",
+          error: (err) => `Unstake failed: ${(err as Error).message.slice(0, 80)}`,
+        }
+      );
+    } catch {
+      // toast already handled
+    } finally {
+      setUnstakingIndex(null);
+    }
+  }, [stakeWallets, userAddress]);
+
+  const totalStaked = userStakes
+    .filter((s) => !s.claimed)
+    .reduce((sum, s) => sum + Number(formatUnits(s.amount, 18)), 0);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -285,150 +415,290 @@ export default function StakePage() {
           </GlassCard>
           <GlassCard className="p-4 text-center">
             <Lock className="w-4 h-4 text-primary mx-auto mb-1" />
-            <p className="text-lg font-bold text-slate-950 dark:text-slate-50">1.2M</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">TVL</p>
+            <p className="text-lg font-bold text-slate-950 dark:text-slate-50">
+              {totalStaked > 0 ? totalStaked.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "0"}
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Staked</p>
           </GlassCard>
         </div>
 
-        {/* Stake Card */}
-        <GlassCard className="space-y-4">
-          {/* Available Balance */}
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826]/60 border border-slate-200 dark:border-slate-800">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Available Balance
-            </span>
-            <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
-              {dibsBalanceLoading ? (
-                <span className="inline-flex items-center gap-1">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Loading...
-                </span>
-              ) : isWalletConnected ? (
-                `${dibsBalanceDisplay} DIBS`
-              ) : (
-                "—"
-              )}
-            </span>
-          </div>
+        {/* Tab Switcher: Stake / Unstake */}
+        <div className="flex mb-4 rounded-xl bg-slate-100 dark:bg-[#121826]/60 p-1 border border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => setActiveTab("stake")}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
+              activeTab === "stake"
+                ? "bg-white dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+            }`}
+          >
+            <Lock className="w-3.5 h-3.5 inline mr-1.5" />
+            Stake
+          </button>
+          <button
+            onClick={() => setActiveTab("unstake")}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
+              activeTab === "unstake"
+                ? "bg-white dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+            }`}
+          >
+            <Unlock className="w-3.5 h-3.5 inline mr-1.5" />
+            Unstake
+          </button>
+        </div>
 
-          {/* Staked Balance (if any) */}
-          {stakedBalance > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/5 border border-success/10 text-xs text-success">
-              <Lock className="w-3.5 h-3.5" />
-              <span>Staked: {stakedBalance.toLocaleString()} DIBS</span>
+        {/* ===== STAKE TAB ===== */}
+        {activeTab === "stake" && (
+          <GlassCard className="space-y-4">
+            {/* Available Balance */}
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826]/60 border border-slate-200 dark:border-slate-800">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Available Balance
+              </span>
+              <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
+                {dibsBalanceLoading ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Loading...
+                  </span>
+                ) : isWalletConnected ? (
+                  `${dibsBalanceDisplay} DIBS`
+                ) : (
+                  "—"
+                )}
+              </span>
             </div>
-          )}
 
-          {/* Stake Amount Input */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Stake Amount
-              </label>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={handleFiftyPercent}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all cursor-pointer select-none"
-                >
-                  50%
-                </button>
-                <button
-                  onClick={handleMax}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all cursor-pointer select-none"
-                >
-                  MAX
-                </button>
+            {/* Total Staked summary */}
+            {totalStaked > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/5 border border-success/10 text-xs text-success">
+                <Lock className="w-3.5 h-3.5" />
+                <span>Staked: {totalStaked.toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS</span>
+              </div>
+            )}
+
+            {/* Stake Amount Input */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Stake Amount
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleFiftyPercent}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all cursor-pointer select-none"
+                  >
+                    50%
+                  </button>
+                  <button
+                    onClick={handleMax}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all cursor-pointer select-none"
+                  >
+                    MAX
+                  </button>
+                </div>
+              </div>
+              <div className="input-box relative flex items-center p-4">
+                <input
+                  type="number"
+                  placeholder="0.0"
+                  value={stakeAmount}
+                  onChange={(e) => setStakeAmount(e.target.value)}
+                  className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
+                />
+                <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold select-none">
+                  DIBS
+                </span>
               </div>
             </div>
-            <div className="input-box relative flex items-center p-4">
-              <input
-                type="number"
-                placeholder="0.0"
-                value={stakeAmount}
-                onChange={(e) => setStakeAmount(e.target.value)}
-                className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
-              />
-              <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold select-none">
-                DIBS
-              </span>
+
+            {/* Balance error */}
+            {isOverBalance && (
+              <p className="text-xs font-semibold text-error px-1">
+                Insufficient $DIBS balance.
+              </p>
+            )}
+
+            {/* Lock Period Selection */}
+            <div>
+              <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
+                Lock Period
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {LOCK_PERIODS.map((period) => (
+                  <button
+                    key={period.days}
+                    type="button"
+                    onClick={() => setLockPeriodDays(period.days)}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer select-none border ${
+                      lockPeriodDays === period.days
+                        ? "bg-primary/15 border-primary/40 text-primary shadow-sm shadow-primary/10"
+                        : "bg-slate-100 dark:bg-[#121826]/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-primary/20 hover:text-primary"
+                    }`}
+                  >
+                    <div>{period.label}</div>
+                    <div className="text-[10px] opacity-70 mt-0.5">{period.apy}</div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Balance error */}
-          {isOverBalance && (
-            <p className="text-xs font-semibold text-error px-1">
-              Insufficient $DIBS balance.
-            </p>
-          )}
+            {/* Info */}
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>Estimated Rewards</span>
+                <span className="text-success font-medium">
+                  {isValidStake
+                    ? `${((stakeAmountNum * parseFloat(selectedLockPeriod.apy) / 100) / 365).toFixed(4)} DIBS/day`
+                    : "0.00 DIBS/day"}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>Lock Period</span>
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                  <Clock className="w-3.5 h-3.5" />{selectedLockPeriod.label}
+                </span>
+              </div>
+            </div>
 
-          {/* Lock Period Selection */}
-          <div>
-            <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
-              Lock Period
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {LOCK_PERIODS.map((period) => (
-                <button
-                  key={period.days}
-                  type="button"
-                  onClick={() => setLockPeriodDays(period.days)}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer select-none border ${
-                    lockPeriodDays === period.days
-                      ? "bg-primary/15 border-primary/40 text-primary shadow-sm shadow-primary/10"
-                      : "bg-slate-100 dark:bg-[#121826]/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-primary/20 hover:text-primary"
-                  }`}
+            {/* Action Button */}
+            {isWalletConnected ? (
+              <Button
+                size="lg"
+                className="w-full"
+                disabled={!canStake || isStaking || isWrongNetwork}
+                loading={isStaking}
+                onClick={() => setShowConfirmModal(true)}
+                icon={!isStaking ? <Lock className="w-4 h-4" /> : undefined}
+              >
+                {isStaking ? "Staking..." : "Confirm Stake"}
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={() => login()}
+                icon={<Coins className="w-4 h-4" />}
+              >
+                Connect Wallet to Stake
+              </Button>
+            )}
+          </GlassCard>
+        )}
+
+        {/* ===== UNSTAKE TAB ===== */}
+        {activeTab === "unstake" && (
+          <GlassCard className="space-y-4">
+            {!isWalletConnected ? (
+              <div className="text-center py-8">
+                <Unlock className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                  Connect your wallet to view and manage your stakes
+                </p>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => login()}
+                  icon={<Coins className="w-4 h-4" />}
                 >
-                  <div>{period.label}</div>
-                  <div className="text-[10px] opacity-70 mt-0.5">{period.apy}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+                  Connect Wallet
+                </Button>
+              </div>
+            ) : stakesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                <span className="ml-3 text-sm text-slate-500">Loading stakes...</span>
+              </div>
+            ) : userStakes.length === 0 ? (
+              <div className="text-center py-8">
+                <Lock className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  No active stakes found
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                  Stake DIBS tokens to start earning rewards
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Stakes summary */}
+                <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826]/60 border border-slate-200 dark:border-slate-800">
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Total Staked
+                  </span>
+                  <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
+                    {totalStaked.toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS
+                  </span>
+                </div>
 
-          {/* Info */}
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-slate-500 dark:text-slate-400">
-              <span>Estimated Rewards</span>
-              <span className="text-success font-medium">
-                {isValidStake
-                  ? `${((stakeAmountNum * parseFloat(selectedLockPeriod.apy) / 100) / 365).toFixed(4)} DIBS/day`
-                  : "0.00 DIBS/day"}
-              </span>
-            </div>
-            <div className="flex justify-between text-slate-500 dark:text-slate-400">
-              <span>Lock Period</span>
-              <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                <Clock className="w-3.5 h-3.5" />{selectedLockPeriod.label}
-              </span>
-            </div>
-          </div>
+                {/* Individual stakes */}
+                <div className="space-y-2">
+                  {userStakes.map((stake) => {
+                    const now = Math.floor(Date.now() / 1000);
+                    const releaseTimeNum = Number(stake.releaseTime);
+                    const isUnlocked = now >= releaseTimeNum;
+                    const isClaimed = stake.claimed;
+                    const amountNum = Number(formatUnits(stake.amount, 18));
 
-          {/* Action Button */}
-          {isWalletConnected ? (
-            <Button
-              size="lg"
-              className="w-full"
-              disabled={!canStake || isStaking || isWrongNetwork}
-              loading={isStaking}
-              onClick={() => setShowConfirmModal(true)}
-              icon={!isStaking ? <Lock className="w-4 h-4" /> : undefined}
-            >
-              {isStaking ? "Staking..." : "Confirm Stake"}
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={() => login()}
-              icon={<Coins className="w-4 h-4" />}
-            >
-              Connect Wallet to Stake
-            </Button>
-          )}
-        </GlassCard>
+                    return (
+                      <div
+                        key={stake.index}
+                        className={`p-4 rounded-xl border transition-all ${
+                          isClaimed
+                            ? "bg-slate-50 dark:bg-[#121826]/30 border-slate-200 dark:border-slate-800 opacity-60"
+                            : isUnlocked
+                              ? "bg-success/5 border-success/20"
+                              : "bg-amber-50/50 dark:bg-amber-500/5 border-amber-200/30 dark:border-amber-500/10"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
+                            {amountNum.toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS
+                          </span>
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                              isClaimed
+                                ? "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                                : isUnlocked
+                                  ? "bg-success/15 text-success"
+                                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            }`}
+                          >
+                            {isClaimed ? "Claimed" : isUnlocked ? "Ready" : "Locked"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-500 dark:text-slate-400">
+                            {isClaimed
+                              ? `Released ${formatReleaseDate(stake.releaseTime)}`
+                              : isUnlocked
+                                ? "Unlocked — ready to withdraw"
+                                : `Unlocks ${formatLockDays(stake.releaseTime)} (${formatReleaseDate(stake.releaseTime)})`}
+                          </span>
+                          {!isClaimed && isUnlocked && (
+                            <Button
+                              size="sm"
+                              onClick={() => executeUnstake(stake.index)}
+                              loading={unstakingIndex === stake.index}
+                              disabled={unstakingIndex !== null}
+                              icon={unstakingIndex !== stake.index ? <ArrowDown className="w-3 h-3" /> : undefined}
+                            >
+                              {unstakingIndex === stake.index ? "Unstaking..." : "Unstake"}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </GlassCard>
+        )}
       </div>
 
-      {/* ===== CONFIRMATION MODAL ===== */}
+      {/* ===== STAKE CONFIRMATION MODAL ===== */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}

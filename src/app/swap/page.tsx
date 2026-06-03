@@ -8,42 +8,16 @@ import { arcTestnet } from "@/components/Web3Provider";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
-
-const VAULT_ADDRESS = "0x3ed226184b4a00d1500e04f4fa89281107475597";
-const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
-const EXCHANGE_RATE = 10; // 1 USDC = 10 DIBS
-const ARC_TESTNET_CHAIN_ID = 5042002;
-
-const vaultABI = [
-  {
-    type: "function",
-    name: "swapUsdcForDibs",
-    stateMutability: "payable",
-    inputs: [],
-    outputs: [],
-  },
-  {
-    type: "event",
-    name: "AssetSwapped",
-    inputs: [
-      { name: "user", type: "address", indexed: true },
-      { name: "usdcSpent", type: "uint256", indexed: false },
-      { name: "dibsReceived", type: "uint256", indexed: false },
-    ],
-  },
-] as const;
-
-const ARC_EXPLORER_URL = "https://testnet.explorer.arc.network";
-
-const dibsBalanceOfABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import {
+  VAULT_ADDRESS,
+  DIBS_CONTRACT_ADDRESS,
+  EXCHANGE_RATE,
+  ARC_TESTNET_CHAIN_ID,
+  ARC_EXPLORER_URL,
+  vaultABI,
+  dibsBalanceOfABI,
+  erc20ApproveABI,
+} from "@/vaultConfig";
 
 const publicClient = createPublicClient({
   chain: arcTestnet,
@@ -188,12 +162,6 @@ export default function SwapPage() {
   const handleSwap = useCallback(async () => {
     if (!canSwap || swapWallets.length === 0) return;
 
-    // DIBS-to-USDC: vault contract does not support reverse swaps
-    if (fromToken === "DIBS") {
-      toast.error("DIBS → USDC swap is not yet supported by the vault contract. Coming soon.");
-      return;
-    }
-
     setIsSwapping(true);
     try {
       const activeWallet = swapWallets[0];
@@ -211,23 +179,53 @@ export default function SwapPage() {
         transport: custom(provider),
       });
 
+      const isUsdcToDibs = fromToken === "USDC";
+
       await toast.promise(
         (async () => {
-          const hash = await walletClient.writeContract({
-            address: VAULT_ADDRESS,
-            abi: vaultABI,
-            functionName: "swapUsdcForDibs",
-            value: parseUnits(swapInput, 18),
-          });
+          let hash: `0x${string}`;
 
-          // Wait for on-chain confirmation before resolving the toast
+          if (isUsdcToDibs) {
+            // USDC → DIBS: send native USDC with swapUsdcForDibs()
+            hash = await walletClient.writeContract({
+              address: VAULT_ADDRESS,
+              abi: vaultABI,
+              functionName: "swapUsdcForDibs",
+              value: parseUnits(swapInput, 18),
+            });
+          } else {
+            // DIBS → USDC: approve vault first, then call swapDibsForUsdc
+            const amountWei = parseUnits(swapInput, 18);
+
+            // Step 1: Approve vault to spend DIBS
+            const approveHash = await walletClient.writeContract({
+              address: DIBS_CONTRACT_ADDRESS,
+              abi: erc20ApproveABI,
+              functionName: "approve",
+              args: [VAULT_ADDRESS, amountWei],
+            });
+            const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+            if (approveReceipt.status !== "success") {
+              throw new Error("DIBS approval reverted on-chain");
+            }
+
+            // Step 2: Swap DIBS for USDC
+            hash = await walletClient.writeContract({
+              address: VAULT_ADDRESS,
+              abi: vaultABI,
+              functionName: "swapDibsForUsdc",
+              args: [amountWei],
+            });
+          }
+
+          // Wait for on-chain confirmation
           const receipt = await publicClient.waitForTransactionReceipt({ hash });
           if (receipt.status !== "success") {
             throw new Error("Transaction reverted on-chain");
           }
 
-          // Parse AssetSwapped event to get actual DIBS received
-          let actualDibsReceived = "";
+          // Parse AssetSwapped event to get actual amount received
+          let actualAmountOut = "";
           try {
             for (const log of receipt.logs) {
               try {
@@ -237,15 +235,15 @@ export default function SwapPage() {
                   topics: log.topics,
                 });
                 if (decoded.eventName === "AssetSwapped") {
-                  const args = decoded.args as unknown as { dibsReceived: bigint };
-                  actualDibsReceived = formatUnits(args.dibsReceived, 18);
+                  const args = decoded.args as unknown as { amountOut: bigint };
+                  actualAmountOut = formatUnits(args.amountOut, 18);
                   break;
                 }
               } catch { /* not this event */ }
             }
           } catch { /* event parsing non-critical */ }
 
-          // Immediately refresh balances so dashboard numbers update
+          // Immediately refresh balances
           if (userAddress) {
             try {
               const [newGas, newDibs] = await Promise.all([
@@ -266,9 +264,10 @@ export default function SwapPage() {
 
           // Show explorer link as follow-up toast
           if (hash) {
+            const tokenSymbol = isUsdcToDibs ? "DIBS" : "USDC";
             toast.success(
-              actualDibsReceived
-                ? `Received ${Number(actualDibsReceived).toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS`
+              actualAmountOut
+                ? `Received ${Number(actualAmountOut).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${tokenSymbol}`
                 : "Transaction confirmed",
               {
                 action: {
@@ -282,7 +281,9 @@ export default function SwapPage() {
           return hash;
         })(),
         {
-          loading: "Swapping USDC for DIBS...",
+          loading: isUsdcToDibs
+            ? "Swapping USDC for DIBS..."
+            : "Swapping DIBS for USDC...",
           success: "Swap completed successfully!",
           error: (err) => `Swap failed: ${(err as Error).message.slice(0, 80)}`,
         }
@@ -293,7 +294,7 @@ export default function SwapPage() {
     } finally {
       setIsSwapping(false);
     }
-  }, [swapInput, isValidInput, swapWallets, fromToken, userAddress]);
+  }, [canSwap, swapWallets, swapInput, fromToken, userAddress]);
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center px-4 py-24">
@@ -302,7 +303,7 @@ export default function SwapPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gradient mb-2">Swap Tokens</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Trade USDC for $DIBS on the Arc Testnet
+            Trade USDC for $DIBS — and back — on Arc Testnet
           </p>
         </div>
 
@@ -353,7 +354,7 @@ export default function SwapPage() {
             </div>
           </div>
 
-          {/* Token Flip Arrow — interactive button with mobile touch optimization */}
+          {/* Token Flip Arrow — interactive button */}
           <div className="flex justify-center">
             <button
               onClick={handleTokenFlip}
@@ -393,7 +394,6 @@ export default function SwapPage() {
             </span>
           </div>
 
-          {/* Action */}
           {/* Balance error */}
           {isOverBalance && (
             <p className="text-xs font-semibold text-error px-1">

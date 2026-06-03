@@ -1,23 +1,24 @@
-ACT AS: A Senior Web3 React Developer & UX Architect.
-TASK: Implement critical state validation, bi-directional logic, and user-feedback loops in the Swap and Stake components.
+ACT AS: A Senior Web3 Full-Stack Engineer and DevOps Specialist.
+TASK: Compile and deploy the upgraded 'DibsSwapVault.sol' contract to Arc Testnet, extract its new ABI/Address, and fully wire it to the user interface.
 
-CRITICAL LOGIC UPGRADES:
+CRITICAL PIPELINE PROTOCOLS:
 
-1. STAKE BALANCE VALIDATION:
-   - In the Stake component, implement strict input validation. If the user's inputted stake amount exceeds their 'Available Balance', dynamically disable the 'Confirm Stake' button and display an inline red text error: "Insufficient $DIBS balance."
+1. SMART CONTRACT COMPILATION & DEPLOYMENT:
+   - Locate the saved 'DibsSwapVault.sol' file in '/root/dibs-pro/'.
+   - Compile the contract using the project's established environment compilation tools.
+   - Deploy the contract to the Arc Testnet (Chain ID: 5042002). Utilize or update the configuration settings found in the project's deployment configuration files or use the existing framework in 'scripts/deploy-vault.ts'.
+   - Log and extract the newly generated deployment Contract Address and full ABI json map.
 
-2. MULTI-PERIOD STAKE SELECTION & CONFIRMATION:
-   - Replace the static "7 days" lock period with a selectable UI group (e.g., clickable pills or a dropdown for 7, 30, and 90 days).
-   - Implement a Confirmation Modal state. When a user clicks 'Confirm Stake', pop up a modal warning: "Are you sure? Your tokens will be locked for [Selected] days." Require a second confirmation click inside this modal before triggering the Viem writeContract call.
+2. CONFIGURATION & ABI SYNCHRONIZATION:
+   - Locate the frontend network/contract configuration files inside 'src/' (e.g., contract addresses file, constants file, or specific environment variables).
+   - Update the placeholder address with the newly deployed 'DibsSwapVault' testnet address.
+   - Replace the old contract ABI mapping with the new ABI containing the bi-directional swap, stake, and unstake function structures.
 
-3. BI-DIRECTIONAL SWAP & ZERO-VALUE FIX:
-   - Update the Swap component UI to feature a toggle/switch arrow, allowing users to swap direction (USDC -> $DIBS, and $DIBS -> USDC).
-   - Audit the Viem contract execution for the Swap function. Ensure the correct 'amount' arguments are passed so the transaction returns actual tokens instead of registering as "0 DIBS". Update the local state to correctly reflect the received amount upon the 'waitForTransactionReceipt' success.
+3. FULL FRONTEND WIREUP:
+   - BI-DIRECTIONAL SWAP: Wire the UI toggle arrow. Connect the 'swapUsdcForDibs' function for the entry route. Connect the brand-new 'swapDibsForUsdc' function for the exit route, ensuring input values pass correctly.
+   - STAKE LOCKUP VALIDATION: Bind the 7/30/90/180-day selection pills to pass the chosen duration variable directly into the contract 'stake(amount, lockDays)' parameters. Ensure the warning confirmation modal triggers before execution.
+   - UNSTAKE SUPPORT: Build out or activate the Unstake panel/tab interface. Read the user's active stakes using the 'userStakes' mapping or 'getUserStakesCount' view function, and wire up the 'unstake(stakeIndex)' call to execute withdrawals for matured tokens.
 
-4. BLOCK EXPLORER RECEIPT LINKS:
-   - On successful transaction completion in both Swap and Stake, capture the 'txHash'.
-   - Add a "View on Explorer" external link to the success modals/toasts using the transaction hash. (Format dynamically using the Arc Testnet chain ID 5042002 explorer URL).
-
-5. BUILD & DEPLOY:
-   - Run 'npm run build' to ensure zero compilation errors.
-   - Git commit with message: "feat: add stake validation, bi-directional swaps, lock periods, and explorer links" and push to main.
+4. PRODUCTION VERIFICATION:
+   - Run 'npm run build' to ensure flawless frontend compilation against the newly mapped Web3 definitions.
+   - Git commit with message: "feat: deploy upgraded DibsSwapVault and completely wire bi-directional swap, staking tiers, and unstake execution" and push to main.
