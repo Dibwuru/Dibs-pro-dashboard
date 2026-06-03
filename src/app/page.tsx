@@ -810,7 +810,33 @@ export default function Home() {
             The Sovereign Decentralized Portal for the $DIBS Ecosystem.
           </p>
 
-          {/* CTA Button */}
+          {/* CTA: Connect Wallet (Primary) */}
+          <button
+            onClick={login}
+            className="group relative w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
+            style={isDark ? {
+              background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",
+              border: "none",
+              color: "#0A0A0A",
+              boxShadow: "0 6px 24px rgba(251,191,36,0.40)",
+            } : {
+              background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",
+              border: "none",
+              color: "#0A0A0A",
+              boxShadow: "0 6px 24px rgba(251,191,36,0.40)",
+            }}
+          >
+            <span className="font-bold">Connect Wallet</span>
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 w-full my-5">
+            <div className="flex-1 h-px" style={{ background: isDark ? "rgba(251,191,36,0.12)" : "rgba(10,22,40,0.08)" }} />
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">or</span>
+            <div className="flex-1 h-px" style={{ background: isDark ? "rgba(251,191,36,0.12)" : "rgba(10,22,40,0.08)" }} />
+          </div>
+
+          {/* CTA: Sign In with Email (Secondary) */}
           <button
             onClick={login}
             className="group relative w-full inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
@@ -820,14 +846,13 @@ export default function Home() {
               color: "#FDE68A",
               boxShadow: "0 0 40px rgba(251,191,36,0.08)",
             } : {
-              background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",
-              border: "none",
-              color: "#0A0A0A",
-              boxShadow: "0 6px 24px rgba(251,191,36,0.40)",
+              background: "rgba(10,22,40,0.03)",
+              border: "1px solid rgba(251,191,36,0.30)",
+              color: "#D97706",
+              boxShadow: "none",
             }}
           >
-            <span className="font-bold">Launch Terminal</span>
-            <span className="text-sm font-medium" style={{ opacity: 0.65 }}>(Sign In / Sign Up)</span>
+            <span className="font-bold">Sign In with Email</span>
           </button>
 
           {/* Footer */}

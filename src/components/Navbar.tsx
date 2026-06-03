@@ -178,12 +178,20 @@ export function Navbar() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => login()}
-                  className="hidden sm:inline-flex px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all flex-shrink-0"
-                >
-                  Sign In with Email
-                </button>
+                <>
+                  <button
+                    onClick={() => login()}
+                    className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:scale-105 active:scale-[0.97] transition-all flex-shrink-0"
+                  >
+                    Connect Wallet
+                  </button>
+                  <button
+                    onClick={() => login()}
+                    className="hidden sm:inline-flex px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/20 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:scale-105 transition-all flex-shrink-0"
+                  >
+                    Sign In with Email
+                  </button>
+                </>
               )}
 
 

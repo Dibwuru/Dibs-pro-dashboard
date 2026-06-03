@@ -218,12 +218,20 @@ export function Sidebar() {
             </button>
           </div>
         ) : (
-          <button
-            onClick={() => login()}
-            className="w-full px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-500/[0.08] hover:border-amber-500/30 transition-all"
-          >
-            Sign In with Email
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={() => login()}
+              className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-semibold shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:scale-[1.01] active:scale-[0.98] transition-all"
+            >
+              Connect Wallet
+            </button>
+            <button
+              onClick={() => login()}
+              className="w-full px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-500/[0.08] hover:border-amber-500/30 transition-all"
+            >
+              Sign In with Email
+            </button>
+          </div>
         )}
 
         {/* Theme Toggle */}
