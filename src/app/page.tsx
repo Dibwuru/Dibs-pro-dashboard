@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
 import { useTheme } from "next-themes";
 import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
@@ -118,6 +118,7 @@ const EXCHANGE_RATE = 10; // 1 USDC = 10 DIBS
 
 export default function Home() {
   const { authenticated, ready, user, login } = usePrivy();
+  const { connectWallet } = useConnectWallet();
   const { wallets: dashboardWallets } = useWallets();
 
   const isWalletConnected = authenticated && !!user?.wallet?.address;
@@ -812,7 +813,7 @@ export default function Home() {
 
           {/* CTA: Connect Wallet (Primary) */}
           <button
-            onClick={login}
+            onClick={() => connectWallet()}
             className="group relative w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
             style={isDark ? {
               background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
 import { createPublicClient, http, formatEther } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
@@ -17,6 +17,7 @@ const publicClient = createPublicClient({
 export function Navbar() {
   const { theme, setTheme } = useTheme();
   const { login, authenticated, logout, user } = usePrivy();
+  const { connectWallet } = useConnectWallet();
   const { openMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
   const [gasBalance, setGasBalance] = useState<string>("--");
@@ -180,7 +181,7 @@ export function Navbar() {
               ) : (
                 <>
                   <button
-                    onClick={() => login()}
+                    onClick={() => connectWallet()}
                     className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:scale-105 active:scale-[0.97] transition-all flex-shrink-0"
                   >
                     Connect Wallet

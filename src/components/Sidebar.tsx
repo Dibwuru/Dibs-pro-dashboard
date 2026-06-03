@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -65,6 +65,7 @@ function saveProfile(data: ProfileData) {
 export function Sidebar() {
   const pathname = usePathname();
   const { authenticated, user, logout, login } = usePrivy();
+  const { connectWallet } = useConnectWallet();
   const { theme, setTheme } = useTheme();
   const { isMobileOpen, closeMobile, isProfileEditorOpen, openProfileEditor, closeProfileEditor } = useSidebar();
   const [mounted, setMounted] = useState(false);
@@ -220,7 +221,7 @@ export function Sidebar() {
         ) : (
           <div className="space-y-2">
             <button
-              onClick={() => login()}
+              onClick={() => connectWallet()}
               className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-semibold shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:scale-[1.01] active:scale-[0.98] transition-all"
             >
               Connect Wallet
