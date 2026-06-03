@@ -1,6 +1,7 @@
 "use client";
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useTheme } from "next-themes";
 import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
@@ -129,6 +130,9 @@ export default function Home() {
     isWalletConnected &&
     activeDashboardChainId !== null &&
     activeDashboardChainId !== ARC_TESTNET_CHAIN_ID;
+
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== "light";
 
   const displayAddress = user?.wallet?.address;
   const userAddress = (user?.wallet?.address as `0x${string}` | undefined);
@@ -760,52 +764,77 @@ export default function Home() {
   // ===== AUTH GATEWAY: Matte Obsidian Onboarding Gateway =====
   if (ready && !authenticated) {
     return (
-      <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#0B0F17] text-white relative overflow-hidden">
-        {/* Ambient radial lighting element */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.04),transparent_65%)] pointer-events-none" />
+      <div
+        className="fixed inset-0 z-[60] flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-300"
+        style={{ background: isDark ? "#030810" : "#F6F8FA" }}
+      >
+        {/* Ambient glow */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full blur-[130px]"
+            style={{ background: isDark ? "rgba(251,191,36,0.06)" : "rgba(251,191,36,0.10)" }}
+          />
+          <div
+            className="absolute bottom-0 right-0 w-[500px] h-[400px] rounded-full blur-[120px]"
+            style={{ background: isDark ? "rgba(249,115,22,0.04)" : "rgba(249,115,22,0.07)" }}
+          />
+        </div>
 
-        {/* Glassmorphic login card overlay */}
-        <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 dark:border-amber-500/10 p-8 rounded-2xl max-w-sm w-full shadow-2xl relative z-10 flex flex-col items-center text-center mx-4">
-          {/* Animated gold accent line above title */}
-          <div className="mb-8 w-16 h-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
+        {/* Card */}
+        <div
+          className="relative z-10 w-full max-w-sm mx-4 flex flex-col items-center text-center rounded-2xl p-8"
+          style={{
+            background: isDark ? "rgba(5,10,20,0.85)" : "rgba(255,255,255,0.98)",
+            border: isDark ? "1px solid rgba(251,191,36,0.22)" : "1px solid rgba(10,22,40,0.10)",
+            boxShadow: isDark
+              ? "0 0 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(251,191,36,0.06) inset"
+              : "0 4px 32px rgba(10,22,40,0.10), 0 1px 4px rgba(10,22,40,0.06)",
+          }}
+        >
+          {/* Accent line */}
+          <div className="mb-8 w-16 h-[3px] rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
 
-          {/* Main Title — Metallic Gold Gradient */}
+          {/* Title */}
           <h1
-            className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-6"
-            style={{
-              background: "linear-gradient(135deg, #F59E0B 0%, #FBBF24 25%, #FDE68A 50%, #D97706 75%, #F59E0B 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              textShadow: "0 0 60px rgba(245, 158, 11, 0.15)",
-            }}
+            className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-4 leading-tight"
+            style={{ color: isDark ? "#FBBF24" : "#D97706" }}
           >
-            ARCTOR Terminal
+            ARCTOR<br />Terminal
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg text-slate-400 max-w-md mb-10 leading-relaxed">
+          <p
+            className="text-base max-w-xs mb-10 leading-relaxed"
+            style={{ color: isDark ? "#94A3B8" : "#475569" }}
+          >
             The Sovereign Decentralized Portal for the $DIBS Ecosystem.
           </p>
 
-          {/* CTA Button — Ultra-premium glassmorphic with gold accents */}
+          {/* CTA Button */}
           <button
             onClick={login}
-            className="group relative inline-flex items-center gap-3 px-10 py-4 rounded-2xl text-lg font-bold text-amber-100 bg-white/[0.03] backdrop-blur-xl border border-amber-500/30 shadow-[0_0_40px_rgba(245,158,11,0.1),0_8px_32px_rgba(0,0,0,0.4)] hover:border-amber-400/50 hover:shadow-[0_0_60px_rgba(245,158,11,0.2),0_12px_40px_rgba(0,0,0,0.5)] active:scale-[0.97] transition-all duration-300 overflow-hidden"
+            className="group relative w-full inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
+            style={isDark ? {
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(251,191,36,0.35)",
+              color: "#FDE68A",
+              boxShadow: "0 0 40px rgba(251,191,36,0.08)",
+            } : {
+              background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",
+              border: "none",
+              color: "#0A0A0A",
+              boxShadow: "0 6px 24px rgba(251,191,36,0.40)",
+            }}
           >
-            {/* Inner glow on hover */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-amber-500/[0.06] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            {/* Gold left accent */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-gradient-to-b from-amber-400 to-amber-600 opacity-60 group-hover:opacity-100 transition-opacity" />
-            {/* Content */}
-            <span className="relative z-10">Launch Terminal</span>
-            <span className="relative z-10 text-sm font-medium text-amber-400/70 group-hover:text-amber-300/90 transition-colors">
-              (Sign In / Sign Up)
-            </span>
+            <span className="font-bold">Launch Terminal</span>
+            <span className="text-sm font-medium" style={{ opacity: 0.65 }}>(Sign In / Sign Up)</span>
           </button>
 
-          {/* Bottom subtle indicator */}
-          <p className="mt-8 text-xs text-slate-400 dark:text-slate-500">
+          {/* Footer */}
+          <p
+            className="mt-8 text-xs tracking-wide"
+            style={{ color: isDark ? "#475569" : "#94A3B8" }}
+          >
             Powered by Arc Testnet • Chain 5042002
           </p>
         </div>
@@ -837,7 +866,7 @@ export default function Home() {
           <div className="space-y-8">
             {/* Balance Hero Card */}
             <GlassCard className="p-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.04] rounded-full blur-[80px] pointer-events-none" />
+              <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/[0.08] rounded-full blur-[80px] pointer-events-none" />
               <div className="relative">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div>
@@ -849,7 +878,7 @@ export default function Home() {
                         className="text-4xl sm:text-5xl font-bold text-slate-950 dark:text-slate-50 tracking-tight tabular-nums"
                         style={{
                           textShadow:
-                            "0 0 40px rgba(124, 58, 237, 0.15)",
+                            "0 0 40px rgba(245, 158, 11, 0.18)",
                         }}
                       >
                         {dibsBalanceLoading
@@ -862,14 +891,13 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="sm:text-right">
-                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-50 tabular-nums">
-                      {dibsBalanceDisplay !== null
-                        ? `${dibsBalanceDisplay} DIBS`
-                        : dibsBalanceLoading
-                          ? "Loading..."
-                          : "—"}
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Rate
                     </p>
-                    <div className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full bg-success/10 border border-success/20">
+                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-50 mb-2">
+                      1 USDC = {EXCHANGE_RATE} DIBS
+                    </p>
+                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success/10 border border-success/20">
                       <TrendingUp className="w-3 h-3 text-success" />
                       <span className="text-xs font-semibold text-success">
                         +1.5% (24h)
@@ -926,14 +954,27 @@ export default function Home() {
 
             {/* Token Registry Asset Cards */}
             <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
-              {tokenList.map((token) => (
+              {tokenList.map((token) => {
+                const iconRing =
+                  token.symbol === "USDC"
+                    ? "bg-emerald-500/15 border-emerald-500/20"
+                    : token.symbol === "DIBS"
+                    ? "bg-amber-500/15 border-amber-500/20"
+                    : "bg-blue-500/15 border-blue-500/20";
+                const iconColor =
+                  token.symbol === "USDC"
+                    ? "text-emerald-500"
+                    : token.symbol === "DIBS"
+                    ? "text-amber-500"
+                    : "text-blue-500";
+                return (
                 <div
                   key={token.address}
-                  className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300"
+                  className="rounded-xl bg-white dark:bg-[#0C1420]/70 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 p-6 hover:border-slate-300 dark:hover:border-amber-500/20 transition-all duration-300"
                 >
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
-                      <Coins className="w-4 h-4 text-primary" />
+                    <div className={`w-8 h-8 rounded-lg border flex items-center justify-center ${iconRing}`}>
+                      <Coins className={`w-4 h-4 ${iconColor}`} />
                     </div>
                     <div>
                       <p className="text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
@@ -954,10 +995,11 @@ export default function Home() {
                     {token.symbol}
                   </p>
                 </div>
-              ))}
+                );
+              })}
 
               {/* Import Custom Token Card */}
-              <div className="rounded-xl bg-slate-100 dark:bg-[#1E293B]/50 backdrop-blur-md border border-dashed border-slate-300 dark:border-slate-600 p-6">
+              <div className="rounded-xl bg-white dark:bg-[#0C1420]/70 backdrop-blur-md border border-dashed border-slate-300 dark:border-amber-500/20 p-6">
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
                   Import Custom Token Address
                 </p>
@@ -1021,7 +1063,7 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
-                  <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                  <div className="input-box relative flex items-center p-4">
                     <input
                       type="number"
                       placeholder="0.0"
@@ -1029,7 +1071,7 @@ export default function Home() {
                       onChange={(e) => setSwapInput(e.target.value)}
                       className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary">
+                    <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold">
                       {fromToken}
                     </span>
                   </div>
@@ -1039,7 +1081,7 @@ export default function Home() {
                 <div className="flex justify-center">
                   <button
                     onClick={flipTokens}
-                    className="cursor-pointer select-none active:scale-95 p-2 rounded-xl bg-slate-100 dark:bg-[#121826] border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-primary hover:scale-110 hover:border-primary/30 transition-all"
+                    className="input-box cursor-pointer select-none active:scale-95 p-2 rounded-xl text-amber-600 dark:text-primary hover:scale-110 transition-all"
                     title="Flip tokens"
                     aria-label="Flip token direction"
                   >
@@ -1052,21 +1094,21 @@ export default function Home() {
                   <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
                     You Receive
                   </label>
-                  <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                  <div className="input-box relative flex items-center p-4">
                     <input
                       type="text"
                       readOnly
                       value={swapOutput}
                       className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none pr-20 tabular-nums"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary">
+                    <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold">
                       {toToken}
                     </span>
                   </div>
                 </div>
 
                 {/* Info */}
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-[#121826]/30 border border-slate-200 dark:border-slate-800">
+                <div className="input-box flex items-center gap-2 px-3 py-2 rounded-lg">
                   <Info className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     1 USDC = {EXCHANGE_RATE} DIBS
@@ -1191,7 +1233,7 @@ export default function Home() {
             onClick={() => setShowReceiveModal(false)}
           />
           {/* Modal card */}
-          <div className="relative w-full max-w-md bg-white dark:bg-[#121826] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10">
+          <div className="tooltip-card relative w-full max-w-md rounded-2xl shadow-2xl p-6 z-10">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
@@ -1260,7 +1302,7 @@ export default function Home() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowSendModal(false)}
           />
-          <div className="relative w-full max-w-md bg-white dark:bg-[#121826] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10">
+          <div className="tooltip-card relative w-full max-w-md rounded-2xl shadow-2xl p-6 z-10">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
                 Send Assets
@@ -1328,7 +1370,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                <div className="input-box relative flex items-center p-4">
                   <input
                     type="number"
                     placeholder="0.0"
@@ -1336,7 +1378,7 @@ export default function Home() {
                     onChange={(e) => setSendAmount(e.target.value)}
                     className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary">
+                  <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold">
                     {sendAsset === "USDC Gas" ? "USDC" : "DIBS"}
                   </span>
                 </div>
@@ -1379,7 +1421,7 @@ export default function Home() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowStakeModal(false)}
           />
-          <div className="relative w-full max-w-md bg-white dark:bg-[#121826] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10">
+          <div className="tooltip-card relative w-full max-w-md rounded-2xl shadow-2xl p-6 z-10">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
                 Stake DIBS
@@ -1424,7 +1466,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                <div className="input-box relative flex items-center p-4">
                   <input
                     type="number"
                     placeholder="0.0"
@@ -1432,7 +1474,7 @@ export default function Home() {
                     onChange={(e) => setStakeAmount(e.target.value)}
                     className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary">
+                  <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold">
                     DIBS
                   </span>
                 </div>

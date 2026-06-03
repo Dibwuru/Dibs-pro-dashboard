@@ -79,7 +79,7 @@ export function Navbar() {
 
   return (
     /* Main Navbar — Sticky Glass Overlay */
-    <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#090D16]/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-300">
+    <nav className="sticky top-0 z-50 w-full bg-white/85 dark:bg-[#050B14]/90 backdrop-blur-md border-b border-slate-200/80 dark:border-amber-500/10 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Hamburger + Logo */}
@@ -116,15 +116,15 @@ export function Navbar() {
                 </span>
                 {/* Tooltip */}
                 <div className="absolute top-full mt-2 right-0 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <div className="bg-slate-900 dark:bg-[#121826] border border-slate-700 dark:border-slate-800 rounded-lg p-3 shadow-xl">
-                    <p className="text-xs text-slate-300 dark:text-slate-400 mb-2">
+                  <div className="tooltip-card p-3">
+                    <p className="text-xs mb-2">
                       Need testnet gas tokens?
                     </p>
                     <a
                       href="https://faucet.arc.io/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-500 dark:text-amber-400 hover:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
                     >
                       <ExternalLink className="w-3 h-3" />
                       Get Faucet Gas
@@ -137,7 +137,7 @@ export function Navbar() {
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 aria-label="Toggle theme"
-                className="p-2 rounded-lg bg-white dark:bg-[#121826] border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-amber-400 hover:scale-105 transition-all flex-shrink-0"
+                className="p-2 theme-btn hover:scale-105 transition-all flex-shrink-0"
               >
                 {theme === "dark" ? (
                   <Sun className="w-4 h-4" />

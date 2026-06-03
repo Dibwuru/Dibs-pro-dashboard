@@ -1,25 +1,20 @@
-ACT AS: A Principal UI/UX Designer and Lead Tailwind Frontend Engineer.
-TASK: Overhaul the unauthenticated gateway onboarding background theme and fix light/dark mode contrast color properties across all mobile and desktop portfolio grid cards.
+ACT AS: A Senior Web3 Frontend Architect and Code Merge Specialist.
+TASK: Carefully merge new UI/UX designs from the /root/friend-ui directory into the current production codebase WITHOUT breaking the existing Viem/Privy transaction logic.
 
-CRITICAL DESIGN SPECIFICATIONS:
+CRITICAL MERGE PROTOCOL:
+1. READ THE NEW UI FILES:
+   - Analyze the updated frontend files located directly in the '/root/friend-ui' directory. Pay special attention to tailwind.config.ts, src/app/globals.css, src/app/layout.tsx, src/app/page.tsx, and any updated components in the src/components/ folder.
+   
+2. SURGICAL EXTRACTION (VISUALS ONLY):
+   - Extract the new Tailwind CSS classes, HTML structural changes, color palettes, animations, and typography implemented by the UI designer.
+   - Apply these visual updates to our current production files in '/root/dibs-pro/src/' and update the root configuration files (like tailwind.config.ts) if the designer added new custom theme colors or fonts.
 
-1. OBLITERATE LIGHT THEME TEXT BLINDNESS (src/app/page.tsx or card sub-components):
-   - Locate all metrics display cards ("BALANCE", "STAKED", "SENT", "RECEIVED") shown on the primary dashboard.
-   - FIX THE CONTRAST: Ensure no text relies on unstyled defaults or hardcoded light hex values against light backgrounds. Apply explicit adaptive Tailwind color mapping classes to all typography layers:
-     * Card Titles (e.g., BALANCE, STAKED): Change text layout styling to 'text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase'.
-     * Core Numeric Values (e.g., 0 DIBS / 0 ETH): Ensure complete readability in both display modes by applying 'text-xl font-bold text-slate-900 dark:text-white'.
-     * Secondary Meta Labels (e.g., Total transactions, earned): Set explicitly to 'text-sm text-slate-400 dark:text-slate-500'.
-
-2. LUXURY OVERHAUL OF THE 'AUTHGATEWAY' ONBOARDING BACKDROP (src/app/page.tsx):
-   - Locate the full-screen layout wrapper for the unauthenticated landing view.
-   - REMOVE ROOKIE GRADIENTS: Strip away any generic light, bright blue, or basic background configurations that mismatch our app profile.
-   - IMPLEMENT MATTE OBSIDIAN DESIGN: Style the onboarding page wrapper with a deep premium dark framework matching our active dashboard context:
-     * Background Class: 'bg-[#0B0F17] text-white min-h-screen flex flex-col items-center justify-center relative overflow-hidden'
-     * AMBIENT GLOW: Inject an absolute-positioned ambient radial lighting element in the center background to add premium depth: '<div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.04),transparent_65%)] pointer-events-none" />'
-   - CARD GLASSMORPHISM: Style the centered login card overlay to use ultra-clean premium transparency definitions: 'bg-slate-900/40 backdrop-blur-xl border border-white/5 dark:border-amber-500/10 p-8 rounded-2xl max-w-sm w-full shadow-2xl relative z-10'.
-
-3. PRODUCTION SYSTEM VERIFICATION AND DEPLOYMENT:
-   - Run 'npm run build' to clean Next.js cache definitions and verify 100% successful compile cycles with zero styling or property mismatches.
-   - Execute production delivery sequence: git add ., commit with message "design: overhaul auth gateway aesthetic to matte obsidian and repair light theme card contrast properties", and push origin main.
-
-Execute this visual polish and theme synchronization sweep now.
+3. PRESERVE CORE WEB3 LOGIC (DO NOT OVERWRITE):
+   - You MUST absolutely preserve our current Privy 'useWallets()' logic.
+   - You MUST absolutely preserve our standalone Viem 'createWalletClient' and 'createPublicClient' execution paths.
+   - You MUST absolutely preserve our 'waitForTransactionReceipt' synchronization and state-refreshing logic.
+   - DO NOT re-introduce any Wagmi hooks ('useWriteContract').
+   
+4. PRODUCTION VERIFICATION:
+   - Run 'npm run build' to ensure the newly merged UI code compiles flawlessly with our established Web3 backend logic.
+   - Push to production: git add ., commit with message "ui: merge updated designer frontend aesthetics from friend-ui while preserving core web3 transaction pipelines", and push origin main.

@@ -200,7 +200,7 @@ export function Sidebar() {
             onClick={() => {
               if (connectors[0]) connect({ connector: connectors[0] });
             }}
-            className="flex items-center gap-2 w-full px-4 py-3 rounded-xl text-sm font-semibold btn-gradient text-white shadow-lg shadow-primary/20"
+            className="flex items-center gap-2 w-full px-4 py-3 rounded-xl text-sm font-semibold btn-gradient text-black shadow-lg shadow-primary/20"
           >
             <Wallet className="w-4 h-4" />
             Connect Wallet
@@ -290,7 +290,7 @@ export function Sidebar() {
   return (
     <>
       {/* ===== DESKTOP: Persistent Left Sidebar (lg+) ===== */}
-      <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 flex-shrink-0 border-r border-amber-500/20 bg-white/80 dark:bg-[#0A0F1A]/90 backdrop-blur-xl z-40">
+      <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 flex-shrink-0 border-r border-amber-500/15 bg-white/85 dark:bg-[#060C16]/95 backdrop-blur-xl z-40">
         {sidebarContent}
       </aside>
 
@@ -304,7 +304,7 @@ export function Sidebar() {
       )}
 
       {/* Drawer panel */}
-      <div          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#0A0F1A] shadow-2xl z-[100] border-r border-amber-500/20 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+      <div          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#060C16] shadow-2xl z-[100] border-r border-amber-500/15 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
             isMobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >

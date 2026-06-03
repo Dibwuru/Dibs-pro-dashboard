@@ -43,8 +43,8 @@ export default function RootLayout({
           <PrivyAuthProvider>
             {/* Global Atmospheric Glow Components */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-              <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-blue-600/[0.04] blur-[180px] dark:bg-[#8B5CF6]/[0.06]" />
-              <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-amber-600/[0.03] blur-[170px] dark:bg-[#10B981]/[0.05]" />
+              <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] rounded-full bg-amber-500/[0.04] blur-[180px] dark:bg-amber-500/[0.07]" />
+              <div className="absolute bottom-[-15%] right-[-8%] w-[750px] h-[750px] rounded-full bg-orange-500/[0.03] blur-[170px] dark:bg-amber-600/[0.05]" />
             </div>
             <Web3Provider>
               <SidebarProvider>

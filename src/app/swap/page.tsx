@@ -281,7 +281,7 @@ export default function SwapPage() {
                 </button>
               </div>
             </div>
-            <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+            <div className="input-box relative flex items-center p-4">
               <input
                 type="number"
                 placeholder="0.0"
@@ -289,7 +289,7 @@ export default function SwapPage() {
                 onChange={(e) => setSwapInput(e.target.value)}
                 className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary select-none">
+              <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold select-none">
                 {fromToken}
               </span>
             </div>
@@ -299,7 +299,7 @@ export default function SwapPage() {
           <div className="flex justify-center">
             <button
               onClick={handleTokenFlip}
-              className="cursor-pointer select-none active:scale-95 p-2 rounded-xl bg-slate-100 dark:bg-[#121826] border border-slate-200 dark:border-slate-800 text-blue-600 dark:text-primary hover:scale-110 hover:border-primary/30 transition-all"
+              className="input-box cursor-pointer select-none active:scale-95 p-2 rounded-xl text-amber-600 dark:text-primary hover:scale-110 transition-all"
               title="Flip tokens"
               aria-label="Flip token direction"
             >
@@ -312,21 +312,21 @@ export default function SwapPage() {
             <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block">
               You Receive
             </label>
-            <div className="relative flex items-center bg-slate-100 dark:bg-[#121826] rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+            <div className="input-box relative flex items-center p-4">
               <input
                 type="text"
                 readOnly
                 value={swapOutput}
                 className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none pr-20 tabular-nums"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-semibold text-amber-600 dark:text-primary select-none">
+              <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold select-none">
                 {toToken}
               </span>
             </div>
           </div>
 
           {/* Info */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-[#121826]/30 border border-slate-200 dark:border-slate-800">
+          <div className="input-box flex items-center gap-2 px-3 py-2 rounded-lg">
             <Info className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             <span className="text-xs text-slate-500 dark:text-slate-400">
               {fromToken === "USDC"

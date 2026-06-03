@@ -3,21 +3,21 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-primary: #7C3AED;
-  --color-primary-hover: #6D28D9;
-  --color-secondary: #3B82F6;
-  --color-secondary-hover: #2563EB;
-  --color-navy: #0F172A;
-  --color-navy-light: #1E293B;
-  --color-surface: rgba(30, 41, 59, 0.8);
-  --color-surface-border: rgba(255, 255, 255, 0.08);
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #64748B;
-  --color-accent: #A78BFA;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
+  --color-primary: #FBBF24;
+  --color-primary-hover: #F59E0B;
+  --color-secondary: #F97316;
+  --color-secondary-hover: #EA580C;
+  --color-navy: #030810;
+  --color-navy-light: #0A1220;
+  --color-surface: rgba(8, 12, 22, 0.90);
+  --color-surface-border: rgba(251, 191, 36, 0.15);
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #CBD5E1;
+  --color-text-muted: #94A3B8;
+  --color-accent: #FDE68A;
+  --color-success: #34D399;
+  --color-warning: #FBBF24;
+  --color-error: #F87171;
   --color-amber-400: #FBBF24;
   --color-amber-500: #F59E0B;
   --color-amber-600: #D97706;
@@ -34,15 +34,15 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* ===== LIGHT MODE (Swiss Sovereign Default) ===== */
+/* ============================================================
+   BASE
+   ============================================================ */
 :root {
-  --background: #F8FAFC;
-  --foreground: #020617;
+  --background: #F6F8FA;
+  --foreground: #0A1628;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   background: var(--background);
@@ -50,103 +50,266 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* ===== DARK MODE (Midnight Navy) — .dark is applied to <html> by next-themes ===== */
 .dark body {
-  background: #090D16;
+  background: #030810 !important;
+  color: #FFFFFF !important;
 }
 
-/* ===== Glass morphism utilities ===== */
+/* ============================================================
+   SIDEBAR + NAVBAR — direct class selectors, always correct
+   ============================================================ */
+aside {
+  background: rgba(255, 255, 255, 0.99) !important;
+  border-right-color: rgba(10, 22, 40, 0.10) !important;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.dark aside {
+  background: rgba(6, 12, 22, 0.96) !important;
+  border-right-color: rgba(251, 191, 36, 0.15) !important;
+}
+
+nav.sticky {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-bottom-color: rgba(10, 22, 40, 0.08) !important;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.dark nav.sticky {
+  background: rgba(5, 11, 20, 0.92) !important;
+  border-bottom-color: rgba(251, 191, 36, 0.10) !important;
+}
+
+/* Sidebar text — sharp black in light, soft in dark */
+aside a, aside span, aside p, aside button, aside label {
+  color: #0F172A;
+}
+.dark aside a, .dark aside span, .dark aside p, .dark aside button, .dark aside label {
+  color: #CBD5E1;
+}
+
+/* Navbar text — sharp black in light, soft in dark */
+nav.sticky span:not(.btn-gradient),
+nav.sticky a,
+nav.sticky p,
+nav.sticky label {
+  color: #0F172A;
+}
+.dark nav.sticky span:not(.btn-gradient),
+.dark nav.sticky a,
+.dark nav.sticky p,
+.dark nav.sticky label {
+  color: #CBD5E1;
+}
+
+/* ============================================================
+   GLASS CARDS
+   ============================================================ */
 .glass {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid rgba(10, 22, 40, 0.10);
   border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(10, 22, 40, 0.06), 0 4px 16px rgba(10, 22, 40, 0.06);
 }
 
 .dark .glass {
-  background: rgba(18, 24, 38, 0.8);
-  border: 1px solid rgba(30, 41, 59, 0.8);
+  background: rgba(5, 10, 20, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.06) inset, 0 8px 40px rgba(0, 0, 0, 0.5);
 }
 
 .glass-sm {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(10, 22, 40, 0.08);
   border-radius: 0.75rem;
 }
 
 .dark .glass-sm {
-  background: rgba(18, 24, 38, 0.6);
-  border: 1px solid rgba(30, 41, 59, 0.6);
+  background: rgba(5, 10, 20, 0.75);
+  border: 1px solid rgba(251, 191, 36, 0.15);
 }
 
-/* ===== Gradient text utility ===== */
+/* ============================================================
+   GRADIENT TEXT
+   ============================================================ */
 .text-gradient {
-  background: linear-gradient(135deg, #7C3AED, #3B82F6);
+  background: linear-gradient(135deg, #FBBF24 0%, #FDE68A 45%, #FBBF24 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* ===== Gradient button ===== */
+/* Richer, deeper gold on light backgrounds — more vivid and sharp */
+html:not(.dark) .text-gradient {
+  background: linear-gradient(135deg, #92400E 0%, #B45309 35%, #D97706 60%, #92400E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   GRADIENT BUTTON
+   ============================================================ */
 .btn-gradient {
-  background: linear-gradient(135deg, #7C3AED, #3B82F6);
-  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  background: linear-gradient(135deg, #FBBF24 0%, #F97316 100%);
+  color: #0A0A0A;
+  font-weight: 700;
+  transition: all 0.2s ease;
 }
-
 .btn-gradient:hover {
-  background: linear-gradient(135deg, #6D28D9, #2563EB);
+  background: linear-gradient(135deg, #FDE68A 0%, #FB923C 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 24px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 6px 28px rgba(251, 191, 36, 0.50);
 }
+.btn-gradient:active { transform: translateY(0); }
 
-/* ===== Swiss Sovereign background layers ===== */
+/* ============================================================
+   BACKGROUND
+   ============================================================ */
 .bg-obsidian {
-  background-color: #F8FAFC;
+  background-color: #F6F8FA;
   background-image:
-    radial-gradient(ellipse at 15% 60%, rgba(37, 99, 235, 0.05) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 30%, rgba(217, 119, 6, 0.04) 0%, transparent 55%),
-    radial-gradient(ellipse at 60% 80%, rgba(37, 99, 235, 0.03) 0%, transparent 50%);
+    radial-gradient(ellipse at 15% 50%, rgba(251, 191, 36, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 20%, rgba(249, 115, 22, 0.05) 0%, transparent 50%);
 }
 
 .dark .bg-obsidian {
-  background-color: #090D16;
+  background-color: #030810;
   background-image:
-    radial-gradient(ellipse at 15% 60%, rgba(139, 92, 246, 0.06) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 30%, rgba(16, 185, 129, 0.05) 0%, transparent 55%),
-    radial-gradient(ellipse at 60% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
+    radial-gradient(ellipse at 15% 60%, rgba(251, 191, 36, 0.09) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 30%, rgba(249, 115, 22, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 85%, rgba(251, 191, 36, 0.05) 0%, transparent 50%);
 }
 
-/* ===== Scrollbar styling ===== */
-::-webkit-scrollbar {
-  width: 6px;
-}
+/* ============================================================
+   REUSABLE LIGHT/DARK UTILITY CLASSES
+   These bypass Tailwind's media-query dark: entirely
+   ============================================================ */
 
-::-webkit-scrollbar-track {
+/* Input/field wrapper boxes */
+.input-box {
   background: #F1F5F9;
+  border: 1px solid rgba(10, 22, 40, 0.12);
+  border-radius: 0.75rem;
+}
+.dark .input-box {
+  background: #0D1622;
+  border-color: rgba(30, 41, 59, 0.9);
 }
 
-.dark ::-webkit-scrollbar-track {
-  background: #090D16;
+/* USDC / DIBS token badge chips */
+.token-badge {
+  background: #E2E8F0;
+  border: 1px solid rgba(10, 22, 40, 0.12);
+  color: #D97706 !important;
+  border-radius: 0.5rem;
+}
+.dark .token-badge {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(51, 65, 85, 0.8);
+  color: #FBBF24 !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 3px;
+/* Theme toggle button */
+.theme-btn {
+  background: white;
+  border: 1px solid rgba(10, 22, 40, 0.12);
+  color: #334155;
+  border-radius: 0.5rem;
+}
+.dark .theme-btn {
+  background: #0D1622;
+  border-color: rgba(30, 41, 59, 0.9);
+  color: #FBBF24;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+/* Tooltip / dropdown cards */
+.tooltip-card {
+  background: white;
+  border: 1px solid rgba(10, 22, 40, 0.10);
+  box-shadow: 0 4px 20px rgba(10, 22, 40, 0.10);
+  border-radius: 0.5rem;
+  color: #334155;
+}
+.dark .tooltip-card {
+  background: #0D1622;
+  border-color: rgba(30, 41, 59, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  color: #94A3B8;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+/* ============================================================
+   INPUTS — always readable
+   ============================================================ */
+.dark input, .dark textarea, .dark select {
+  color: #FFFFFF !important;
+  caret-color: #FBBF24;
+}
+.dark input::placeholder, .dark textarea::placeholder {
+  color: rgba(148, 163, 184, 0.45) !important;
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+/* Light mode inputs */
+input, textarea, select {
+  color: #0A1628;
+  caret-color: #D97706;
 }
+
+/* ============================================================
+   LIGHT MODE — force correct styles when system is dark
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  html.light body {
+    background: #F6F8FA !important;
+    color: #0A1628 !important;
+  }
+
+  /* Force ALL text elements to near-black in light mode */
+  html.light h1, html.light h2, html.light h3, html.light h4,
+  html.light p, html.light span, html.light a, html.light label,
+  html.light button, html.light td, html.light th, html.light li {
+    color: #0F172A;
+  }
+
+  /* Keep amber/gold elements their color but darker for readability */
+  html.light .text-amber-500,
+  html.light .text-amber-600 { color: #B45309 !important; }
+  html.light .text-amber-400 { color: #D97706 !important; }
+
+  /* Keep success/error colors */
+  html.light .text-success,
+  html.light [class*="text-emerald"] { color: #059669 !important; }
+  html.light .text-error,
+  html.light [class*="text-red"] { color: #DC2626 !important; }
+
+  /* Keep btn-gradient text black (it's on amber button) */
+  html.light .btn-gradient,
+  html.light .btn-gradient * { color: #0A0A0A !important; }
+
+  html.light input,
+  html.light textarea,
+  html.light select {
+    background: #F1F5F9 !important;
+    color: #0A1628 !important;
+    border-color: rgba(10, 22, 40, 0.12) !important;
+  }
+  html.light input::placeholder,
+  html.light textarea::placeholder {
+    color: rgba(10, 22, 40, 0.35) !important;
+  }
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #F6F8FA; }
+.dark ::-webkit-scrollbar-track { background: #030810; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #1E3047; }
