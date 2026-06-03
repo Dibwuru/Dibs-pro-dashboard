@@ -1,24 +1,19 @@
-ACT AS: A Senior Web3 Full-Stack Engineer and DevOps Specialist.
-TASK: Compile and deploy the upgraded 'DibsSwapVault.sol' contract to Arc Testnet, extract its new ABI/Address, and fully wire it to the user interface.
+ACT AS: A Senior Web3 Frontend Architect and Smart Contract Integration Specialist.
+TASK: Sync the Privy wallet connection state with the UI display and implement strict frontend validation to prevent gas-burning transaction reverts.
 
-CRITICAL PIPELINE PROTOCOLS:
+CRITICAL DISCONNECT FIXES:
 
-1. SMART CONTRACT COMPILATION & DEPLOYMENT:
-   - Locate the saved 'DibsSwapVault.sol' file in '/root/dibs-pro/'.
-   - Compile the contract using the project's established environment compilation tools.
-   - Deploy the contract to the Arc Testnet (Chain ID: 5042002). Utilize or update the configuration settings found in the project's deployment configuration files or use the existing framework in 'scripts/deploy-vault.ts'.
-   - Log and extract the newly generated deployment Contract Address and full ABI json map.
+1. WALLET STATE SYNCING (Navbar.tsx, Sidebar.tsx, & Layouts):
+   - Modify the layout components to read the 'wallets' array from Privy's 'useWallets()' hook.
+   - If 'wallets.length > 0', grab 'wallets[0].address', truncate it (e.g., 0x1234...5678), and display it inside the button instead of showing "Connect Wallet".
+   - Treat an active wallet in the 'wallets' array as a fully valid connected session so the user can interact with the swap/stake panels immediately without requiring a separate email login.
 
-2. CONFIGURATION & ABI SYNCHRONIZATION:
-   - Locate the frontend network/contract configuration files inside 'src/' (e.g., contract addresses file, constants file, or specific environment variables).
-   - Update the placeholder address with the newly deployed 'DibsSwapVault' testnet address.
-   - Replace the old contract ABI mapping with the new ABI containing the bi-directional swap, stake, and unstake function structures.
+2. FIX SWAP EXECUTOR & PREVENT GAS DRAINING (src/app/swap/page.tsx):
+   - VALUE PAYLOAD FIX: When executing the 'swapUsdcForDibs' transaction via Viem, ensure the user's input amount is explicitly passed inside the native 'value' field of the contract write call: 'value: parseUnits(swapInput, 18)'.
+   - LIQUIDITY CHECK: Before allowing a user to click "Swap", use a Viem public client read call to check the vault's active $DIBS balance: 'dibsToken.balanceOf(vaultAddress)'. 
+   - DEFENSIVE UI: If the vault's $DIBS balance is less than the expected 'dibsAmount' output, disable the swap button and display a red warning text: "Transaction blocked: Vault has insufficient $DIBS liquidity."
+   - STRICT ERROR TOASTS: Fix the transaction toast wrappers. If 'waitForTransactionReceipt' returns a reverted status or throws an RPC exception, display an explicit red 'toast.error("Transaction Failed/Reverted")' instead of a successful confirmation alert.
 
-3. FULL FRONTEND WIREUP:
-   - BI-DIRECTIONAL SWAP: Wire the UI toggle arrow. Connect the 'swapUsdcForDibs' function for the entry route. Connect the brand-new 'swapDibsForUsdc' function for the exit route, ensuring input values pass correctly.
-   - STAKE LOCKUP VALIDATION: Bind the 7/30/90/180-day selection pills to pass the chosen duration variable directly into the contract 'stake(amount, lockDays)' parameters. Ensure the warning confirmation modal triggers before execution.
-   - UNSTAKE SUPPORT: Build out or activate the Unstake panel/tab interface. Read the user's active stakes using the 'userStakes' mapping or 'getUserStakesCount' view function, and wire up the 'unstake(stakeIndex)' call to execute withdrawals for matured tokens.
-
-4. PRODUCTION VERIFICATION:
-   - Run 'npm run build' to ensure flawless frontend compilation against the newly mapped Web3 definitions.
-   - Git commit with message: "feat: deploy upgraded DibsSwapVault and completely wire bi-directional swap, staking tiers, and unstake execution" and push to main.
+3. BUILD & PRODUCTION DEPLOY:
+   - Run 'npm run build' to confirm clean type-checking and compilation.
+   - Git commit with message: "fix: sync Privy wallet connection state to UI and add defensive vault liquidity validation for swaps" and push to main.O

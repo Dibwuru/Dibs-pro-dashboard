@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
+import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -65,6 +65,7 @@ function saveProfile(data: ProfileData) {
 export function Sidebar() {
   const pathname = usePathname();
   const { authenticated, user, logout, login } = usePrivy();
+  const { wallets } = useWallets();
   const { connectWallet } = useConnectWallet();
   const { theme, setTheme } = useTheme();
   const { isMobileOpen, closeMobile, isProfileEditorOpen, openProfileEditor, closeProfileEditor } = useSidebar();
@@ -89,24 +90,29 @@ export function Sidebar() {
     if (stored.pfpUrl) setPfpUrl(stored.pfpUrl);
   }, []);
 
+  // External wallet (MetaMask etc.) takes priority; falls back to embedded wallet
+  const externalWalletAddress = wallets.length > 0 ? (wallets[0].address as string) : null;
+  const isWalletActive = !!externalWalletAddress || (authenticated && !!user?.wallet?.address);
+
   const emailHandle =
     user?.email?.address || user?.google?.email || "Authenticated User";
   const embeddedWalletAddress = user?.wallet?.address || "";
+  const displayedAddress = externalWalletAddress || embeddedWalletAddress;
   const truncatedWallet =
-    embeddedWalletAddress.slice(0, 6) + "..." + embeddedWalletAddress.slice(-4);
+    displayedAddress.slice(0, 6) + "..." + displayedAddress.slice(-4);
   const displayEmail = activeDisplayName || truncateEmail(emailHandle);
   const avatarLetter = (activeDisplayName || emailHandle).charAt(0).toUpperCase();
 
   const handleCopyAddress = useCallback(async () => {
-    if (!embeddedWalletAddress) return;
+    if (!displayedAddress) return;
     try {
-      await navigator.clipboard.writeText(embeddedWalletAddress);
+      await navigator.clipboard.writeText(displayedAddress);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard API may be unavailable
     }
-  }, [embeddedWalletAddress]);
+  }, [displayedAddress]);
 
   const handleSaveProfile = useCallback(() => {
     const name = displayName.trim();
@@ -189,7 +195,7 @@ export function Sidebar() {
                 <p className="text-xs font-medium text-amber-700 dark:text-amber-300/90 truncate">
                   {displayEmail}
                 </p>
-                {embeddedWalletAddress && (
+                {displayedAddress && (
                   <button
                     onClick={handleCopyAddress}
                     className="flex items-center gap-1 text-[10px] font-mono text-amber-600/70 dark:text-amber-500/70 hover:text-amber-700 dark:hover:text-amber-400 transition-colors mt-0.5"
@@ -217,6 +223,38 @@ export function Sidebar() {
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
             </button>
+          </div>
+        ) : isWalletActive ? (
+          /* External wallet connected (MetaMask etc.) — show truncated address */
+          <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/10 border-2 border-amber-400/50 dark:border-amber-500/40 flex items-center justify-center flex-shrink-0">
+                <span className="text-base font-bold text-amber-600 dark:text-amber-400">
+                  {truncatedWallet.slice(2, 3).toUpperCase()}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-300/90">
+                  Connected
+                </p>
+                <button
+                  onClick={handleCopyAddress}
+                  className="flex items-center gap-1 text-[10px] font-mono text-amber-600/70 dark:text-amber-500/70 hover:text-amber-700 dark:hover:text-amber-400 transition-colors mt-0.5"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-2.5 h-2.5 text-success" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      {truncatedWallet}
+                      <Copy className="w-2.5 h-2.5 opacity-60" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="space-y-2">

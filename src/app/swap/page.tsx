@@ -28,7 +28,7 @@ export default function SwapPage() {
   const { authenticated, user } = usePrivy();
   const { wallets: swapWallets } = useWallets();
 
-  const isWalletConnected = authenticated && !!user?.wallet?.address;
+  const isWalletConnected = (authenticated && !!user?.wallet?.address) || swapWallets.length > 0;
 
   const activeSwapWallet = swapWallets[0];
   const activeSwapChainId = activeSwapWallet
@@ -156,7 +156,55 @@ export default function SwapPage() {
       ? swapInputNum > dibsBalanceNum
       : swapInputNum > gasBalance;
 
-  const canSwap = isValidInput && !isOverBalance;
+  // --- Vault DIBS liquidity check ---
+  const [vaultDibsBalance, setVaultDibsBalance] = useState<bigint | null>(null);
+
+  useEffect(() => {
+    if (!isWalletConnected) {
+      setVaultDibsBalance(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchVaultLiquidity = async () => {
+      try {
+        const bal = await publicClient.readContract({
+          address: DIBS_CONTRACT_ADDRESS,
+          abi: dibsBalanceOfABI,
+          functionName: "balanceOf",
+          args: [VAULT_ADDRESS],
+        });
+        if (!cancelled) setVaultDibsBalance(bal);
+      } catch {
+        if (!cancelled) setVaultDibsBalance(null);
+      }
+    };
+    fetchVaultLiquidity();
+    const interval = setInterval(fetchVaultLiquidity, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isWalletConnected]);
+
+  // Compute expected DIBS output directly (avoid toLocaleString → parseFloat roundtrip)
+  const expectedDibsOutput = useMemo(() => {
+    const parsed = parseFloat(swapInput);
+    if (isNaN(parsed) || parsed <= 0) return 0;
+    return fromToken === "USDC" ? parsed * EXCHANGE_RATE : 0;
+  }, [swapInput, fromToken]);
+
+  const vaultHasLiquidity =
+    fromToken !== "USDC" ||
+    vaultDibsBalance == null ||
+    expectedDibsOutput <= 0 ||
+    vaultDibsBalance >= parseUnits(expectedDibsOutput.toString(), 18);
+  const isLowLiquidity =
+    fromToken === "USDC" &&
+    expectedDibsOutput > 0 &&
+    vaultDibsBalance != null &&
+    vaultDibsBalance < parseUnits(expectedDibsOutput.toString(), 18);
+
+  const canSwap = isValidInput && !isOverBalance && vaultHasLiquidity;
 
   // --- Execute swap with receipt waiting and balance refresh ---
   const handleSwap = useCallback(async () => {
@@ -206,7 +254,7 @@ export default function SwapPage() {
             });
             const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
             if (approveReceipt.status !== "success") {
-              throw new Error("DIBS approval reverted on-chain");
+              throw new Error("Transaction Failed/Reverted — Approval step failed");
             }
 
             // Step 2: Swap DIBS for USDC
@@ -221,7 +269,7 @@ export default function SwapPage() {
           // Wait for on-chain confirmation
           const receipt = await publicClient.waitForTransactionReceipt({ hash });
           if (receipt.status !== "success") {
-            throw new Error("Transaction reverted on-chain");
+            throw new Error("Transaction Failed/Reverted");
           }
 
           // Parse AssetSwapped event to get actual amount received
@@ -285,12 +333,17 @@ export default function SwapPage() {
             ? "Swapping USDC for DIBS..."
             : "Swapping DIBS for USDC...",
           success: "Swap completed successfully!",
-          error: (err) => `Swap failed: ${(err as Error).message.slice(0, 80)}`,
+          error: (err) => {
+            const msg = (err as Error).message || "";
+            return msg.includes("Transaction Failed/Reverted")
+              ? "Transaction Failed/Reverted"
+              : `Swap failed: ${msg.slice(0, 80)}`;
+          },
         }
       );
       setSwapInput("");
     } catch {
-      // toast already handled
+      // toast already handled by toast.promise
     } finally {
       setIsSwapping(false);
     }
@@ -401,12 +454,19 @@ export default function SwapPage() {
             </p>
           )}
 
+          {/* Vault liquidity warning */}
+          {isLowLiquidity && (
+            <p className="text-xs font-semibold text-error px-1 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+              Transaction blocked: Vault has insufficient $DIBS liquidity.
+            </p>
+          )}
+
           {/* Action */}
           <Button
             size="lg"
             className="w-full"
             disabled={
-              !isWalletConnected || !canSwap || isSwapping || isWrongNetwork
+              !isWalletConnected || !canSwap || isSwapping || isWrongNetwork || isLowLiquidity
             }
             loading={isSwapping}
             onClick={handleSwap}

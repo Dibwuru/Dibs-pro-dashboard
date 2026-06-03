@@ -59,7 +59,7 @@ export default function StakePage() {
   const { authenticated, user, login } = usePrivy();
   const { wallets: stakeWallets } = useWallets();
 
-  const isWalletConnected = authenticated && !!user?.wallet?.address;
+  const isWalletConnected = (authenticated && !!user?.wallet?.address) || stakeWallets.length > 0;
 
   const activeStakeWallet = stakeWallets[0];
   const activeStakeChainId = activeStakeWallet
@@ -180,7 +180,7 @@ export default function StakePage() {
           });
           const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
           if (approveReceipt.status !== "success") {
-            throw new Error("DIBS approval reverted on-chain");
+            throw new Error("Transaction Failed/Reverted — Approval step failed");
           }
 
           // Step 2: Call vault.stake(amount, lockDays)
@@ -193,7 +193,7 @@ export default function StakePage() {
 
           const receipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash });
           if (receipt.status !== "success") {
-            throw new Error("Transaction reverted on-chain");
+            throw new Error("Transaction Failed/Reverted");
           }
 
           // Refresh DIBS balance and user stakes
@@ -227,7 +227,12 @@ export default function StakePage() {
         {
           loading: `Staking DIBS for ${lockPeriodDays} days...`,
           success: "Stake confirmed!",
-          error: (err) => `Staking failed: ${(err as Error).message.slice(0, 80)}`,
+          error: (err) => {
+            const msg = (err as Error).message || "";
+            return msg.includes("Transaction Failed/Reverted")
+              ? "Transaction Failed/Reverted"
+              : `Staking failed: ${msg.slice(0, 80)}`;
+          },
         }
       );
 
@@ -326,7 +331,7 @@ export default function StakePage() {
 
           const receipt = await publicClient.waitForTransactionReceipt({ hash: unstakeHash });
           if (receipt.status !== "success") {
-            throw new Error("Unstake reverted on-chain");
+            throw new Error("Transaction Failed/Reverted");
           }
 
           // Refresh balances and stakes
@@ -357,7 +362,12 @@ export default function StakePage() {
         {
           loading: "Unstaking DIBS...",
           success: "Unstake confirmed!",
-          error: (err) => `Unstake failed: ${(err as Error).message.slice(0, 80)}`,
+          error: (err) => {
+            const msg = (err as Error).message || "";
+            return msg.includes("Transaction Failed/Reverted")
+              ? "Transaction Failed/Reverted"
+              : `Unstake failed: ${msg.slice(0, 80)}`;
+          },
         }
       );
     } catch {

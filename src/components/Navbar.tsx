@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
+import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
 import { createPublicClient, http, formatEther } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
@@ -17,6 +17,7 @@ const publicClient = createPublicClient({
 export function Navbar() {
   const { theme, setTheme } = useTheme();
   const { login, authenticated, logout, user } = usePrivy();
+  const { wallets } = useWallets();
   const { connectWallet } = useConnectWallet();
   const { openMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
@@ -25,7 +26,10 @@ export function Navbar() {
 
   useEffect(() => setMounted(true), []);
 
-  const activeAddress = user?.wallet?.address;
+  // External wallet (MetaMask etc.) takes priority; falls back to embedded wallet
+  const externalWalletAddress = wallets.length > 0 ? (wallets[0].address as string) : null;
+  const activeAddress = (externalWalletAddress || user?.wallet?.address) as `0x${string}` | undefined;
+  const isWalletActive = !!externalWalletAddress || (authenticated && !!user?.wallet?.address);
 
   const fetchGasBalance = useCallback(async () => {
     if (!activeAddress) {
@@ -54,20 +58,21 @@ export function Navbar() {
   const emailHandle =
     user?.email?.address || user?.google?.email || "Authenticated User";
   const embeddedWalletAddress = user?.wallet?.address || "";
-  const truncatedEmbeddedAddress = embeddedWalletAddress
-    ? `${embeddedWalletAddress.slice(0, 6)}...${embeddedWalletAddress.slice(-4)}`
+  const displayedAddress = externalWalletAddress || embeddedWalletAddress;
+  const truncatedAddress = displayedAddress
+    ? `${displayedAddress.slice(0, 6)}...${displayedAddress.slice(-4)}`
     : "";
 
   const handleCopyAddress = useCallback(async () => {
-    if (!embeddedWalletAddress) return;
+    if (!displayedAddress) return;
     try {
-      await navigator.clipboard.writeText(embeddedWalletAddress);
+      await navigator.clipboard.writeText(displayedAddress);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard API may be unavailable in insecure contexts
     }
-  }, [embeddedWalletAddress]);
+  }, [displayedAddress]);
 
   if (!mounted) return null;
 
@@ -150,13 +155,13 @@ export function Navbar() {
                       {emailHandle}
                     </span>
                     {/* Right segment: Wallet address with copy */}
-                    {embeddedWalletAddress ? (
+                    {displayedAddress ? (
                       <button
                         onClick={handleCopyAddress}
                         className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-mono font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors group"
                         title="Click to copy wallet address"
                       >
-                        <span>{copied ? "Copied!" : truncatedEmbeddedAddress}</span>
+                        <span>{copied ? "Copied!" : truncatedAddress}</span>
                         {copied ? (
                           <Check className="w-3 h-3 text-success" />
                         ) : (
@@ -176,6 +181,27 @@ export function Navbar() {
                     title="Sign out"
                   >
                     <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : isWalletActive ? (
+                /* External wallet connected (MetaMask etc.) — show truncated address */
+                <div className="hidden sm:flex items-center gap-2">
+                  <button
+                    onClick={handleCopyAddress}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:scale-105 active:scale-[0.97] transition-all"
+                    title="Click to copy wallet address"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        {truncatedAddress}
+                        <Copy className="w-3 h-3 opacity-70" />
+                      </>
+                    )}
                   </button>
                 </div>
               ) : (

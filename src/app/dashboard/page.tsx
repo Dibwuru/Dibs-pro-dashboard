@@ -36,7 +36,7 @@ export default function DashboardPage() {
   const { authenticated, user, login } = usePrivy();
   const { wallets: dashboardWallets } = useWallets();
 
-  const isWalletConnected = authenticated && !!user?.wallet?.address;
+  const isWalletConnected = (authenticated && !!user?.wallet?.address) || dashboardWallets.length > 0;
 
   const activeDashboardWallet = dashboardWallets[0];
   const activeDashboardChainId = activeDashboardWallet
