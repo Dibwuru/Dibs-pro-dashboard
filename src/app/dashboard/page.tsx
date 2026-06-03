@@ -6,8 +6,8 @@ import { Button } from "@/components/Button";
 
 export default function DashboardPage() {
   return (
-    <div className="flex flex-col flex-1 px-4 py-24">
-      <div className="w-full max-w-5xl mx-auto">
+    <div className="flex flex-col flex-1 py-24">
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gradient mb-2">Dashboard</h1>

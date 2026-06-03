@@ -1,20 +1,18 @@
-ACT AS: A Senior Web3 Frontend Architect and Code Merge Specialist.
-TASK: Carefully merge new UI/UX designs from the /root/friend-ui directory into the current production codebase WITHOUT breaking the existing Viem/Privy transaction logic.
+ACT AS: A Lead UI/UX Frontend Developer.
+TASK: Fix the horizontal and vertical alignment of the main content areas in the application so they sit perfectly centered within the viewport.
 
-CRITICAL MERGE PROTOCOL:
-1. READ THE NEW UI FILES:
-   - Analyze the updated frontend files located directly in the '/root/friend-ui' directory. Pay special attention to tailwind.config.ts, src/app/globals.css, src/app/layout.tsx, src/app/page.tsx, and any updated components in the src/components/ folder.
-   
-2. SURGICAL EXTRACTION (VISUALS ONLY):
-   - Extract the new Tailwind CSS classes, HTML structural changes, color palettes, animations, and typography implemented by the UI designer.
-   - Apply these visual updates to our current production files in '/root/dibs-pro/src/' and update the root configuration files (like tailwind.config.ts) if the designer added new custom theme colors or fonts.
+CRITICAL LAYOUT CORRECTIONS:
+1. CENTER THE AUTH GATEWAY (Landing Page):
+   - Locate the unauthenticated landing page view (the Arctor Terminal login card) in 'src/app/page.tsx'.
+   - Update its outermost wrapper div to use strict Flexbox centering. It must occupy the full available height and center its children.
+   - Required Tailwind classes for the wrapper: 'flex flex-col items-center justify-center min-h-[80vh] w-full'.
 
-3. PRESERVE CORE WEB3 LOGIC (DO NOT OVERWRITE):
-   - You MUST absolutely preserve our current Privy 'useWallets()' logic.
-   - You MUST absolutely preserve our standalone Viem 'createWalletClient' and 'createPublicClient' execution paths.
-   - You MUST absolutely preserve our 'waitForTransactionReceipt' synchronization and state-refreshing logic.
-   - DO NOT re-introduce any Wagmi hooks ('useWriteContract').
+2. CENTER THE DASHBOARD CONTENT:
+   - Locate the authenticated dashboard view (where the Balance, Staked, Sent cards are displayed).
+   - The content is currently hugging the left edge. Wrap the main dashboard content (Title, Grid cards, Recent Activity) inside a constrained, centered container.
+   - Required Tailwind classes for the wrapper: 'max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8'.
    
-4. PRODUCTION VERIFICATION:
-   - Run 'npm run build' to ensure the newly merged UI code compiles flawlessly with our established Web3 backend logic.
-   - Push to production: git add ., commit with message "ui: merge updated designer frontend aesthetics from friend-ui while preserving core web3 transaction pipelines", and push origin main.
+3. VERIFICATION & DEPLOY:
+   - Do NOT alter any Web3 logic, Privy hooks, or Viem configurations.
+   - Run 'npm run build' to ensure zero errors.
+   - Git commit with message: "ui: align landing page and dashboard containers for perfect center positioning" and push origin main.

@@ -765,7 +765,7 @@ export default function Home() {
   if (ready && !authenticated) {
     return (
       <div
-        className="fixed inset-0 z-[60] flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-300"
+        className="flex flex-col items-center justify-center min-h-[80vh] w-full relative overflow-hidden transition-colors duration-300"
         style={{ background: isDark ? "#030810" : "#F6F8FA" }}
       >
         {/* Ambient glow */}
@@ -861,7 +861,7 @@ export default function Home() {
       )}
 
       <section className="relative flex-1 overflow-hidden">
-        <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10">
+        <div className="relative max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
           {/* ===== DASHBOARD VIEW ===== */}
           <div className="space-y-8">
             {/* Balance Hero Card */}
