@@ -1,19 +1,19 @@
-ACT AS: A Senior Frontend Architect and Accessibility Specialist.
-TASK: Implement layout centering and optimize mobile contrast ratios simultaneously, building directly upon the newly merged designer UI.
+ACT AS: A Senior Web3 React Developer.
+TASK: Rewire the existing Web3 state and logic hooks back into the newly merged UI components.
 
-CRITICAL PROTOCOLS:
+CRITICAL REWIRING PROTOCOLS:
+1. AUTHENTICATION BINDING:
+   - Locate the 'Connect Wallet' and 'Sign In' buttons in the new landing page and Navbar components.
+   - Reattach the Privy 'login()' and 'logout()' execution hooks to these specific buttons' onClick handlers.
 
-1. HORIZONTAL & VERTICAL CENTERING:
-   - USER INTERFACE GATEWAY (src/app/page.tsx): Update the outermost wrapper div for the unauthenticated landing card to use strict Flexbox centering. It must span the full available viewport height. Required Tailwind: 'flex flex-col items-center justify-center min-h-[80vh] w-full'.
-   - DASHBOARD VIEW: Wrap the main authenticated dashboard content layout (Title, Grid cards, Recent Activity) inside a constrained, horizontally centered container so it does not hug the left wall. Required Tailwind: 'max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8'.
+2. INPUT & STATE REATTACHMENT:
+   - In the Swap and Stake views, ensure the user's live token balances are successfully passed into the new UI text displays.
+   - Bind the new text input fields (where users type amounts) back to the React state variables that track input values.
 
-2. LANDING PAGE & MOBILE CONTRAST FIXES:
-   - BOTTOM NAVIGATION BAR: Locate the mobile bottom navigation component. The unselected icons/text (Swap, Stake) are rendering dark-on-dark. Force the inactive text/icons to be clearly visible using 'text-zinc-400' or 'text-white/60'.
-   - CARD FOOTER TEXT: Locate the "Powered by Arc Testnet" text on the landing page card (src/app/page.tsx). It is washing out on the white card. Ensure it uses a darker text class like 'text-zinc-500' in light mode, and 'dark:text-zinc-400' for dark mode so it is always legible.
-
-3. ABSOLUTE LOGIC PRESERVATION:
-   - Do NOT modify, alter, or re-route any underlying Web3 execution paths, Privy hooks ('useWallets()'), or standalone Viem client configurations.
+3. TRANSACTION EXECUTION:
+   - Reattach the Viem transaction calls to the primary 'Swap' and 'Stake' submission buttons.
+   - Ensure the 'waitForTransactionReceipt' logic correctly triggers the new UI loading spinners or success states.
 
 4. BUILD & DEPLOY:
-   - Run 'npm run build' to verify a flawless compilation.
-   - Commit and push to main with message: "ui: align layout containers and fix landing page / bottom nav contrast visibility".
+   - Run 'npm run build' to verify all hooks are correctly imported and bound.
+   - Commit and push to main with message: "fix: rewire Viem and Privy logic to new designer UI components".

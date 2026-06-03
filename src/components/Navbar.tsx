@@ -1,11 +1,10 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http, formatEther } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
-import { Wallet, Menu, Coins, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
+import { Menu, Coins, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/SidebarContext";
@@ -16,9 +15,6 @@ const publicClient = createPublicClient({
 });
 
 export function Navbar() {
-  const { address: wagmiAddress, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
   const { theme, setTheme } = useTheme();
   const { login, authenticated, logout, user } = usePrivy();
   const { openMobile } = useSidebar();
@@ -28,7 +24,7 @@ export function Navbar() {
 
   useEffect(() => setMounted(true), []);
 
-  const activeAddress = wagmiAddress || user?.wallet?.address;
+  const activeAddress = user?.wallet?.address;
 
   const fetchGasBalance = useCallback(async () => {
     if (!activeAddress) {
@@ -52,9 +48,6 @@ export function Navbar() {
     const interval = setInterval(fetchGasBalance, 8000);
     return () => clearInterval(interval);
   }, [fetchGasBalance]);
-
-  const formatAddress = (addr: string) =>
-    `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   // --- Identity capsule helpers ---
   const emailHandle =
@@ -193,39 +186,7 @@ export function Navbar() {
                 </button>
               )}
 
-              {/* Wallet Connection */}
-              {isConnected ? (
-                <div className="hidden sm:flex items-center gap-2">
-                  <div className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-success/20 border border-success/25">
-                    <div className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
-                    <span className="text-sm font-medium text-success tracking-wide">
-                      {wagmiAddress ? formatAddress(wagmiAddress) : "Connected"}
-                    </span>
-                  </div>
-                  <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/20 border border-success/30">
-                    <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse flex-shrink-0" />
-                    <span className="text-xs font-medium text-success tracking-wide">
-                      Arc Testnet
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => disconnect()}
-                    className="px-3 py-2 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-error hover:bg-error/5 transition-all"
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (connectors[0]) connect({ connector: connectors[0] });
-                  }}
-                  className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold btn-gradient text-white shadow-lg shadow-primary/20 flex-shrink-0"
-                >
-                  <Wallet className="w-4 h-4" />
-                  Connect Wallet
-                </button>
-              )}
+
             </div>
           </div>
         </div>

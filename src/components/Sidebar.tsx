@@ -1,7 +1,6 @@
 "use client";
 
 import { usePrivy } from "@privy-io/react-auth";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,7 +14,6 @@ import {
   Settings,
   Sun,
   Moon,
-  Wallet,
 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
@@ -64,16 +62,9 @@ function saveProfile(data: ProfileData) {
   }
 }
 
-function formatAddress(addr: string) {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
 export function Sidebar() {
   const pathname = usePathname();
   const { authenticated, user, logout, login } = usePrivy();
-  const { address: wagmiAddress, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
   const { theme, setTheme } = useTheme();
   const { isMobileOpen, closeMobile, isProfileEditorOpen, openProfileEditor, closeProfileEditor } = useSidebar();
   const [mounted, setMounted] = useState(false);
@@ -176,37 +167,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom area: Wallet + Profile + Theme + Footer */}
+      {/* Bottom area: Profile + Theme + Footer */}
       <div className="px-3 pb-5 space-y-3">
-        {/* Wagmi Wallet Connect / Disconnect */}
-        {isConnected ? (
-          <div className="rounded-xl border border-success/20 bg-success/[0.04] backdrop-blur-md overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3">
-              <div className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
-              <span className="text-sm font-medium text-success tracking-wide truncate">
-                {wagmiAddress ? formatAddress(wagmiAddress) : "Connected"}
-              </span>
-            </div>
-            <button
-              onClick={() => disconnect()}
-              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-success/10"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Disconnect Wallet
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => {
-              if (connectors[0]) connect({ connector: connectors[0] });
-            }}
-            className="flex items-center gap-2 w-full px-4 py-3 rounded-xl text-sm font-semibold btn-gradient text-black shadow-lg shadow-primary/20"
-          >
-            <Wallet className="w-4 h-4" />
-            Connect Wallet
-          </button>
-        )}
-
         {/* Privy Identity Capsule */}
         {authenticated ? (
           <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
