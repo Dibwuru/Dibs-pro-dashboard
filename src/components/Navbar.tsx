@@ -31,6 +31,22 @@ export function Navbar() {
   const activeAddress = (externalWalletAddress || user?.wallet?.address) as `0x${string}` | undefined;
   const isWalletActive = !!externalWalletAddress || (authenticated && !!user?.wallet?.address);
 
+  // Unified disconnect: logout Privy session AND disconnect the external wallet
+  const handleDisconnect = useCallback(async () => {
+    try {
+      if (wallets.length > 0) {
+        await wallets[0].disconnect();
+      }
+    } catch {
+      // wallet disconnect may throw if already disconnected
+    }
+    try {
+      await logout();
+    } catch {
+      // logout may be no-op if not authenticated
+    }
+  }, [wallets, logout]);
+
   const fetchGasBalance = useCallback(async () => {
     if (!activeAddress) {
       setGasBalance("--");
@@ -174,17 +190,17 @@ export function Navbar() {
                       </span>
                     )}
                   </div>
-                  {/* Logout micro-toggle */}
+                  {/* Unified disconnect micro-toggle */}
                   <button
-                    onClick={() => logout()}
+                    onClick={handleDisconnect}
                     className="p-2 rounded-lg text-amber-500/70 hover:text-error hover:bg-error/5 transition-all"
-                    title="Sign out"
+                    title="Disconnect"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : isWalletActive ? (
-                /* External wallet connected (MetaMask etc.) — show truncated address */
+                /* External wallet connected (MetaMask etc.) — show truncated address + disconnect */
                 <div className="hidden sm:flex items-center gap-2">
                   <button
                     onClick={handleCopyAddress}
@@ -202,6 +218,14 @@ export function Navbar() {
                         <Copy className="w-3 h-3 opacity-70" />
                       </>
                     )}
+                  </button>
+                  {/* Disconnect button for external wallet */}
+                  <button
+                    onClick={handleDisconnect}
+                    className="p-2 rounded-lg text-amber-500/70 hover:text-error hover:bg-error/5 transition-all"
+                    title="Disconnect wallet"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (

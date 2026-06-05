@@ -1,19 +1,23 @@
-ACT AS: A Senior Web3 Frontend Architect and Smart Contract Integration Specialist.
-TASK: Sync the Privy wallet connection state with the UI display and implement strict frontend validation to prevent gas-burning transaction reverts.
+ACT AS: A Senior Web3 Frontend Architect and UX Specialist.
+TASK: Fix the user authentication state UI, implement a unified disconnect flow, and correct the USDC balance reading on the swap page.
 
-CRITICAL DISCONNECT FIXES:
+CRITICAL UX REPAIRS:
 
-1. WALLET STATE SYNCING (Navbar.tsx, Sidebar.tsx, & Layouts):
-   - Modify the layout components to read the 'wallets' array from Privy's 'useWallets()' hook.
-   - If 'wallets.length > 0', grab 'wallets[0].address', truncate it (e.g., 0x1234...5678), and display it inside the button instead of showing "Connect Wallet".
-   - Treat an active wallet in the 'wallets' array as a fully valid connected session so the user can interact with the swap/stake panels immediately without requiring a separate email login.
+1. GLOBAL DISCONNECT FUNCTIONALITY (Navbar & Sidebar):
+   - Import 'usePrivy' (for logout) and extract the 'disconnect' method from the connected wallet via 'useWallets()'.
+   - Wherever the connected wallet address pill is displayed, add an explicit "Disconnect" button or icon next to it.
+   - When clicked, execute both 'logout()' AND 'wallets[0].disconnect()' to ensure the session is completely and cleanly wiped.
 
-2. FIX SWAP EXECUTOR & PREVENT GAS DRAINING (src/app/swap/page.tsx):
-   - VALUE PAYLOAD FIX: When executing the 'swapUsdcForDibs' transaction via Viem, ensure the user's input amount is explicitly passed inside the native 'value' field of the contract write call: 'value: parseUnits(swapInput, 18)'.
-   - LIQUIDITY CHECK: Before allowing a user to click "Swap", use a Viem public client read call to check the vault's active $DIBS balance: 'dibsToken.balanceOf(vaultAddress)'. 
-   - DEFENSIVE UI: If the vault's $DIBS balance is less than the expected 'dibsAmount' output, disable the swap button and display a red warning text: "Transaction blocked: Vault has insufficient $DIBS liquidity."
-   - STRICT ERROR TOASTS: Fix the transaction toast wrappers. If 'waitForTransactionReceipt' returns a reverted status or throws an RPC exception, display an explicit red 'toast.error("Transaction Failed/Reverted")' instead of a successful confirmation alert.
+2. LANDING PAGE STATE FIX (src/app/page.tsx):
+   - Read the connection state: if 'wallets.length > 0' or 'authenticated' is true, DO NOT show the "Connect Wallet" or "Sign In with Email" buttons in the central hero card.
+   - Replace them dynamically with a "Go to Swap Terminal" action button that routes to the '/swap' page, and a secondary "Disconnect" button.
 
-3. BUILD & PRODUCTION DEPLOY:
-   - Run 'npm run build' to confirm clean type-checking and compilation.
-   - Git commit with message: "fix: sync Privy wallet connection state to UI and add defensive vault liquidity validation for swaps" and push to main.O
+3. FIX USDC BALANCE BLINDNESS (src/app/swap/page.tsx):
+   - The Arc Testnet natively uses USDC as its gas token. USDC is NOT an ERC20 token on this network.
+   - Remove any ERC20 'balanceOf' checks for USDC on the frontend.
+   - Import and use viem's publicClient 'getBalance({ address: userAddress })' (or wagmi's useBalance) to fetch the user's native token balance.
+   - Display this native balance as the user's available USDC balance on the Swap UI, and use it for the "Insufficient balance" validation check before allowing a native payable swap.
+
+4. BUILD & DEPLOY:
+   - Run 'npm run build' to confirm clean compilation.
+   - Git commit with message: "fix: resolve auth UI state, add global disconnect, and map USDC to native balance" and push to main.

@@ -39,7 +39,7 @@ export default function SwapPage() {
     activeSwapChainId !== null &&
     activeSwapChainId !== ARC_TESTNET_CHAIN_ID;
 
-  const userAddress = (user?.wallet?.address as `0x${string}` | undefined);
+  const userAddress = ((user?.wallet?.address || swapWallets[0]?.address) as `0x${string}` | undefined);
 
   // --- Token flip state ---
   const [fromToken, setFromToken] = useState<"USDC" | "DIBS">("USDC");
@@ -446,6 +446,18 @@ export default function SwapPage() {
                 : `1 DIBS ≈ ${(1 / EXCHANGE_RATE).toFixed(2)} USDC`}
             </span>
           </div>
+
+          {/* Native USDC Balance Display */}
+          {isWalletConnected && (
+            <div className="input-box flex items-center justify-between px-3 py-2 rounded-lg">
+              <span className="text-xs text-slate-400 dark:text-slate-500">
+                Your USDC Balance
+              </span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                {gasBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC
+              </span>
+            </div>
+          )}
 
           {/* Balance error */}
           {isOverBalance && (

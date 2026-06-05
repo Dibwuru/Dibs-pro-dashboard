@@ -94,6 +94,22 @@ export function Sidebar() {
   const externalWalletAddress = wallets.length > 0 ? (wallets[0].address as string) : null;
   const isWalletActive = !!externalWalletAddress || (authenticated && !!user?.wallet?.address);
 
+  // Unified disconnect: logout Privy session AND disconnect the external wallet
+  const handleDisconnect = useCallback(async () => {
+    try {
+      if (wallets.length > 0) {
+        await wallets[0].disconnect();
+      }
+    } catch {
+      // wallet disconnect may throw if already disconnected
+    }
+    try {
+      await logout();
+    } catch {
+      // logout may be no-op if not authenticated
+    }
+  }, [wallets, logout]);
+
   const emailHandle =
     user?.email?.address || user?.google?.email || "Authenticated User";
   const embeddedWalletAddress = user?.wallet?.address || "";
@@ -217,15 +233,15 @@ export function Sidebar() {
             </div>
 
             <button
-              onClick={() => logout()}
+              onClick={handleDisconnect}
               className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-amber-500/10"
             >
               <LogOut className="w-3.5 h-3.5" />
-              Sign Out
+              Disconnect
             </button>
           </div>
         ) : isWalletActive ? (
-          /* External wallet connected (MetaMask etc.) — show truncated address */
+          /* External wallet connected (MetaMask etc.) — show truncated address + disconnect */
           <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/10 border-2 border-amber-400/50 dark:border-amber-500/40 flex items-center justify-center flex-shrink-0">
@@ -255,6 +271,13 @@ export function Sidebar() {
                 </button>
               </div>
             </div>
+            <button
+              onClick={handleDisconnect}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-amber-500/10"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Disconnect
+            </button>
           </div>
         ) : (
           <div className="space-y-2">

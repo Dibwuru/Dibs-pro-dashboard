@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Shield,
@@ -23,6 +24,7 @@ import {
   Plus,
   ArrowLeftRight,
   Info,
+  LogOut,
 } from "lucide-react";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { GlassCard } from "@/components/GlassCard";
@@ -117,11 +119,13 @@ interface ActivityEntry {
 const EXCHANGE_RATE = 10; // 1 USDC = 10 DIBS
 
 export default function Home() {
-  const { authenticated, ready, user, login } = usePrivy();
+  const { authenticated, ready, user, login, logout } = usePrivy();
   const { connectWallet } = useConnectWallet();
   const { wallets: dashboardWallets } = useWallets();
 
-  const isWalletConnected = authenticated && !!user?.wallet?.address;
+  // External wallet address fallback for users who connect via MetaMask without Privy auth
+  const externalWalletAddress = dashboardWallets.length > 0 ? (dashboardWallets[0].address as string) : null;
+  const isWalletConnected = (authenticated && !!user?.wallet?.address) || !!externalWalletAddress;
 
   const activeDashboardWallet = dashboardWallets[0];
   const activeDashboardChainId = activeDashboardWallet
@@ -135,8 +139,24 @@ export default function Home() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
 
-  const displayAddress = user?.wallet?.address;
-  const userAddress = (user?.wallet?.address as `0x${string}` | undefined);
+  const displayAddress = user?.wallet?.address || externalWalletAddress;
+  const userAddress = ((user?.wallet?.address || externalWalletAddress) as `0x${string}` | undefined);
+
+  // Unified disconnect: logout Privy session AND disconnect the external wallet
+  const handleDisconnect = useCallback(async () => {
+    try {
+      if (dashboardWallets.length > 0) {
+        await dashboardWallets[0].disconnect();
+      }
+    } catch {
+      // wallet disconnect may throw if already disconnected
+    }
+    try {
+      await logout();
+    } catch {
+      // logout may be no-op if not authenticated
+    }
+  }, [dashboardWallets, logout]);
 
   // --- Live $DIBS Balance Fetching (polls every 8 seconds) ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
@@ -763,7 +783,10 @@ export default function Home() {
   }, [showReceiveModal, showSendModal, showStakeModal]);
 
   // ===== AUTH GATEWAY: Matte Obsidian Onboarding Gateway =====
+  // Show gateway when not authenticated via Privy.
+  // If an external wallet is connected, show "Go to Swap" + "Disconnect" instead of login CTAs.
   if (ready && !authenticated) {
+    const hasExternalWallet = dashboardWallets.length > 0;
     return (
       <div
         className="flex flex-col items-center justify-center min-h-[80vh] w-full relative overflow-hidden transition-colors duration-300"
@@ -812,6 +835,58 @@ export default function Home() {
           </p>
 
           {/* CTA: Connect Wallet (Primary) */}
+          {hasExternalWallet ? (
+            <>
+              {/* Connected state: Go to Swap Terminal */}
+              <Link
+                href="/swap"
+                className="group relative w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
+                style={isDark ? {
+                  background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",
+                  border: "none",
+                  color: "#0A0A0A",
+                  boxShadow: "0 6px 24px rgba(251,191,36,0.40)",
+                } : {
+                  background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",
+                  border: "none",
+                  color: "#0A0A0A",
+                  boxShadow: "0 6px 24px rgba(251,191,36,0.40)",
+                }}
+              >
+                <ArrowLeftRight className="w-5 h-5" />
+                <span className="font-bold">Go to Swap Terminal</span>
+              </Link>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 w-full my-5">
+                <div className="flex-1 h-px" style={{ background: isDark ? "rgba(251,191,36,0.12)" : "rgba(10,22,40,0.08)" }} />
+                <span className="text-xs font-medium text-slate-400 dark:text-slate-500">or</span>
+                <div className="flex-1 h-px" style={{ background: isDark ? "rgba(251,191,36,0.12)" : "rgba(10,22,40,0.08)" }} />
+              </div>
+
+              {/* CTA: Disconnect */}
+              <button
+                onClick={handleDisconnect}
+                className="group relative w-full inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
+                style={isDark ? {
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(239,68,68,0.40)",
+                  color: "#FCA5A5",
+                  boxShadow: "0 0 40px rgba(239,68,68,0.08)",
+                } : {
+                  background: "rgba(10,22,40,0.03)",
+                  border: "1px solid rgba(239,68,68,0.35)",
+                  color: "#DC2626",
+                  boxShadow: "none",
+                }}
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="font-bold">Disconnect</span>
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Disconnected state: Connect Wallet */}
           <button
             onClick={() => connectWallet()}
             className="group relative w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
@@ -855,6 +930,8 @@ export default function Home() {
           >
             <span className="font-bold">Sign In with Email</span>
           </button>
+            </>
+          )}
 
           {/* Footer */}
           <p className="mt-8 text-xs tracking-wide text-zinc-500 dark:text-zinc-400">
