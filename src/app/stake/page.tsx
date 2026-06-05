@@ -227,7 +227,11 @@ export default function StakePage() {
           loading: `Staking DIBS for ${lockPeriodDays} days...`,
           success: "Stake confirmed!",
           error: (err) => {
-            const msg = (err as Error).message || "";
+            const e = err as Error & { code?: number; cause?: { code?: number } };
+            if (e?.code === 4001 || e?.cause?.code === 4001 || String(e?.message || "").includes("User rejected")) {
+              return "Transaction canceled by user";
+            }
+            const msg = e.message || "";
             return msg.includes("Transaction Failed/Reverted")
               ? "Transaction Failed/Reverted"
               : `Staking failed: ${msg.slice(0, 80)}`;
@@ -360,7 +364,11 @@ export default function StakePage() {
           loading: "Unstaking DIBS...",
           success: "Unstake confirmed!",
           error: (err) => {
-            const msg = (err as Error).message || "";
+            const e = err as Error & { code?: number; cause?: { code?: number } };
+            if (e?.code === 4001 || e?.cause?.code === 4001 || String(e?.message || "").includes("User rejected")) {
+              return "Transaction canceled by user";
+            }
+            const msg = e.message || "";
             return msg.includes("Transaction Failed/Reverted")
               ? "Transaction Failed/Reverted"
               : `Unstake failed: ${msg.slice(0, 80)}`;

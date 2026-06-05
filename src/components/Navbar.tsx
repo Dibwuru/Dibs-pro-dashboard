@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
+import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
 import { createPublicClient, http, formatEther } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
@@ -17,7 +17,6 @@ const publicClient = createPublicClient({
 export function Navbar() {
   const { theme, setTheme } = useTheme();
   const { login, authenticated, logout, user } = usePrivy();
-  const { wallets } = useWallets();
   const { connectWallet } = useConnectWallet();
   const { openMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
@@ -26,26 +25,20 @@ export function Navbar() {
 
   useEffect(() => setMounted(true), []);
 
-  // External wallet (MetaMask etc.) takes priority; falls back to embedded wallet
-  const externalWalletAddress = wallets.length > 0 ? (wallets[0].address as string) : null;
-  const activeAddress = (externalWalletAddress || user?.wallet?.address) as `0x${string}` | undefined;
-  const isWalletActive = !!externalWalletAddress || (authenticated && !!user?.wallet?.address);
+  // Address derived strictly from authenticated Privy user wallet
+  const activeAddress = (user?.wallet?.address) as `0x${string}` | undefined;
+  const isWalletActive = authenticated && !!user?.wallet?.address;
 
-  // Unified disconnect: logout Privy session AND disconnect the external wallet
+  // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
   const handleDisconnect = useCallback(async () => {
-    try {
-      if (wallets.length > 0) {
-        await wallets[0].disconnect();
-      }
-    } catch {
-      // wallet disconnect may throw if already disconnected
-    }
     try {
       await logout();
     } catch {
       // logout may be no-op if not authenticated
     }
-  }, [wallets, logout]);
+    localStorage.clear();
+    window.location.reload();
+  }, [logout]);
 
   const fetchGasBalance = useCallback(async () => {
     if (!activeAddress) {
@@ -74,7 +67,7 @@ export function Navbar() {
   const emailHandle =
     user?.email?.address || user?.google?.email || "Authenticated User";
   const embeddedWalletAddress = user?.wallet?.address || "";
-  const displayedAddress = externalWalletAddress || embeddedWalletAddress;
+  const displayedAddress = embeddedWalletAddress;
   const truncatedAddress = displayedAddress
     ? `${displayedAddress.slice(0, 6)}...${displayedAddress.slice(-4)}`
     : "";
@@ -162,7 +155,7 @@ export function Navbar() {
               </button>
 
               {/* Privy Identity Capsule / Auth Button */}
-              {authenticated ? (
+              {isWalletActive ? (
                 <div className="hidden sm:flex items-center gap-1.5">
                   {/* Dual-segmented gold glassmorphic identity capsule */}
                   <div className="flex items-stretch rounded-lg border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 overflow-hidden shadow-sm shadow-amber-500/5">
@@ -195,35 +188,6 @@ export function Navbar() {
                     onClick={handleDisconnect}
                     className="p-2 rounded-lg text-amber-500/70 hover:text-error hover:bg-error/5 transition-all"
                     title="Disconnect"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : isWalletActive ? (
-                /* External wallet connected (MetaMask etc.) — show truncated address + disconnect */
-                <div className="hidden sm:flex items-center gap-2">
-                  <button
-                    onClick={handleCopyAddress}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:scale-105 active:scale-[0.97] transition-all"
-                    title="Click to copy wallet address"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        {truncatedAddress}
-                        <Copy className="w-3 h-3 opacity-70" />
-                      </>
-                    )}
-                  </button>
-                  {/* Disconnect button for external wallet */}
-                  <button
-                    onClick={handleDisconnect}
-                    className="p-2 rounded-lg text-amber-500/70 hover:text-error hover:bg-error/5 transition-all"
-                    title="Disconnect wallet"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                   </button>

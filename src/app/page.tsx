@@ -2,10 +2,9 @@
 
 import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
 import { useTheme } from "next-themes";
-import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem } from "viem";
+import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
   Shield,
@@ -34,6 +33,7 @@ import {
   EXCHANGE_RATE,
   ARC_TESTNET_CHAIN_ID,
   switchToArcTestnet,
+  vaultABI as vaultConfigABI,
 } from "@/vaultConfig";
 
 const dibsBalanceOfABI = [
@@ -142,21 +142,17 @@ export default function Home() {
   const displayAddress = user?.wallet?.address || externalWalletAddress;
   const userAddress = ((user?.wallet?.address || externalWalletAddress) as `0x${string}` | undefined);
 
-  // Unified disconnect: logout Privy session AND disconnect the external wallet
+  // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
   const handleDisconnect = useCallback(async () => {
-    try {
-      if (dashboardWallets.length > 0) {
-        await dashboardWallets[0].disconnect();
-      }
-    } catch {
-      // wallet disconnect may throw if already disconnected
-    }
     try {
       await logout();
     } catch {
       // logout may be no-op if not authenticated
     }
-  }, [dashboardWallets, logout]);
+    // Clear wagmi/privy stale cache that causes auto-reconnect loops
+    localStorage.clear();
+    window.location.reload();
+  }, [logout]);
 
   // --- Live $DIBS Balance Fetching (polls every 8 seconds) ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
@@ -374,9 +370,10 @@ export default function Home() {
         const fromBlock = currentBlock - BigInt(10000) > BigInt(0) ? currentBlock - BigInt(10000) : BigInt(0);
 
         const transferEventAbi = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)');
+        const assetSwappedEventAbi = parseAbiItem('event AssetSwapped(address indexed user, string direction, uint256 amountIn, uint256 amountOut)');
 
         // Viem handles standard 32-byte hexadecimal padding natively via args compilation
-        const [sentLogs, receivedLogs] = await Promise.all([
+        const [sentLogs, receivedLogs, swapLogs] = await Promise.all([
           publicClient.getLogs({
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
@@ -388,6 +385,13 @@ export default function Home() {
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
             args: { to: userAddress },
+            fromBlock,
+            toBlock: currentBlock,
+          }),
+          publicClient.getLogs({
+            address: VAULT_ADDRESS,
+            event: assetSwappedEventAbi,
+            args: { user: userAddress },
             fromBlock,
             toBlock: currentBlock,
           }),
@@ -433,6 +437,34 @@ export default function Home() {
             amount: displayAmount,
             status: "Confirmed",
           });
+        }
+
+        // Parse V2 Vault AssetSwapped events (containing "direction" string)
+        for (const log of swapLogs) {
+          const { transactionHash } = log as unknown as { transactionHash: string };
+          const hash = transactionHash;
+          if (seenHashes.current.has(hash)) continue;
+          seenHashes.current.add(hash);
+          try {
+            const decoded = decodeEventLog({
+              abi: vaultConfigABI,
+              data: (log as unknown as { data: `0x${string}` }).data,
+              topics: (log as unknown as { topics: [signature: `0x${string}`, ...args: `0x${string}`[]] }).topics,
+            });
+            if (decoded.eventName === "AssetSwapped") {
+              const args = decoded.args as unknown as { direction: string; amountIn: bigint; amountOut: bigint };
+              const dirLabel = args.direction === "USDC_TO_DIBS" ? "USDC → DIBS" : "DIBS → USDC";
+              const amountOutFormatted = formatUnits(args.amountOut, 18);
+              newEntries.push({
+                type: `Swap ${dirLabel}`,
+                hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+                amount: `${Number(amountOutFormatted).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${args.direction === "USDC_TO_DIBS" ? "DIBS" : "USDC"}`,
+                status: "Confirmed",
+              });
+            }
+          } catch {
+            // skip unparseable logs
+          }
         }
 
         if (newEntries.length > 0 && !cancelled) {
@@ -576,7 +608,13 @@ export default function Home() {
         {
           loading: "Swapping USDC for DIBS...",
           success: "Swap completed successfully!",
-          error: (err) => `Swap failed: ${(err as Error).message.slice(0, 80)}`,
+          error: (err) => {
+            const e = err as Error & { code?: number; cause?: { code?: number } };
+            if (e?.code === 4001 || e?.cause?.code === 4001 || String(e?.message || "").includes("User rejected")) {
+              return "Transaction canceled by user";
+            }
+            return `Swap failed: ${(err as Error).message.slice(0, 80)}`;
+          },
         }
       );
       setSwapInput("");
@@ -677,7 +715,13 @@ export default function Home() {
           {
             loading: "Sending USDC Gas...",
             success: "Transfer completed successfully!",
-            error: (err) => `Transfer failed: ${(err as Error).message.slice(0, 80)}`,
+            error: (err) => {
+              const e = err as Error & { code?: number; cause?: { code?: number } };
+              if (e?.code === 4001 || e?.cause?.code === 4001 || String(e?.message || "").includes("User rejected")) {
+                return "Transaction canceled by user";
+              }
+              return `Transfer failed: ${(err as Error).message.slice(0, 80)}`;
+            },
           }
         );
       } else {
@@ -726,7 +770,13 @@ export default function Home() {
           {
             loading: "Sending DIBS tokens...",
             success: "DIBS transfer completed successfully!",
-            error: (err) => `Transfer failed: ${(err as Error).message.slice(0, 80)}`,
+            error: (err) => {
+              const e = err as Error & { code?: number; cause?: { code?: number } };
+              if (e?.code === 4001 || e?.cause?.code === 4001 || String(e?.message || "").includes("User rejected")) {
+                return "Transaction canceled by user";
+              }
+              return `Transfer failed: ${(err as Error).message.slice(0, 80)}`;
+            },
           }
         );
       }
@@ -778,9 +828,8 @@ export default function Home() {
 
   // ===== AUTH GATEWAY: Matte Obsidian Onboarding Gateway =====
   // Show gateway when not authenticated via Privy.
-  // If an external wallet is connected, show "Go to Swap" + "Disconnect" instead of login CTAs.
+  // Strict check: ONLY use authenticated boolean, never wallets array.
   if (ready && !authenticated) {
-    const hasExternalWallet = dashboardWallets.length > 0;
     return (
       <div
         className="flex flex-col items-center justify-center min-h-[80vh] w-full relative overflow-hidden transition-colors duration-300"
@@ -829,58 +878,6 @@ export default function Home() {
           </p>
 
           {/* CTA: Connect Wallet (Primary) */}
-          {hasExternalWallet ? (
-            <>
-              {/* Connected state: Go to Swap Terminal */}
-              <Link
-                href="/swap"
-                className="group relative w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
-                style={isDark ? {
-                  background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",
-                  border: "none",
-                  color: "#0A0A0A",
-                  boxShadow: "0 6px 24px rgba(251,191,36,0.40)",
-                } : {
-                  background: "linear-gradient(135deg, #FBBF24 0%, #F97316 100%)",
-                  border: "none",
-                  color: "#0A0A0A",
-                  boxShadow: "0 6px 24px rgba(251,191,36,0.40)",
-                }}
-              >
-                <ArrowLeftRight className="w-5 h-5" />
-                <span className="font-bold">Go to Swap Terminal</span>
-              </Link>
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 w-full my-5">
-                <div className="flex-1 h-px" style={{ background: isDark ? "rgba(251,191,36,0.12)" : "rgba(10,22,40,0.08)" }} />
-                <span className="text-xs font-medium text-slate-400 dark:text-slate-500">or</span>
-                <div className="flex-1 h-px" style={{ background: isDark ? "rgba(251,191,36,0.12)" : "rgba(10,22,40,0.08)" }} />
-              </div>
-
-              {/* CTA: Disconnect */}
-              <button
-                onClick={handleDisconnect}
-                className="group relative w-full inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
-                style={isDark ? {
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(239,68,68,0.40)",
-                  color: "#FCA5A5",
-                  boxShadow: "0 0 40px rgba(239,68,68,0.08)",
-                } : {
-                  background: "rgba(10,22,40,0.03)",
-                  border: "1px solid rgba(239,68,68,0.35)",
-                  color: "#DC2626",
-                  boxShadow: "none",
-                }}
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="font-bold">Disconnect</span>
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Disconnected state: Connect Wallet */}
           <button
             onClick={() => connectWallet()}
             className="group relative w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-200 active:scale-[0.97]"
@@ -924,8 +921,6 @@ export default function Home() {
           >
             <span className="font-bold">Sign In with Email</span>
           </button>
-            </>
-          )}
 
           {/* Footer */}
           <p className="mt-8 text-xs tracking-wide text-zinc-500 dark:text-zinc-400">

@@ -1,23 +1,73 @@
-ACT AS: A Senior Web3 Frontend Architect and UX Specialist.
-TASK: Fix the user authentication state UI, implement a unified disconnect flow, and correct the USDC balance reading on the swap page.
+ACT AS: A Senior Web3 Full-Stack Engineer.
+TASK: Completely unify the dashboard asset displays, fix event log history parsing for V2, and resolve outstanding follow-ups.
 
-CRITICAL UX REPAIRS:
+CRITICAL ARCHITECTURE REPAIRS:
 
-1. GLOBAL DISCONNECT FUNCTIONALITY (Navbar & Sidebar):
-   - Import 'usePrivy' (for logout) and extract the 'disconnect' method from the connected wallet via 'useWallets()'.
-   - Wherever the connected wallet address pill is displayed, add an explicit "Disconnect" button or icon next to it.
-   - When clicked, execute both 'logout()' AND 'wallets[0].disconnect()' to ensure the session is completely and cleanly wiped.
+1. UNIFY DASHBOARD VAULT CONFIGURATION (src/app/page.tsx & Dashboard components):
+   - Ensure the dashboard views completely import VAULT_ADDRESS and the updated V2 ABI from 'src/vaultConfig.ts'.
+   - Eliminate any remaining stale local constants pointing to '0x3ed226...'.
 
-2. LANDING PAGE STATE FIX (src/app/page.tsx):
-   - Read the connection state: if 'wallets.length > 0' or 'authenticated' is true, DO NOT show the "Connect Wallet" or "Sign In with Email" buttons in the central hero card.
-   - Replace them dynamically with a "Go to Swap Terminal" action button that routes to the '/swap' page, and a secondary "Disconnect" button.
+2. FIX ASSET & HISTORY LOG PARSING:
+   - Update the transaction history component to query events from the new V2 Vault contract address (0xbe84da0258c1c6143553c33801da9c5f9584e5b7).
+   - Update the event parser to read the updated 'AssetSwapped' signature containing the 'direction' string, ensuring swaps display perfectly in the history data table.
+   - Ensure native USDC balance and $DIBS token balance hooks are active and feeding directly into the dashboard portfolio cards when a wallet is connected.
 
-3. FIX USDC BALANCE BLINDNESS (src/app/swap/page.tsx):
-   - The Arc Testnet natively uses USDC as its gas token. USDC is NOT an ERC20 token on this network.
-   - Remove any ERC20 'balanceOf' checks for USDC on the frontend.
-   - Import and use viem's publicClient 'getBalance({ address: userAddress })' (or wagmi's useBalance) to fetch the user's native token balance.
-   - Display this native balance as the user's available USDC balance on the Swap UI, and use it for the "Insufficient balance" validation check before allowing a native payable swap.
+3. RESOLVE UX EDGE CASES:
+   - Implement catch blocks on all MetaMask transaction interactions so that a user rejection error (error code 4001) triggers a clean 'toast.error("Transaction canceled by user")' rather than freezing the UI button state.
 
-4. BUILD & DEPLOY:
-   - Run 'npm run build' to confirm clean compilation.
-   - Git commit with message: "fix: resolve auth UI state, add global disconnect, and map USDC to native balance" and push to main.
+4. PRODUCTION DEPLOY:
+   - Run 'npm run build' to verify flawless compilation across all routes.
+   - Git commit with message: "feat: fully unify dashboard V2 ABI, sync transaction history parsing, and handle user rejection UX" and push to main.
+ACT AS: A Senior Web3 Frontend Architect.
+TASK: Completely rewrite the Disconnect logic and force the UI to respect the unauthenticated state.
+
+CRITICAL HARDCODED REPAIRS:
+
+1. THE NUCLEAR DISCONNECT HANDLER:
+   - Open the component housing the Disconnect button (likely Navbar.tsx, Sidebar.tsx, or a Dashboard view).
+   - Ensure you import { usePrivy } from '@privy-io/react-auth'.
+   - Implement this exact function for the button's onClick event:
+     
+     const { logout, authenticated } = usePrivy();
+     
+     const handleHardDisconnect = async () => {
+         await logout();
+         // Clear wagmi/privy stale cache that causes auto-reconnect loops
+         localStorage.clear(); 
+         window.location.reload(); 
+     };
+
+   - Bind 'handleHardDisconnect' directly to the Disconnect button onClick.
+
+2. STRICT CONDITIONAL RENDERING (src/app/page.tsx & Layouts):
+   - The UI MUST NOT render the connected wallet address or the Dashboard view unless Privy's 'authenticated' boolean is strictly TRUE.
+   - Find where the "Connected" state is rendered. Wrap it explicitly: 
+     {authenticated ? ( <ConnectedUI /> ) : ( <ConnectWalletButtons /> )}
+   - Do not rely solely on 'wallets.length > 0' because injected wallets will linger in that array even after logout.
+
+3. EXECUTE:
+   - Run 'npm run build' to ensure no type errors from the new function.
+   - Git commit with message: "fix: force hard disconnect, clear local cache, and strict-bind UI to authenticated state" and push to main.
+ACT AS: A Senior Web3 Frontend Architect.
+TASK: Restore the deleted Send, Receive, and QR Barcode wallet components and permanently bind them to the authenticated dashboard view.
+
+CRITICAL UI RESTORATION:
+
+1. RECOVER LOST COMPONENTS:
+   - Search the project's recent git commit history (specifically before the Privy UI unification passes) to locate the previously built 'Send', 'Receive', and 'QR Barcode' modal logic and UI components.
+   - If the files were deleted, restore them immediately (e.g., 'src/components/SendModal.tsx', 'ReceiveModal.tsx', etc.). Ensure any required QR code libraries are still in package.json.
+
+2. REBUILD THE AUTHENTICATED DASHBOARD (src/app/page.tsx or Dashboard view):
+   - The UI MUST cleanly split based on the Privy 'authenticated' boolean.
+   - IF FALSE: Show the "ARCTOR Terminal" hero card with the login options.
+   - IF TRUE: Render the complete user Dashboard. This MUST include:
+     a) The native USDC and $DIBS token balances.
+     b) The restored Action Row containing the 'Send', 'Receive' (which opens the QR Barcode), and 'Stake' quick-action buttons.
+     c) The Transaction History data table.
+
+3. PRESERVATION LOCK:
+   - Do NOT alter any Vault configurations, Viem hooks, or the newly implemented Disconnect logic. You are ONLY restoring the lost wallet UI.
+
+4. EXECUTE:
+   - Run 'npm run build' to ensure the QR components and modals compile perfectly with the new auth state.
+   - Git commit with message: "feat: recover and restore Send, Receive, and QR Barcode logic to authenticated dashboard view" and push to main.

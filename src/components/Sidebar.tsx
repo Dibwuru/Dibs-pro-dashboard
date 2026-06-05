@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
+import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -65,7 +65,6 @@ function saveProfile(data: ProfileData) {
 export function Sidebar() {
   const pathname = usePathname();
   const { authenticated, user, logout, login } = usePrivy();
-  const { wallets } = useWallets();
   const { connectWallet } = useConnectWallet();
   const { theme, setTheme } = useTheme();
   const { isMobileOpen, closeMobile, isProfileEditorOpen, openProfileEditor, closeProfileEditor } = useSidebar();
@@ -90,30 +89,24 @@ export function Sidebar() {
     if (stored.pfpUrl) setPfpUrl(stored.pfpUrl);
   }, []);
 
-  // External wallet (MetaMask etc.) takes priority; falls back to embedded wallet
-  const externalWalletAddress = wallets.length > 0 ? (wallets[0].address as string) : null;
-  const isWalletActive = !!externalWalletAddress || (authenticated && !!user?.wallet?.address);
+  // Address derived strictly from authenticated Privy user wallet
+  const isWalletActive = authenticated && !!user?.wallet?.address;
 
-  // Unified disconnect: logout Privy session AND disconnect the external wallet
+  // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
   const handleDisconnect = useCallback(async () => {
-    try {
-      if (wallets.length > 0) {
-        await wallets[0].disconnect();
-      }
-    } catch {
-      // wallet disconnect may throw if already disconnected
-    }
     try {
       await logout();
     } catch {
       // logout may be no-op if not authenticated
     }
-  }, [wallets, logout]);
+    localStorage.clear();
+    window.location.reload();
+  }, [logout]);
 
   const emailHandle =
     user?.email?.address || user?.google?.email || "Authenticated User";
   const embeddedWalletAddress = user?.wallet?.address || "";
-  const displayedAddress = externalWalletAddress || embeddedWalletAddress;
+  const displayedAddress = embeddedWalletAddress;
   const truncatedWallet =
     displayedAddress.slice(0, 6) + "..." + displayedAddress.slice(-4);
   const displayEmail = activeDisplayName || truncateEmail(emailHandle);
@@ -193,7 +186,7 @@ export function Sidebar() {
       {/* Bottom area: Profile + Theme + Footer */}
       <div className="px-3 pb-5 space-y-3">
         {/* Privy Identity Capsule */}
-        {authenticated ? (
+        {isWalletActive ? (
           <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
             {/* Avatar + Info Row */}
             <div className="flex items-center gap-3 px-4 py-3">
@@ -232,45 +225,6 @@ export function Sidebar() {
               </div>
             </div>
 
-            <button
-              onClick={handleDisconnect}
-              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-amber-500/10"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Disconnect
-            </button>
-          </div>
-        ) : isWalletActive ? (
-          /* External wallet connected (MetaMask etc.) — show truncated address + disconnect */
-          <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/10 border-2 border-amber-400/50 dark:border-amber-500/40 flex items-center justify-center flex-shrink-0">
-                <span className="text-base font-bold text-amber-600 dark:text-amber-400">
-                  {truncatedWallet.slice(2, 3).toUpperCase()}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-amber-700 dark:text-amber-300/90">
-                  Connected
-                </p>
-                <button
-                  onClick={handleCopyAddress}
-                  className="flex items-center gap-1 text-[10px] font-mono text-amber-600/70 dark:text-amber-500/70 hover:text-amber-700 dark:hover:text-amber-400 transition-colors mt-0.5"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-2.5 h-2.5 text-success" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      {truncatedWallet}
-                      <Copy className="w-2.5 h-2.5 opacity-60" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
             <button
               onClick={handleDisconnect}
               className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-amber-500/10"

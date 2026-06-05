@@ -3,23 +3,17 @@
 import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { createPublicClient, http, formatUnits, parseAbiItem } from "viem";
+import { createPublicClient, http, formatUnits, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
-
-const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
-const ARC_TESTNET_CHAIN_ID = 5042002;
-
-const dibsBalanceOfABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import {
+  VAULT_ADDRESS,
+  DIBS_CONTRACT_ADDRESS,
+  ARC_TESTNET_CHAIN_ID,
+  dibsBalanceOfABI,
+  vaultABI,
+} from "@/vaultConfig";
 
 const publicClient = createPublicClient({
   chain: arcTestnet,
@@ -36,7 +30,7 @@ export default function DashboardPage() {
   const { authenticated, user, login } = usePrivy();
   const { wallets: dashboardWallets } = useWallets();
 
-  const isWalletConnected = (authenticated && !!user?.wallet?.address) || dashboardWallets.length > 0;
+  const isWalletConnected = authenticated && !!user?.wallet?.address;
 
   const activeDashboardWallet = dashboardWallets[0];
   const activeDashboardChainId = activeDashboardWallet
@@ -117,8 +111,9 @@ export default function DashboardPage() {
         const currentBlock = await publicClient.getBlockNumber();
         const fromBlock = currentBlock - BigInt(10000) > BigInt(0) ? currentBlock - BigInt(10000) : BigInt(0);
         const transferEventAbi = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
+        const assetSwappedEventAbi = parseAbiItem("event AssetSwapped(address indexed user, string direction, uint256 amountIn, uint256 amountOut)");
 
-        const [sentLogs, receivedLogs] = await Promise.all([
+        const [sentLogs, receivedLogs, swapLogs] = await Promise.all([
           publicClient.getLogs({
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
@@ -130,6 +125,13 @@ export default function DashboardPage() {
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
             args: { to: userAddress },
+            fromBlock,
+            toBlock: currentBlock,
+          }),
+          publicClient.getLogs({
+            address: VAULT_ADDRESS,
+            event: assetSwappedEventAbi,
+            args: { user: userAddress },
             fromBlock,
             toBlock: currentBlock,
           }),
@@ -160,6 +162,32 @@ export default function DashboardPage() {
             hash: `${transactionHash.slice(0, 6)}...${transactionHash.slice(-4)}`,
             amount: `${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS`,
           });
+        }
+
+        // Parse V2 Vault AssetSwapped events (containing "direction" string)
+        for (const log of swapLogs) {
+          const { transactionHash } = log as unknown as { transactionHash: string };
+          if (seenHashes.has(transactionHash)) continue;
+          seenHashes.add(transactionHash);
+          try {
+            const decoded = decodeEventLog({
+              abi: vaultABI,
+              data: (log as unknown as { data: `0x${string}` }).data,
+              topics: (log as unknown as { topics: [signature: `0x${string}`, ...args: `0x${string}`[]] }).topics,
+            });
+            if (decoded.eventName === "AssetSwapped") {
+              const args = decoded.args as unknown as { direction: string; amountIn: bigint; amountOut: bigint };
+              const dirLabel = args.direction === "USDC_TO_DIBS" ? "USDC → DIBS" : "DIBS → USDC";
+              const amountOutFormatted = formatUnits(args.amountOut, 18);
+              newEntries.push({
+                type: `Swap ${dirLabel}`,
+                hash: `${transactionHash.slice(0, 6)}...${transactionHash.slice(-4)}`,
+                amount: `${Number(amountOutFormatted).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${args.direction === "USDC_TO_DIBS" ? "DIBS" : "USDC"}`,
+              });
+            }
+          } catch {
+            // skip unparseable logs
+          }
         }
 
         if (newEntries.length > 0 && !cancelled) {
