@@ -150,6 +150,12 @@ export default function StakePage() {
   const executeStake = useCallback(async () => {
     if (!canStake || stakeWallets.length === 0) return;
 
+    // Balance check toast before proceeding
+    if (isOverBalance) {
+      toast.error("Insufficient DIBS balance for this action.");
+      return;
+    }
+
     setIsStaking(true);
     setShowConfirmModal(false);
 

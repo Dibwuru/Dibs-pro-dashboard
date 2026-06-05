@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Clock,
   CheckCircle,
+  Loader2,
   Send,
   ArrowDownToLine,
   X,
@@ -32,6 +33,7 @@ import {
   DIBS_CONTRACT_ADDRESS,
   EXCHANGE_RATE,
   ARC_TESTNET_CHAIN_ID,
+  ARC_EXPLORER_URL,
   switchToArcTestnet,
   vaultABI as vaultConfigABI,
 } from "@/vaultConfig";
@@ -111,10 +113,13 @@ interface TokenEntry {
 }
 
 interface ActivityEntry {
-  type: string;
+  action: "SEND" | "BURN" | "STAKE" | "RECEIVE" | "SWAP";
   hash: string;
+  fullHash: string;
   amount: string;
-  status: "Confirmed";
+  timestamp: number;
+  status: "Confirmed" | "Pending" | "Failed";
+  key: string;
 }
 
 
@@ -353,6 +358,42 @@ export default function Home() {
   const [activityLoading, setActivityLoading] = useState(false);
   const seenHashes = useRef<Set<string>>(new Set());
 
+  // --- Pending entry helpers ---
+  const generateKey = useCallback(
+    () => `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    []
+  );
+
+  const addPendingEntry = useCallback(
+    (action: ActivityEntry["action"], amount: string): string => {
+      const key = generateKey();
+      const entry: ActivityEntry = {
+        action,
+        hash: "Pending...",
+        fullHash: "",
+        amount,
+        timestamp: Math.floor(Date.now() / 1000),
+        status: "Pending",
+        key,
+      };
+      setActivityLogs((prev) => [entry, ...prev].slice(0, 10));
+      return key;
+    },
+    [generateKey]
+  );
+
+  const updateEntry = useCallback(
+    (key: string, updates: Partial<Pick<ActivityEntry, "hash" | "fullHash" | "status">>) => {
+      setActivityLogs((prev) =>
+        prev.map((e) => {
+          if (e.key !== key) return e;
+          return { ...e, ...updates } as ActivityEntry;
+        })
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     if (!userAddress) {
       setActivityLogs([]);
@@ -371,9 +412,10 @@ export default function Home() {
 
         const transferEventAbi = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)');
         const assetSwappedEventAbi = parseAbiItem('event AssetSwapped(address indexed user, string direction, uint256 amountIn, uint256 amountOut)');
+        const tokensStakedEventAbi = parseAbiItem('event TokensStaked(address indexed user, uint256 amount, uint256 releaseTime)');
 
         // Viem handles standard 32-byte hexadecimal padding natively via args compilation
-        const [sentLogs, receivedLogs, swapLogs] = await Promise.all([
+        const [sentLogs, receivedLogs, swapLogs, stakeLogs] = await Promise.all([
           publicClient.getLogs({
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
@@ -395,12 +437,34 @@ export default function Home() {
             fromBlock,
             toBlock: currentBlock,
           }),
+          publicClient.getLogs({
+            address: VAULT_ADDRESS,
+            event: tokensStakedEventAbi,
+            args: { user: userAddress },
+            fromBlock,
+            toBlock: currentBlock,
+          }),
         ]);
 
         const newEntries: ActivityEntry[] = [];
 
+        // Collect all unique block numbers and fetch timestamps in parallel
+        const allLogs = [...sentLogs, ...receivedLogs, ...swapLogs, ...stakeLogs] as unknown as { blockNumber: bigint }[];
+        const uniqueBlockNums = [...new Set(allLogs.map((l) => l.blockNumber?.toString() ?? "0"))];
+        const blockTimestamps = new Map<string, number>();
+        const blocks = await Promise.all(
+          uniqueBlockNums.map((bn) =>
+            publicClient.getBlock({ blockNumber: BigInt(bn) }).catch(() => null)
+          )
+        );
+        blocks.forEach((block, i) => {
+          if (block) blockTimestamps.set(uniqueBlockNums[i], Number(block.timestamp));
+        });
+        const getBlockTime = (bn: bigint): number =>
+          blockTimestamps.get(bn.toString()) ?? Math.floor(Date.now() / 1000);
+
         for (const log of sentLogs) {
-          const { transactionHash, args } = log as unknown as { transactionHash: string; args: { from: string; to: string; value: bigint } };
+          const { transactionHash, args, blockNumber } = log as unknown as { transactionHash: string; blockNumber: bigint; args: { from: string; to: string; value: bigint } };
           const hash = transactionHash;
           if (seenHashes.current.has(hash)) continue;
           seenHashes.current.add(hash);
@@ -409,19 +473,22 @@ export default function Home() {
           const displayAmount = `${Number(amount).toLocaleString(undefined, {
             maximumFractionDigits: 2,
           })} DIBS`;
+          const ts = await getBlockTime(blockNumber);
 
           newEntries.push({
-            type: "Transfer Sent",
+            action: "SEND",
             hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+            fullHash: hash,
             amount: displayAmount,
+            timestamp: ts,
             status: "Confirmed",
+            key: `onchain_${hash}`,
           });
         }
 
         for (const log of receivedLogs) {
-          const { transactionHash, args } = log as unknown as { transactionHash: string; args: { from: string; to: string; value: bigint } };
+          const { transactionHash, args, blockNumber } = log as unknown as { transactionHash: string; blockNumber: bigint; args: { from: string; to: string; value: bigint } };
           const hash = transactionHash;
-          // Skip self-transfers already captured in sentLogs
           if (args.from.toLowerCase() === userAddress.toLowerCase()) continue;
           if (seenHashes.current.has(hash)) continue;
           seenHashes.current.add(hash);
@@ -430,18 +497,22 @@ export default function Home() {
           const displayAmount = `${Number(amount).toLocaleString(undefined, {
             maximumFractionDigits: 2,
           })} DIBS`;
+          const ts = await getBlockTime(blockNumber);
 
           newEntries.push({
-            type: "Token Received",
+            action: "RECEIVE",
             hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+            fullHash: hash,
             amount: displayAmount,
+            timestamp: ts,
             status: "Confirmed",
+            key: `onchain_${hash}`,
           });
         }
 
         // Parse V2 Vault AssetSwapped events (containing "direction" string)
         for (const log of swapLogs) {
-          const { transactionHash } = log as unknown as { transactionHash: string };
+          const { transactionHash, blockNumber } = log as unknown as { transactionHash: string; blockNumber: bigint };
           const hash = transactionHash;
           if (seenHashes.current.has(hash)) continue;
           seenHashes.current.add(hash);
@@ -453,13 +524,19 @@ export default function Home() {
             });
             if (decoded.eventName === "AssetSwapped") {
               const args = decoded.args as unknown as { direction: string; amountIn: bigint; amountOut: bigint };
-              const dirLabel = args.direction === "USDC_TO_DIBS" ? "USDC → DIBS" : "DIBS → USDC";
+              const isBurn = args.direction === "DIBS_TO_USDC";
+              const dirLabel = isBurn ? "DIBS → USDC" : "USDC → DIBS";
               const amountOutFormatted = formatUnits(args.amountOut, 18);
+              const displayToken = isBurn ? "USDC" : "DIBS";
+              const ts = await getBlockTime(blockNumber);
               newEntries.push({
-                type: `Swap ${dirLabel}`,
+                action: isBurn ? "BURN" : "SWAP",
                 hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
-                amount: `${Number(amountOutFormatted).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${args.direction === "USDC_TO_DIBS" ? "DIBS" : "USDC"}`,
+                fullHash: hash,
+                amount: `${Number(amountOutFormatted).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${displayToken}`,
+                timestamp: ts,
                 status: "Confirmed",
+                key: `onchain_${hash}`,
               });
             }
           } catch {
@@ -467,8 +544,45 @@ export default function Home() {
           }
         }
 
+        // Parse TokensStaked events
+        for (const log of stakeLogs) {
+          const { transactionHash, args, blockNumber } = log as unknown as { transactionHash: string; blockNumber: bigint; args: { user: string; amount: bigint; releaseTime: bigint } };
+          const hash = transactionHash;
+          if (seenHashes.current.has(hash)) continue;
+          seenHashes.current.add(hash);
+
+          const amount = formatUnits(args.amount, 18);
+          const displayAmount = `${Number(amount).toLocaleString(undefined, {
+            maximumFractionDigits: 2,
+          })} DIBS`;
+          const ts = await getBlockTime(blockNumber);
+
+          newEntries.push({
+            action: "STAKE",
+            hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+            fullHash: hash,
+            amount: displayAmount,
+            timestamp: ts,
+            status: "Confirmed",
+            key: `onchain_${hash}`,
+          });
+        }
+
         if (newEntries.length > 0 && !cancelled) {
-          setActivityLogs((prev) => [...newEntries.reverse(), ...prev].slice(0, 10));
+          setActivityLogs((prev) => {
+            // Filter out entries already in the list (e.g. as pending entries with matching fullHash)
+            const existingHashes = new Set(prev.map((e) => e.fullHash).filter(Boolean));
+            const trulyNew = newEntries.filter((ne) => !existingHashes.has(ne.fullHash));
+            // Update any pending entries that now have a confirmed on-chain match
+            const updated = prev.map((entry) => {
+              if (entry.status === "Pending" && entry.fullHash) {
+                const match = newEntries.find((ne) => ne.fullHash === entry.fullHash);
+                if (match) return { ...entry, status: "Confirmed" as const, hash: match.hash, timestamp: match.timestamp } as ActivityEntry;
+              }
+              return entry;
+            });
+            return [...trulyNew.reverse(), ...updated].slice(0, 10);
+          });
         }
       } catch {
         // silent — no logs to display
@@ -549,7 +663,18 @@ export default function Home() {
       return;
     }
 
+    // Balance check: insufficient USDC gas
+    const inputNum = parseFloat(swapInput);
+    if (fromToken === "USDC" && inputNum > gasBalanceNum) {
+      toast.error("Insufficient USDC balance for this action.");
+      return;
+    }
+
     // USDC → DIBS swap via vault
+    const pendingKey = addPendingEntry(
+      "SWAP",
+      `${swapInput} USDC → DIBS`
+    );
     setIsSwapping(true);
     try {
       const activeWallet = dashboardWallets[0];
@@ -573,11 +698,21 @@ export default function Home() {
             value: parseUnits(swapInput, 18),
           });
 
+          // Update pending entry with the real transaction hash
+          updateEntry(pendingKey, {
+            hash: `${hash.slice(0, 6)}...${hash.slice(-4)}`,
+            fullHash: hash,
+          });
+
           // Wait for on-chain confirmation before resolving the toast
           const receipt = await publicClient.waitForTransactionReceipt({ hash });
           if (receipt.status !== "success") {
+            updateEntry(pendingKey, { status: "Failed" });
             throw new Error("Transaction reverted on-chain");
           }
+
+          // Mark as confirmed
+          updateEntry(pendingKey, { status: "Confirmed" });
 
           // Immediately refresh balances so dashboard numbers update
           if (userAddress) {
@@ -609,6 +744,7 @@ export default function Home() {
           loading: "Swapping USDC for DIBS...",
           success: "Swap completed successfully!",
           error: (err) => {
+            updateEntry(pendingKey, { status: "Failed" });
             const e = err as Error & { code?: number; cause?: { code?: number } };
             if (e?.code === 4001 || e?.cause?.code === 4001 || String(e?.message || "").includes("User rejected")) {
               return "Transaction canceled by user";
@@ -619,11 +755,12 @@ export default function Home() {
       );
       setSwapInput("");
     } catch {
-      // toast already handled
+      // Also handle rejection at the outer level (catches writeContract rejection before promise resolves)
+      updateEntry(pendingKey, { status: "Failed" });
     } finally {
       setIsSwapping(false);
     }
-  }, [isValidSwap, userAddress, fromToken, swapInput, dashboardWallets]);
+  }, [isValidSwap, userAddress, fromToken, swapInput, dashboardWallets, gasBalanceNum, addPendingEntry, updateEntry]);
 
   // --- Send Asset Modal ---
   const [showSendModal, setShowSendModal] = useState(false);
@@ -657,7 +794,27 @@ export default function Home() {
   const handleSendConfirm = useCallback(async () => {
     if (!isValidSend || !userAddress || dashboardWallets.length === 0) return;
 
+    // Balance check: insufficient balance
+    const sendAmt = parseFloat(sendAmount);
+    if (sendAsset === "DibsCoin" && sendAmt > dibsBalanceNum) {
+      toast.error("Insufficient DIBS balance for this action.");
+      return;
+    }
+    if (sendAsset === "USDC Gas" && sendAmt > gasBalanceNum) {
+      toast.error("Insufficient USDC balance for this action.");
+      return;
+    }
+
     setIsSending(true);
+    const pendingAmount =
+      sendAsset === "DibsCoin"
+        ? `${sendAmount} DIBS`
+        : `${sendAmount} USDC`;
+    const pendingKey = addPendingEntry(
+      "SEND",
+      pendingAmount
+    );
+
     try {
       const activeWallet = dashboardWallets[0];
 
@@ -680,11 +837,19 @@ export default function Home() {
               value: parseUnits(sendAmount, 18),
             });
 
+            updateEntry(pendingKey, {
+              hash: `${sendHash.slice(0, 6)}...${sendHash.slice(-4)}`,
+              fullHash: sendHash,
+            });
+
             // Wait for on-chain confirmation before resolving the toast
             const sendReceipt = await publicClient.waitForTransactionReceipt({ hash: sendHash });
             if (sendReceipt.status !== "success") {
+              updateEntry(pendingKey, { status: "Failed" });
               throw new Error("Transaction reverted on-chain");
             }
+
+            updateEntry(pendingKey, { status: "Confirmed" });
 
             // Immediately refresh balances
             if (userAddress) {
@@ -716,6 +881,7 @@ export default function Home() {
             loading: "Sending USDC Gas...",
             success: "Transfer completed successfully!",
             error: (err) => {
+              updateEntry(pendingKey, { status: "Failed" });
               const e = err as Error & { code?: number; cause?: { code?: number } };
               if (e?.code === 4001 || e?.cause?.code === 4001 || String(e?.message || "").includes("User rejected")) {
                 return "Transaction canceled by user";
@@ -735,11 +901,19 @@ export default function Home() {
               args: [sendRecipient.trim() as `0x${string}`, parseUnits(sendAmount, 18)],
             });
 
+            updateEntry(pendingKey, {
+              hash: `${transferHash.slice(0, 6)}...${transferHash.slice(-4)}`,
+              fullHash: transferHash,
+            });
+
             // Wait for on-chain confirmation before resolving the toast
             const transferReceipt = await publicClient.waitForTransactionReceipt({ hash: transferHash });
             if (transferReceipt.status !== "success") {
+              updateEntry(pendingKey, { status: "Failed" });
               throw new Error("Transaction reverted on-chain");
             }
+
+            updateEntry(pendingKey, { status: "Confirmed" });
 
             // Immediately refresh balances
             if (userAddress) {
@@ -771,6 +945,7 @@ export default function Home() {
             loading: "Sending DIBS tokens...",
             success: "DIBS transfer completed successfully!",
             error: (err) => {
+              updateEntry(pendingKey, { status: "Failed" });
               const e = err as Error & { code?: number; cause?: { code?: number } };
               if (e?.code === 4001 || e?.cause?.code === 4001 || String(e?.message || "").includes("User rejected")) {
                 return "Transaction canceled by user";
@@ -784,11 +959,11 @@ export default function Home() {
       setSendRecipient("");
       setSendAmount("");
     } catch {
-      // toast already handled
+      updateEntry(pendingKey, { status: "Failed" });
     } finally {
       setIsSending(false);
     }
-  }, [isValidSend, userAddress, sendAsset, sendRecipient, sendAmount, dashboardWallets]);
+  }, [isValidSend, userAddress, sendAsset, sendRecipient, sendAmount, dashboardWallets, dibsBalanceNum, gasBalanceNum, addPendingEntry, updateEntry]);
 
   // --- Stake Modal ---
   const [showStakeModal, setShowStakeModal] = useState(false);
@@ -808,11 +983,24 @@ export default function Home() {
     const parsed = parseFloat(stakeAmount);
     if (isNaN(parsed) || parsed <= 0) return;
 
+    // Balance check: insufficient DIBS
+    if (parsed > dibsBalanceNum) {
+      toast.error("Insufficient DIBS balance for this action.");
+      return;
+    }
+
+    // Add pending entry — local stake confirms immediately
+    const pendingKey = addPendingEntry(
+      "STAKE",
+      `${stakeAmount} DIBS`
+    );
+    updateEntry(pendingKey, { status: "Confirmed" });
+
     setStakedBalance((prev) => prev + parsed);
     toast.success("Assets successfully committed to the Sovereign Staking Vault!");
     setShowStakeModal(false);
     setStakeAmount("");
-  }, [stakeAmount]);
+  }, [stakeAmount, dibsBalanceNum, addPendingEntry, updateEntry]);
 
   // Lock body scroll when any modal is open
   useEffect(() => {
@@ -1266,7 +1454,10 @@ export default function Home() {
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800">
                         <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                          Transaction
+                          Action
+                        </th>
+                        <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          Time
                         </th>
                         <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                           Amount
@@ -1277,38 +1468,88 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody>
-                      {activityLogs.map((tx, i) => (
-                        <tr
-                          key={tx.hash + i}
-                          className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
-                        >
-                          <td className="py-3.5 px-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-slate-800 flex items-center justify-center flex-shrink-0">
-                                {tx.type.includes("Sent") ? (
-                                  <ArrowRight className="w-3.5 h-3.5 text-warning -rotate-45" />
-                                ) : (
-                                  <ArrowDown className="w-3.5 h-3.5 text-success" />
+                      {activityLogs.map((tx, i) => {
+                        const actionColors: Record<string, string> = {
+                          SEND: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+                          BURN: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+                          STAKE: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                          RECEIVE: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+                          SWAP: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+                        };
+                        const statusColors: Record<string, string> = {
+                          Confirmed: "bg-success/10 text-success border-success/20",
+                          Pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                          Failed: "bg-error/10 text-error border-error/20",
+                        };
+
+                        const timeAgo = (ts: number): string => {
+                          const seconds = Math.floor(Date.now() / 1000) - ts;
+                          if (seconds < 60) return "just now";
+                          if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+                          if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+                          return new Date(ts * 1000).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                        };
+
+                        return (
+                          <tr
+                            key={tx.key || (tx.fullHash + i)}
+                            className={`border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors activity-row-new ${tx.status === "Pending" ? "activity-pending-row" : ""}`}
+                          >
+                            {/* Action Badge */}
+                            <td className="py-3.5 px-2">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${actionColors[tx.action] || "bg-slate-100 text-slate-600 border-slate-200"}`}
+                              >
+                                {tx.action}
+                              </span>
+                            </td>
+                            {/* Timestamp */}
+                            <td className="py-3.5 px-2">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                {timeAgo(tx.timestamp)}
+                              </span>
+                            </td>
+                            {/* Amount */}
+                            <td className="py-3.5 px-2 text-right">
+                              <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
+                                {tx.amount}
+                              </span>
+                            </td>
+                            {/* Status + Explorer Link */}
+                            <td className="py-3.5 px-2 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusColors[tx.status] || statusColors.Pending} ${tx.status === "Pending" ? "animate-pulse" : ""}`}
+                                >
+                                  {tx.status === "Confirmed" && (
+                                    <CheckCircle className="w-2.5 h-2.5" />
+                                  )}
+                                  {tx.status === "Pending" && (
+                                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                  )}
+                                  {tx.status}
+                                </span>
+                                {tx.status !== "Pending" && tx.fullHash && (
+                                  <a
+                                    href={`${ARC_EXPLORER_URL}/tx/${tx.fullHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-primary hover:text-primary-hover hover:underline transition-colors whitespace-nowrap"
+                                    title="View on ArcScan"
+                                  >
+                                    View
+                                  </a>
                                 )}
                               </div>
-                              <span className="text-xs font-medium text-slate-950 dark:text-slate-50 truncate max-w-[140px]">
-                                {tx.type}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-2 text-right">
-                            <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
-                              {tx.amount}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-2 text-right">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/10 text-success border border-success/20">
-                              <CheckCircle className="w-2.5 h-2.5" />
-                              {tx.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}

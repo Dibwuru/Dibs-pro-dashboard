@@ -4,7 +4,7 @@ export const VAULT_ADDRESS = "0xbe84da0258c1c6143553c33801da9c5f9584e5b7";
 export const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
 export const EXCHANGE_RATE = 10; // 1 Native Token = 10 DIBS
 export const ARC_TESTNET_CHAIN_ID = 5042002;
-export const ARC_EXPLORER_URL = "https://testnet.explorer.arc.network";
+export const ARC_EXPLORER_URL = "https://testnet.arcscan.app";
 
 /**
  * Robustly switch the user's wallet to Arc Testnet.

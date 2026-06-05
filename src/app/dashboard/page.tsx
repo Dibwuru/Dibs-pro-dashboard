@@ -1,6 +1,6 @@
 "use client";
 
-import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle } from "lucide-react";
+import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { createPublicClient, http, formatUnits, parseAbiItem, decodeEventLog } from "viem";
@@ -11,6 +11,7 @@ import {
   VAULT_ADDRESS,
   DIBS_CONTRACT_ADDRESS,
   ARC_TESTNET_CHAIN_ID,
+  ARC_EXPLORER_URL,
   dibsBalanceOfABI,
   vaultABI,
 } from "@/vaultConfig";
@@ -21,9 +22,13 @@ const publicClient = createPublicClient({
 });
 
 interface ActivityEntry {
-  type: string;
+  action: "SEND" | "BURN" | "STAKE" | "RECEIVE" | "SWAP";
   hash: string;
+  fullHash: string;
   amount: string;
+  timestamp: number;
+  status: "Confirmed" | "Pending" | "Failed";
+  key: string;
 }
 
 export default function DashboardPage() {
@@ -112,8 +117,9 @@ export default function DashboardPage() {
         const fromBlock = currentBlock - BigInt(10000) > BigInt(0) ? currentBlock - BigInt(10000) : BigInt(0);
         const transferEventAbi = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
         const assetSwappedEventAbi = parseAbiItem("event AssetSwapped(address indexed user, string direction, uint256 amountIn, uint256 amountOut)");
+        const tokensStakedEventAbi = parseAbiItem("event TokensStaked(address indexed user, uint256 amount, uint256 releaseTime)");
 
-        const [sentLogs, receivedLogs, swapLogs] = await Promise.all([
+        const [sentLogs, receivedLogs, swapLogs, stakeLogs] = await Promise.all([
           publicClient.getLogs({
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
@@ -135,38 +141,70 @@ export default function DashboardPage() {
             fromBlock,
             toBlock: currentBlock,
           }),
+          publicClient.getLogs({
+            address: VAULT_ADDRESS,
+            event: tokensStakedEventAbi,
+            args: { user: userAddress },
+            fromBlock,
+            toBlock: currentBlock,
+          }),
         ]);
 
         const newEntries: ActivityEntry[] = [];
 
+        // Collect all unique block numbers and fetch timestamps in parallel
+        const allLogs = [...sentLogs, ...receivedLogs, ...swapLogs, ...stakeLogs] as unknown as { blockNumber: bigint }[];
+        const uniqueBlockNums = [...new Set(allLogs.map((l) => l.blockNumber?.toString() ?? "0"))];
+        const blockTimestamps = new Map<string, number>();
+        const blocks = await Promise.all(
+          uniqueBlockNums.map((bn) =>
+            publicClient.getBlock({ blockNumber: BigInt(bn) }).catch(() => null)
+          )
+        );
+        blocks.forEach((block, i) => {
+          if (block) blockTimestamps.set(uniqueBlockNums[i], Number(block.timestamp));
+        });
+        const getBlockTime = (bn: bigint): number =>
+          blockTimestamps.get(bn.toString()) ?? Math.floor(Date.now() / 1000);
+
         for (const log of sentLogs) {
-          const { transactionHash, args } = log as unknown as { transactionHash: string; args: { from: string; to: string; value: bigint } };
+          const { transactionHash, args, blockNumber } = log as unknown as { transactionHash: string; blockNumber: bigint; args: { from: string; to: string; value: bigint } };
           if (seenHashes.has(transactionHash)) continue;
           seenHashes.add(transactionHash);
           const amount = formatUnits(args.value, 18);
+          const ts = await getBlockTime(blockNumber);
           newEntries.push({
-            type: "Transfer Sent",
+            action: "SEND",
             hash: `${transactionHash.slice(0, 6)}...${transactionHash.slice(-4)}`,
+            fullHash: transactionHash,
             amount: `${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS`,
+            timestamp: ts,
+            status: "Confirmed",
+            key: `onchain_${transactionHash}`,
           });
         }
 
         for (const log of receivedLogs) {
-          const { transactionHash, args } = log as unknown as { transactionHash: string; args: { from: string; to: string; value: bigint } };
+          const { transactionHash, args, blockNumber } = log as unknown as { transactionHash: string; blockNumber: bigint; args: { from: string; to: string; value: bigint } };
           if (args.from.toLowerCase() === userAddress.toLowerCase()) continue;
           if (seenHashes.has(transactionHash)) continue;
           seenHashes.add(transactionHash);
           const amount = formatUnits(args.value, 18);
+          const ts = await getBlockTime(blockNumber);
           newEntries.push({
-            type: "Token Received",
+            action: "RECEIVE",
             hash: `${transactionHash.slice(0, 6)}...${transactionHash.slice(-4)}`,
+            fullHash: transactionHash,
             amount: `${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS`,
+            timestamp: ts,
+            status: "Confirmed",
+            key: `onchain_${transactionHash}`,
           });
         }
 
-        // Parse V2 Vault AssetSwapped events (containing "direction" string)
+        // Parse V2 Vault AssetSwapped events
         for (const log of swapLogs) {
-          const { transactionHash } = log as unknown as { transactionHash: string };
+          const { transactionHash, blockNumber } = log as unknown as { transactionHash: string; blockNumber: bigint };
           if (seenHashes.has(transactionHash)) continue;
           seenHashes.add(transactionHash);
           try {
@@ -177,12 +215,18 @@ export default function DashboardPage() {
             });
             if (decoded.eventName === "AssetSwapped") {
               const args = decoded.args as unknown as { direction: string; amountIn: bigint; amountOut: bigint };
-              const dirLabel = args.direction === "USDC_TO_DIBS" ? "USDC → DIBS" : "DIBS → USDC";
+              const isBurn = args.direction === "DIBS_TO_USDC";
               const amountOutFormatted = formatUnits(args.amountOut, 18);
+              const displayToken = isBurn ? "USDC" : "DIBS";
+              const ts = await getBlockTime(blockNumber);
               newEntries.push({
-                type: `Swap ${dirLabel}`,
+                action: isBurn ? "BURN" : "SWAP",
                 hash: `${transactionHash.slice(0, 6)}...${transactionHash.slice(-4)}`,
-                amount: `${Number(amountOutFormatted).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${args.direction === "USDC_TO_DIBS" ? "DIBS" : "USDC"}`,
+                fullHash: transactionHash,
+                amount: `${Number(amountOutFormatted).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${displayToken}`,
+                timestamp: ts,
+                status: "Confirmed",
+                key: `onchain_${transactionHash}`,
               });
             }
           } catch {
@@ -190,8 +234,37 @@ export default function DashboardPage() {
           }
         }
 
+        // Parse TokensStaked events
+        for (const log of stakeLogs) {
+          const { transactionHash, args, blockNumber } = log as unknown as { transactionHash: string; blockNumber: bigint; args: { user: string; amount: bigint; releaseTime: bigint } };
+          if (seenHashes.has(transactionHash)) continue;
+          seenHashes.add(transactionHash);
+          const amount = formatUnits(args.amount, 18);
+          const ts = await getBlockTime(blockNumber);
+          newEntries.push({
+            action: "STAKE",
+            hash: `${transactionHash.slice(0, 6)}...${transactionHash.slice(-4)}`,
+            fullHash: transactionHash,
+            amount: `${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS`,
+            timestamp: ts,
+            status: "Confirmed",
+            key: `onchain_${transactionHash}`,
+          });
+        }
+
         if (newEntries.length > 0 && !cancelled) {
-          setActivityLogs((prev) => [...newEntries.reverse(), ...prev].slice(0, 10));
+          setActivityLogs((prev) => {
+            const existingHashes = new Set(prev.map((e) => e.fullHash).filter(Boolean));
+            const trulyNew = newEntries.filter((ne) => !existingHashes.has(ne.fullHash));
+            const updated = prev.map((entry) => {
+              if (entry.status === "Pending" && entry.fullHash) {
+                const match = newEntries.find((ne) => ne.fullHash === entry.fullHash);
+                if (match) return { ...entry, status: "Confirmed" as const, hash: match.hash, timestamp: match.timestamp } as ActivityEntry;
+              }
+              return entry;
+            });
+            return [...trulyNew.reverse(), ...updated].slice(0, 10);
+          });
         }
       } catch {
         // silent
@@ -267,7 +340,7 @@ export default function DashboardPage() {
               </span>
             </div>
             <p className="text-xl font-bold text-slate-900 dark:text-white">
-              {activityLogs.filter((a) => a.type === "Transfer Sent").length}
+              {activityLogs.filter((a) => a.action === "SEND").length}
             </p>
             <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Total transactions</p>
           </GlassCard>
@@ -280,7 +353,7 @@ export default function DashboardPage() {
               </span>
             </div>
             <p className="text-xl font-bold text-slate-900 dark:text-white">
-              {activityLogs.filter((a) => a.type === "Token Received").length}
+              {activityLogs.filter((a) => a.action === "RECEIVE").length}
             </p>
             <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Total transactions</p>
           </GlassCard>
@@ -325,40 +398,97 @@ export default function DashboardPage() {
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800">
                     <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Transaction
+                      Action
+                    </th>
+                    <th className="text-left py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Time
                     </th>
                     <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Amount
                     </th>
+                    <th className="text-right py-3 px-2 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {activityLogs.map((tx, i) => (
-                    <tr
-                      key={tx.hash + i}
-                      className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
-                    >
-                      <td className="py-3.5 px-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-slate-800 flex items-center justify-center flex-shrink-0">
-                            {tx.type.includes("Sent") ? (
-                              <ArrowUpRight className="w-3.5 h-3.5 text-warning" />
-                            ) : (
-                              <ArrowDownRight className="w-3.5 h-3.5 text-success" />
-                            )}
-                          </div>
-                          <span className="text-xs font-medium text-slate-950 dark:text-slate-50 truncate max-w-[140px]">
-                            {tx.type}
+                  {activityLogs.map((tx, i) => {
+                    const actionColors: Record<string, string> = {
+                      SEND: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+                      BURN: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+                      STAKE: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                      RECEIVE: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+                      SWAP: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+                    };
+                    const statusColors: Record<string, string> = {
+                      Confirmed: "bg-success/10 text-success border-success/20",
+                      Pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                      Failed: "bg-error/10 text-error border-error/20",
+                    };
+
+                    const timeAgo = (ts: number): string => {
+                      const seconds = Math.floor(Date.now() / 1000) - ts;
+                      if (seconds < 60) return "just now";
+                      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+                      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+                      return new Date(ts * 1000).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                    };
+
+                    return (
+                      <tr
+                        key={tx.key || (tx.fullHash + i)}
+                        className={`border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors activity-row-new ${tx.status === "Pending" ? "activity-pending-row" : ""}`}
+                      >
+                        <td className="py-3.5 px-2">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${actionColors[tx.action] || "bg-slate-100 text-slate-600 border-slate-200"}`}
+                          >
+                            {tx.action}
                           </span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-2 text-right">
-                        <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
-                          {tx.amount}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="py-3.5 px-2">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            {timeAgo(tx.timestamp)}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-2 text-right">
+                          <span className="text-xs font-mono font-medium text-slate-950 dark:text-slate-50">
+                            {tx.amount}
+                          </span>
+                        </td>                            <td className="py-3.5 px-2 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusColors[tx.status] || statusColors.Pending} ${tx.status === "Pending" ? "animate-pulse" : ""}`}
+                                >
+                                  {tx.status === "Confirmed" && (
+                                    <CheckCircle className="w-2.5 h-2.5" />
+                                  )}
+                                  {tx.status === "Pending" && (
+                                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                  )}
+                                  {tx.status}
+                                </span>
+                                {tx.status !== "Pending" && tx.fullHash && (
+                                  <a
+                                    href={`${ARC_EXPLORER_URL}/tx/${tx.fullHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-primary hover:text-primary-hover hover:underline transition-colors whitespace-nowrap"
+                                    title="View on ArcScan"
+                                  >
+                                    View
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                  })}
                 </tbody>
               </table>
             </div>

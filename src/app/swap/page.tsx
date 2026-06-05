@@ -211,6 +211,12 @@ export default function SwapPage() {
   const handleSwap = useCallback(async () => {
     if (!canSwap || swapWallets.length === 0) return;
 
+    // Balance check toast before proceeding
+    if (isOverBalance) {
+      toast.error(`Insufficient ${fromToken} balance for this action.`);
+      return;
+    }
+
     setIsSwapping(true);
     try {
       const activeWallet = swapWallets[0];

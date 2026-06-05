@@ -306,6 +306,33 @@ input, textarea, select {
 }
 
 /* ============================================================
+   ACTIVITY FEED ANIMATIONS
+   ============================================================ */
+@keyframes activityFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes activityPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.activity-row-new {
+  animation: activityFadeIn 0.4s ease-out forwards;
+}
+
+.activity-pending-row {
+  animation: activityPulse 1.5s ease-in-out infinite;
+}
+
+/* ============================================================
    SCROLLBAR
    ============================================================ */
 ::-webkit-scrollbar { width: 5px; }
