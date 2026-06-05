@@ -17,6 +17,7 @@ import {
   vaultABI,
   dibsBalanceOfABI,
   erc20ApproveABI,
+  switchToArcTestnet,
 } from "@/vaultConfig";
 
 const publicClient = createPublicClient({
@@ -214,11 +215,8 @@ export default function SwapPage() {
     try {
       const activeWallet = swapWallets[0];
 
-      // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
-      const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
-      if (currentChainId !== ARC_TESTNET_CHAIN_ID) {
-        await activeWallet.switchChain(ARC_TESTNET_CHAIN_ID);
-      }
+      // Programmatically switch wallet to Arc Testnet (5042002) — works for both external and embedded wallets
+      await switchToArcTestnet(activeWallet);
 
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({

@@ -6,6 +6,50 @@ export const EXCHANGE_RATE = 10; // 1 Native Token = 10 DIBS
 export const ARC_TESTNET_CHAIN_ID = 5042002;
 export const ARC_EXPLORER_URL = "https://testnet.explorer.arc.network";
 
+/**
+ * Robustly switch the user's wallet to Arc Testnet.
+ * Works for both embedded wallets (Privy) and external wallets (MetaMask, etc.).
+ * Handles the case where the chain hasn't been added to the wallet yet (EIP-4902).
+ */
+export async function switchToArcTestnet(wallet: {
+  switchChain: (chainId: number) => Promise<void>;
+  getEthereumProvider: () => Promise<any>;
+  chainId: string;
+}) {
+  const currentChainId = Number(wallet.chainId.replace("eip155:", ""));
+  if (currentChainId === ARC_TESTNET_CHAIN_ID) return;
+
+  try {
+    // Attempt direct switch (works for Privy embedded wallets and most external wallets)
+    await wallet.switchChain(ARC_TESTNET_CHAIN_ID);
+  } catch (switchError: any) {
+    // EIP-4902: chain not added to wallet — add it first then retry
+    if (
+      switchError?.code === 4902 ||
+      switchError?.cause?.code === 4902 ||
+      String(switchError?.message || "").includes("Unrecognized chain")
+    ) {
+      const provider = await wallet.getEthereumProvider();
+      await provider.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: `0x${ARC_TESTNET_CHAIN_ID.toString(16)}`,
+            chainName: "Arc Testnet",
+            nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+            rpcUrls: ["https://rpc.testnet.arc.network"],
+            blockExplorerUrls: [ARC_EXPLORER_URL],
+          },
+        ],
+      });
+      // Retry switch after adding
+      await wallet.switchChain(ARC_TESTNET_CHAIN_ID);
+    } else {
+      throw switchError;
+    }
+  }
+}
+
 export const vaultABI = [
   {
     type: "function",

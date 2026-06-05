@@ -28,12 +28,13 @@ import {
 } from "lucide-react";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { GlassCard } from "@/components/GlassCard";
-
-const ARC_TESTNET_CHAIN_ID = 5042002;
-
-// $DIBS ERC-20 Token Configuration
-const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
-const VAULT_ADDRESS = "0x3ed226184b4a00d1500e04f4fa89281107475597";
+import {
+  VAULT_ADDRESS,
+  DIBS_CONTRACT_ADDRESS,
+  EXCHANGE_RATE,
+  ARC_TESTNET_CHAIN_ID,
+  switchToArcTestnet,
+} from "@/vaultConfig";
 
 const dibsBalanceOfABI = [
   {
@@ -116,7 +117,6 @@ interface ActivityEntry {
   status: "Confirmed";
 }
 
-const EXCHANGE_RATE = 10; // 1 USDC = 10 DIBS
 
 export default function Home() {
   const { authenticated, ready, user, login, logout } = usePrivy();
@@ -522,11 +522,8 @@ export default function Home() {
     try {
       const activeWallet = dashboardWallets[0];
 
-      // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
-      const currentChainId = Number(activeWallet.chainId.replace('eip155:', ''));
-      if (currentChainId !== ARC_TESTNET_CHAIN_ID) {
-        await activeWallet.switchChain(ARC_TESTNET_CHAIN_ID);
-      }
+      // Programmatically switch wallet to Arc Testnet (5042002) — works for both external and embedded wallets
+      await switchToArcTestnet(activeWallet);
 
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
@@ -541,7 +538,7 @@ export default function Home() {
             address: VAULT_ADDRESS,
             abi: vaultABI,
             functionName: "swapUsdcForDibs",
-            value: parseUnits(swapInput, 6),
+            value: parseUnits(swapInput, 18),
           });
 
           // Wait for on-chain confirmation before resolving the toast
@@ -626,11 +623,8 @@ export default function Home() {
     try {
       const activeWallet = dashboardWallets[0];
 
-      // Programmatically switch Privy embedded wallet to Arc Testnet (5042002)
-      const currentSendChainId = Number(activeWallet.chainId.replace('eip155:', ''));
-      if (currentSendChainId !== ARC_TESTNET_CHAIN_ID) {
-        await activeWallet.switchChain(ARC_TESTNET_CHAIN_ID);
-      }
+      // Programmatically switch wallet to Arc Testnet (5042002) — works for both external and embedded wallets
+      await switchToArcTestnet(activeWallet);
 
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
@@ -1025,7 +1019,7 @@ export default function Home() {
                   </span>
                 </div>
 
-                {/* Send / Receive / Stake Action Sub-Row */}
+                {/* Send / Receive / Stake / Disconnect Action Sub-Row */}
                 <div className="flex items-center gap-3 mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
                   <button
                     onClick={() => setShowSendModal(true)}
@@ -1047,6 +1041,13 @@ export default function Home() {
                   >
                     <Lock className="w-4 h-4" />
                     Stake
+                  </button>
+                  <button
+                    onClick={handleDisconnect}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-red-500/20 text-red-500 bg-red-500/[0.05] hover:bg-red-500/[0.1] active:scale-[0.97] transition-all shadow-sm flex-shrink-0"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Disconnect
                   </button>
                 </div>
               </div>
