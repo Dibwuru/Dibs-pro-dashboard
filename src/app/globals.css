@@ -34,6 +34,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Use class-based dark mode so next-themes dark/light toggle works natively */
+@variant dark (&:where(.dark, .dark *));
+
 /* ============================================================
    BASE
    ============================================================ */
@@ -59,50 +62,28 @@ body {
 }
 
 /* ============================================================
-   SIDEBAR + NAVBAR — direct class selectors, always correct
+   SIDEBAR + NAVBAR — glassmorphic surfaces
    ============================================================ */
 aside {
-  background: rgba(255, 255, 255, 0.99) !important;
-  border-right-color: rgba(10, 22, 40, 0.10) !important;
+  background: rgba(255, 255, 255, 0.99);
+  border-right-color: rgba(10, 22, 40, 0.10);
   transition: background 0.25s ease, border-color 0.25s ease;
 }
 
 .dark aside {
-  background: rgba(6, 12, 22, 0.96) !important;
-  border-right-color: rgba(251, 191, 36, 0.15) !important;
+  background: rgba(6, 12, 22, 0.96);
+  border-right-color: rgba(251, 191, 36, 0.15);
 }
 
 nav.sticky {
-  background: rgba(255, 255, 255, 0.98) !important;
-  border-bottom-color: rgba(10, 22, 40, 0.08) !important;
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom-color: rgba(10, 22, 40, 0.08);
   transition: background 0.25s ease, border-color 0.25s ease;
 }
 
 .dark nav.sticky {
-  background: rgba(5, 11, 20, 0.92) !important;
-  border-bottom-color: rgba(251, 191, 36, 0.10) !important;
-}
-
-/* Sidebar text — sharp black in light, soft in dark */
-aside a, aside span, aside p, aside button, aside label {
-  color: #0F172A;
-}
-.dark aside a, .dark aside span, .dark aside p, .dark aside button, .dark aside label {
-  color: #CBD5E1;
-}
-
-/* Navbar text — sharp black in light, soft in dark */
-nav.sticky span:not(.btn-gradient),
-nav.sticky a,
-nav.sticky p,
-nav.sticky label {
-  color: #0F172A;
-}
-.dark nav.sticky span:not(.btn-gradient),
-.dark nav.sticky a,
-.dark nav.sticky p,
-.dark nav.sticky label {
-  color: #CBD5E1;
+  background: rgba(5, 11, 20, 0.92);
+  border-bottom-color: rgba(251, 191, 36, 0.10);
 }
 
 /* ============================================================
@@ -207,8 +188,9 @@ html:not(.dark) .text-gradient {
 .token-badge {
   background: #E2E8F0;
   border: 1px solid rgba(10, 22, 40, 0.12);
-  color: #D97706 !important;
+  color: #92400E !important;
   border-radius: 0.5rem;
+  font-weight: 600;
 }
 .dark .token-badge {
   background: rgba(30, 41, 59, 0.9);
@@ -262,48 +244,36 @@ input, textarea, select {
 }
 
 /* ============================================================
-   LIGHT MODE — force correct styles when system is dark
+   LIGHT MODE — ensure light theme overrides system dark
    ============================================================ */
-@media (prefers-color-scheme: dark) {
-  html.light body {
-    background: #F6F8FA !important;
-    color: #0A1628 !important;
-  }
 
-  /* Force ALL text elements to near-black in light mode */
-  html.light h1, html.light h2, html.light h3, html.light h4,
-  html.light p, html.light span, html.light a, html.light label,
-  html.light button, html.light td, html.light th, html.light li {
-    color: #0F172A;
-  }
-
-  /* Keep amber/gold elements their color but darker for readability */
-  html.light .text-amber-500,
-  html.light .text-amber-600 { color: #B45309 !important; }
-  html.light .text-amber-400 { color: #D97706 !important; }
-
-  /* Keep success/error colors */
-  html.light .text-success,
-  html.light [class*="text-emerald"] { color: #059669 !important; }
-  html.light .text-error,
-  html.light [class*="text-red"] { color: #DC2626 !important; }
-
-  /* Keep btn-gradient text black (it's on amber button) */
-  html.light .btn-gradient,
-  html.light .btn-gradient * { color: #0A0A0A !important; }
-
-  html.light input,
-  html.light textarea,
-  html.light select {
-    background: #F1F5F9 !important;
-    color: #0A1628 !important;
-    border-color: rgba(10, 22, 40, 0.12) !important;
-  }
-  html.light input::placeholder,
-  html.light textarea::placeholder {
-    color: rgba(10, 22, 40, 0.35) !important;
-  }
+/* When user explicitly chooses light, override any system-dark leakage */
+html.light body {
+  background: #F6F8FA !important;
+  color: #0A1628 !important;
 }
+
+html.light input,
+html.light textarea,
+html.light select {
+  background: #F1F5F9 !important;
+  color: #0A1628 !important;
+  border-color: rgba(10, 22, 40, 0.12) !important;
+}
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: rgba(10, 22, 40, 0.35) !important;
+}
+
+/* Ensure colored elements keep their identity in light mode */
+html.light .text-amber-600,
+html.light .text-amber-700,
+html.light .text-amber-800 { color: #B45309 !important; }
+html.light .text-amber-500,
+html.light .text-amber-400 { color: #D97706 !important; }
+
+html.light .btn-gradient,
+html.light .btn-gradient * { color: #0A0A0A !important; }
 
 /* ============================================================
    ACTIVITY FEED ANIMATIONS

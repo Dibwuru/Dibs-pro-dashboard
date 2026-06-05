@@ -94,8 +94,55 @@ export default function DashboardPage() {
     : "0";
   const gasBalanceFormatted = Number(gasBalance).toLocaleString(undefined, { maximumFractionDigits: 4 });
 
-  // --- Staked Balance (tracked locally, synced from main page's stake modal) ---
-  const [stakedBalance] = useState(0);
+  // --- Staked Balance (fetched on-chain from vault) ---
+  const [stakedBalance, setStakedBalance] = useState<number>(0);
+  const [stakedLoading, setStakedLoading] = useState(false);
+
+  useEffect(() => {
+    if (!userAddress) {
+      setStakedBalance(0);
+      return;
+    }
+    let cancelled = false;
+    const fetchStakes = async () => {
+      setStakedLoading(true);
+      try {
+        const count = (await publicClient.readContract({
+          address: VAULT_ADDRESS,
+          abi: vaultABI,
+          functionName: "getUserStakesCount",
+          args: [userAddress],
+        })) as bigint;
+
+        let total = BigInt(0);
+        for (let i = 0; i < Number(count); i++) {
+          const raw = (await publicClient.readContract({
+            address: VAULT_ADDRESS,
+            abi: vaultABI,
+            functionName: "userStakes",
+            args: [userAddress, BigInt(i)],
+          })) as [bigint, bigint, boolean];
+          // Only count unclaimed stakes
+          if (!raw[2]) {
+            total += raw[0];
+          }
+        }
+        if (!cancelled) {
+          setStakedBalance(parseFloat(formatUnits(total, 18)));
+        }
+      } catch {
+        if (!cancelled) setStakedBalance(0);
+      } finally {
+        if (!cancelled) setStakedLoading(false);
+      }
+    };
+    fetchStakes();
+    const interval = setInterval(fetchStakes, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [userAddress]);
 
   // --- Activity Tracking ---
   const [activityLogs, setActivityLogs] = useState<ActivityEntry[]>([]);
@@ -327,9 +374,17 @@ export default function DashboardPage() {
               </span>
             </div>
             <p className="text-xl font-bold text-slate-900 dark:text-white">
-              {stakedBalance > 0 ? `${stakedBalance.toLocaleString()} DIBS` : "0 DIBS"}
+              {stakedLoading
+                ? "..."
+                : stakedBalance > 0
+                  ? `${stakedBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS`
+                  : "0 DIBS"}
             </p>
-            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">0.00 DIBS earned</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+              {stakedBalance > 0
+                ? `Locked in vault`
+                : "Earn rewards by staking"}
+            </p>
           </GlassCard>
 
           <GlassCard className="p-5">

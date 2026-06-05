@@ -968,7 +968,55 @@ export default function Home() {
   // --- Stake Modal ---
   const [showStakeModal, setShowStakeModal] = useState(false);
   const [stakeAmount, setStakeAmount] = useState("");
-  const [stakedBalance, setStakedBalance] = useState(0);
+
+  // --- On-Chain Staked Balance (fetched from vault) ---
+  const [stakedBalance, setStakedBalance] = useState<number>(0);
+  const [stakedLoading, setStakedLoading] = useState(false);
+
+  useEffect(() => {
+    if (!userAddress) {
+      setStakedBalance(0);
+      return;
+    }
+    let cancelled = false;
+    const fetchStakes = async () => {
+      setStakedLoading(true);
+      try {
+        const count = (await publicClient.readContract({
+          address: VAULT_ADDRESS,
+          abi: vaultConfigABI,
+          functionName: "getUserStakesCount",
+          args: [userAddress],
+        })) as bigint;
+
+        let total = BigInt(0);
+        for (let i = 0; i < Number(count); i++) {
+          const raw = (await publicClient.readContract({
+            address: VAULT_ADDRESS,
+            abi: vaultConfigABI,
+            functionName: "userStakes",
+            args: [userAddress, BigInt(i)],
+          })) as [bigint, bigint, boolean];
+          if (!raw[2]) {
+            total += raw[0];
+          }
+        }
+        if (!cancelled) {
+          setStakedBalance(parseFloat(formatUnits(total, 18)));
+        }
+      } catch {
+        if (!cancelled) setStakedBalance(0);
+      } finally {
+        if (!cancelled) setStakedLoading(false);
+      }
+    };
+    fetchStakes();
+    const interval = setInterval(fetchStakes, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [userAddress]);
 
   // Stake modal shortcuts (always DIBS)
   const handleStakeFiftyPercent = useCallback(() => {
@@ -996,7 +1044,6 @@ export default function Home() {
     );
     updateEntry(pendingKey, { status: "Confirmed" });
 
-    setStakedBalance((prev) => prev + parsed);
     toast.success("Assets successfully committed to the Sovereign Staking Vault!");
     setShowStakeModal(false);
     setStakeAmount("");
@@ -1188,7 +1235,7 @@ export default function Home() {
                   <div className="flex items-center gap-2 mb-4 text-xs text-slate-500 dark:text-slate-400">
                     <Lock className="w-3.5 h-3.5" />
                     <span>
-                      Staked: {stakedBalance.toLocaleString()} DIBS
+                      Staked: {stakedLoading ? "..." : stakedBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS
                     </span>
                   </div>
                 )}
