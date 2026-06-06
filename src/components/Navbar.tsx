@@ -1,7 +1,7 @@
 "use client";
 
-import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
-import { createPublicClient, http, formatEther } from "viem";
+import { usePrivy, useConnectWallet, useWallets } from "@privy-io/react-auth";
+import { createPublicClient, http, custom, formatEther } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
 import { Menu, Coins, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
@@ -26,8 +26,9 @@ export function Navbar() {
   useEffect(() => setMounted(true), []);
 
   // Address derived strictly from authenticated Privy user wallet
-  const activeAddress = (user?.wallet?.address) as `0x${string}` | undefined;
-  const isWalletActive = authenticated && !!user?.wallet?.address;
+  const { wallets: navWallets } = useWallets();
+  const activeAddress = (navWallets[0]?.address as `0x${string}` | undefined) || (user?.wallet?.address as `0x${string}` | undefined);
+  const isWalletActive = authenticated && !!(user?.wallet?.address || navWallets[0]?.address);
 
   // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
   const handleDisconnect = useCallback(async () => {
@@ -46,7 +47,17 @@ export function Navbar() {
       return;
     }
     try {
-      const balance = await publicClient.getBalance({
+      let client;
+      if (navWallets.length > 0) {
+        const provider = await navWallets[0].getEthereumProvider();
+        client = createPublicClient({
+          chain: arcTestnet,
+          transport: custom(provider),
+        });
+      } else {
+        client = publicClient;
+      }
+      const balance = await client.getBalance({
         address: activeAddress as `0x${string}`,
       });
       const formatted = formatEther(balance);
@@ -55,7 +66,7 @@ export function Navbar() {
     } catch {
       setGasBalance("--");
     }
-  }, [activeAddress]);
+  }, [activeAddress, navWallets]);
 
   useEffect(() => {
     fetchGasBalance();

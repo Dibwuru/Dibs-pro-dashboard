@@ -19,17 +19,17 @@ import {
   switchToArcTestnet,
 } from "@/vaultConfig";
 
+const fallbackPublicClient = createPublicClient({
+  chain: arcTestnet,
+  transport: http(),
+});
+
 const LOCK_PERIODS = [
   { days: 7, label: "7 Days", apy: "8.5%" },
   { days: 30, label: "30 Days", apy: "12.5%" },
   { days: 90, label: "90 Days", apy: "18.0%" },
   { days: 180, label: "180 Days", apy: "24.0%" },
 ] as const;
-
-const publicClient = createPublicClient({
-  chain: arcTestnet,
-  transport: http(),
-});
 
 type UserStake = {
   index: number;
@@ -71,7 +71,32 @@ export default function StakePage() {
     activeStakeChainId !== null &&
     activeStakeChainId !== ARC_TESTNET_CHAIN_ID;
 
-  const userAddress = user?.wallet?.address as `0x${string}` | undefined;
+  const userAddress = (stakeWallets[0]?.address as `0x${string}` | undefined);
+
+  // Dynamic provider state so balance reads & writes route through the active wallet
+  const [stakeWalletProvider, setStakeWalletProvider] = useState<any>(null);
+
+  useEffect(() => {
+    const wallet = stakeWallets[0];
+    if (!wallet) {
+      setStakeWalletProvider(null);
+      return;
+    }
+    let cancelled = false;
+    wallet.getEthereumProvider().then((p: any) => {
+      if (!cancelled) setStakeWalletProvider(p);
+    }).catch(() => {
+      if (!cancelled) setStakeWalletProvider(null);
+    });
+    return () => { cancelled = true; };
+  }, [stakeWallets]);
+
+  const getPublicClient = useCallback(() => {
+    if (stakeWalletProvider) {
+      return createPublicClient({ chain: arcTestnet, transport: custom(stakeWalletProvider) });
+    }
+    return fallbackPublicClient;
+  }, [stakeWalletProvider]);
 
   // --- Tab state: stake or unstake ---
   const [activeTab, setActiveTab] = useState<"stake" | "unstake">("stake");
@@ -92,7 +117,8 @@ export default function StakePage() {
         setDibsBalanceLoading(true);
       }
       try {
-        const bal = await publicClient.readContract({
+        const client = getPublicClient();
+        const bal = await client.readContract({
           address: DIBS_CONTRACT_ADDRESS,
           abi: dibsBalanceOfABI,
           functionName: "balanceOf",
@@ -183,7 +209,8 @@ export default function StakePage() {
             functionName: "approve",
             args: [VAULT_ADDRESS, amountWei],
           });
-          const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+          const client = getPublicClient();
+          const approveReceipt = await client.waitForTransactionReceipt({ hash: approveHash });
           if (approveReceipt.status !== "success") {
             throw new Error("Transaction Failed/Reverted — Approval step failed");
           }
@@ -196,7 +223,7 @@ export default function StakePage() {
             args: [amountWei, BigInt(lockPeriodDays)],
           });
 
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash });
+          const receipt = await client.waitForTransactionReceipt({ hash: stakeHash });
           if (receipt.status !== "success") {
             throw new Error("Transaction Failed/Reverted");
           }
@@ -204,7 +231,8 @@ export default function StakePage() {
           // Refresh DIBS balance and user stakes
           if (userAddress) {
             try {
-              const newDibs = await publicClient.readContract({
+              const client = getPublicClient();
+              const newDibs = await client.readContract({
                 address: DIBS_CONTRACT_ADDRESS,
                 abi: dibsBalanceOfABI,
                 functionName: "balanceOf",
@@ -269,7 +297,8 @@ export default function StakePage() {
     const fetchStakes = async () => {
       setStakesLoading(true);
       try {
-        const count = await publicClient.readContract({
+        const client = getPublicClient();
+        const count = await client.readContract({
           address: VAULT_ADDRESS,
           abi: vaultABI,
           functionName: "getUserStakesCount",
@@ -278,7 +307,8 @@ export default function StakePage() {
 
         const stakes: UserStake[] = [];
         for (let i = 0; i < Number(count); i++) {
-          const raw = await publicClient.readContract({
+          const client = getPublicClient();
+          const raw = await client.readContract({
             address: VAULT_ADDRESS,
             abi: vaultABI,
             functionName: "userStakes",
@@ -336,7 +366,8 @@ export default function StakePage() {
             args: [BigInt(stakeIndex)],
           });
 
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: unstakeHash });
+          const client = getPublicClient();
+          const receipt = await client.waitForTransactionReceipt({ hash: unstakeHash });
           if (receipt.status !== "success") {
             throw new Error("Transaction Failed/Reverted");
           }
@@ -344,7 +375,8 @@ export default function StakePage() {
           // Refresh balances and stakes
           if (userAddress) {
             try {
-              const newDibs = await publicClient.readContract({
+              const client = getPublicClient();
+              const newDibs = await client.readContract({
                 address: DIBS_CONTRACT_ADDRESS,
                 abi: dibsBalanceOfABI,
                 functionName: "balanceOf",

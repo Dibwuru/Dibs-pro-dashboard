@@ -48,7 +48,7 @@ const dibsBalanceOfABI = [
   },
 ] as const;
 
-const publicClient = createPublicClient({
+const fallbackPublicClient = createPublicClient({
   chain: arcTestnet,
   transport: http(),
 });
@@ -144,8 +144,33 @@ export default function Home() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
 
-  const displayAddress = user?.wallet?.address || externalWalletAddress;
-  const userAddress = ((user?.wallet?.address || externalWalletAddress) as `0x${string}` | undefined);
+  const userAddress = ((dashboardWallets[0]?.address || externalWalletAddress) as `0x${string}` | undefined);
+  const displayAddress = userAddress;
+
+  // Dynamic provider state so balance reads & writes route through the active wallet
+  const [homeWalletProvider, setHomeWalletProvider] = useState<any>(null);
+
+  useEffect(() => {
+    const wallet = dashboardWallets[0];
+    if (!wallet) {
+      setHomeWalletProvider(null);
+      return;
+    }
+    let cancelled = false;
+    wallet.getEthereumProvider().then((p: any) => {
+      if (!cancelled) setHomeWalletProvider(p);
+    }).catch(() => {
+      if (!cancelled) setHomeWalletProvider(null);
+    });
+    return () => { cancelled = true; };
+  }, [dashboardWallets]);
+
+  const getPublicClient = useCallback(() => {
+    if (homeWalletProvider) {
+      return createPublicClient({ chain: arcTestnet, transport: custom(homeWalletProvider) });
+    }
+    return fallbackPublicClient;
+  }, [homeWalletProvider]);
 
   // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
   const handleDisconnect = useCallback(async () => {
@@ -175,7 +200,7 @@ export default function Home() {
         setDibsBalanceLoading(true);
       }
       try {
-        const balance = await publicClient.readContract({
+        const balance = await getPublicClient().readContract({
           address: DIBS_CONTRACT_ADDRESS,
           abi: dibsBalanceOfABI,
           functionName: "balanceOf",
@@ -248,7 +273,7 @@ export default function Home() {
     let cancelled = false;
     const fetchNative = async () => {
       try {
-        const bal = await publicClient.getBalance({ address: userAddress });
+        const bal = await getPublicClient().getBalance({ address: userAddress });
         if (!cancelled) {
           const formatted = formatUnits(bal, 18);
           setTokenList((prev) =>
@@ -312,20 +337,18 @@ export default function Home() {
     setImportLoading(true);
     setImportError(null);
     try {
-      const addr = trimmed as `0x${string}`;
-      const [symbol, decimals, balance] = await Promise.all([
-        publicClient.readContract({
+      const addr = trimmed as `0x${string}`;        const [symbol, decimals, balance] = await Promise.all([
+          getPublicClient().readContract({
           address: addr,
           abi: erc20ReadABI,
           functionName: "symbol",
         }),
-        publicClient.readContract({
+        getPublicClient().readContract({
           address: addr,
           abi: erc20ReadABI,
           functionName: "decimals",
-        }),
-        userAddress
-          ? publicClient.readContract({
+        }),            userAddress
+              ? getPublicClient().readContract({
               address: addr,
               abi: erc20ReadABI,
               functionName: "balanceOf",
@@ -406,8 +429,7 @@ export default function Home() {
     const pollActivity = async () => {
       if (cancelled) return;
       setActivityLoading(true);
-      try {
-        const currentBlock = await publicClient.getBlockNumber();
+      try {          const currentBlock = await getPublicClient().getBlockNumber();
         const fromBlock = currentBlock - BigInt(10000) > BigInt(0) ? currentBlock - BigInt(10000) : BigInt(0);
 
         const transferEventAbi = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)');
@@ -416,28 +438,28 @@ export default function Home() {
 
         // Viem handles standard 32-byte hexadecimal padding natively via args compilation
         const [sentLogs, receivedLogs, swapLogs, stakeLogs] = await Promise.all([
-          publicClient.getLogs({
+          getPublicClient().getLogs({
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
             args: { from: userAddress },
             fromBlock,
             toBlock: currentBlock,
           }),
-          publicClient.getLogs({
+          getPublicClient().getLogs({
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
             args: { to: userAddress },
             fromBlock,
             toBlock: currentBlock,
           }),
-          publicClient.getLogs({
+          getPublicClient().getLogs({
             address: VAULT_ADDRESS,
             event: assetSwappedEventAbi,
             args: { user: userAddress },
             fromBlock,
             toBlock: currentBlock,
           }),
-          publicClient.getLogs({
+          getPublicClient().getLogs({
             address: VAULT_ADDRESS,
             event: tokensStakedEventAbi,
             args: { user: userAddress },
@@ -454,7 +476,7 @@ export default function Home() {
         const blockTimestamps = new Map<string, number>();
         const blocks = await Promise.all(
           uniqueBlockNums.map((bn) =>
-            publicClient.getBlock({ blockNumber: BigInt(bn) }).catch(() => null)
+            getPublicClient().getBlock({ blockNumber: BigInt(bn) }).catch(() => null)
           )
         );
         blocks.forEach((block, i) => {
@@ -705,7 +727,7 @@ export default function Home() {
           });
 
           // Wait for on-chain confirmation before resolving the toast
-          const receipt = await publicClient.waitForTransactionReceipt({ hash });
+          const receipt = await getPublicClient().waitForTransactionReceipt({ hash });
           if (receipt.status !== "success") {
             updateEntry(pendingKey, { status: "Failed" });
             throw new Error("Transaction reverted on-chain");
@@ -718,8 +740,8 @@ export default function Home() {
           if (userAddress) {
             try {
               const [newGas, newDibs] = await Promise.all([
-                publicClient.getBalance({ address: userAddress }),
-                publicClient.readContract({
+                getPublicClient().getBalance({ address: userAddress }),
+                getPublicClient().readContract({
                   address: DIBS_CONTRACT_ADDRESS,
                   abi: dibsBalanceOfABI,
                   functionName: "balanceOf",
@@ -843,7 +865,7 @@ export default function Home() {
             });
 
             // Wait for on-chain confirmation before resolving the toast
-            const sendReceipt = await publicClient.waitForTransactionReceipt({ hash: sendHash });
+            const sendReceipt = await getPublicClient().waitForTransactionReceipt({ hash: sendHash });
             if (sendReceipt.status !== "success") {
               updateEntry(pendingKey, { status: "Failed" });
               throw new Error("Transaction reverted on-chain");
@@ -855,8 +877,8 @@ export default function Home() {
             if (userAddress) {
               try {
                 const [newGas, newDibs] = await Promise.all([
-                  publicClient.getBalance({ address: userAddress }),
-                  publicClient.readContract({
+                  getPublicClient().getBalance({ address: userAddress }),
+                  getPublicClient().readContract({
                     address: DIBS_CONTRACT_ADDRESS,
                     abi: dibsBalanceOfABI,
                     functionName: "balanceOf",
@@ -907,7 +929,7 @@ export default function Home() {
             });
 
             // Wait for on-chain confirmation before resolving the toast
-            const transferReceipt = await publicClient.waitForTransactionReceipt({ hash: transferHash });
+            const transferReceipt = await getPublicClient().waitForTransactionReceipt({ hash: transferHash });
             if (transferReceipt.status !== "success") {
               updateEntry(pendingKey, { status: "Failed" });
               throw new Error("Transaction reverted on-chain");
@@ -919,8 +941,8 @@ export default function Home() {
             if (userAddress) {
               try {
                 const [newGas, newDibs] = await Promise.all([
-                  publicClient.getBalance({ address: userAddress }),
-                  publicClient.readContract({
+                  getPublicClient().getBalance({ address: userAddress }),
+                  getPublicClient().readContract({
                     address: DIBS_CONTRACT_ADDRESS,
                     abi: dibsBalanceOfABI,
                     functionName: "balanceOf",
@@ -982,7 +1004,7 @@ export default function Home() {
     const fetchStakes = async () => {
       setStakedLoading(true);
       try {
-        const count = (await publicClient.readContract({
+        const count = (await getPublicClient().readContract({
           address: VAULT_ADDRESS,
           abi: vaultConfigABI,
           functionName: "getUserStakesCount",
@@ -991,7 +1013,7 @@ export default function Home() {
 
         let total = BigInt(0);
         for (let i = 0; i < Number(count); i++) {
-          const raw = (await publicClient.readContract({
+          const raw = (await getPublicClient().readContract({
             address: VAULT_ADDRESS,
             abi: vaultConfigABI,
             functionName: "userStakes",

@@ -1,9 +1,9 @@
 "use client";
 
 import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { createPublicClient, http, formatUnits, parseAbiItem, decodeEventLog } from "viem";
+import { createPublicClient, http, custom, formatUnits, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
@@ -16,7 +16,7 @@ import {
   vaultABI,
 } from "@/vaultConfig";
 
-const publicClient = createPublicClient({
+const fallbackPublicClient = createPublicClient({
   chain: arcTestnet,
   transport: http(),
 });
@@ -46,7 +46,32 @@ export default function DashboardPage() {
     activeDashboardChainId !== null &&
     activeDashboardChainId !== ARC_TESTNET_CHAIN_ID;
 
-  const userAddress = user?.wallet?.address as `0x${string}` | undefined;
+  const userAddress = (dashboardWallets[0]?.address as `0x${string}` | undefined);
+
+  // Dynamic provider state so balance reads route through the active wallet
+  const [dashWalletProvider, setDashWalletProvider] = useState<any>(null);
+
+  useEffect(() => {
+    const wallet = dashboardWallets[0];
+    if (!wallet) {
+      setDashWalletProvider(null);
+      return;
+    }
+    let cancelled = false;
+    wallet.getEthereumProvider().then((p: any) => {
+      if (!cancelled) setDashWalletProvider(p);
+    }).catch(() => {
+      if (!cancelled) setDashWalletProvider(null);
+    });
+    return () => { cancelled = true; };
+  }, [dashboardWallets]);
+
+  const getPublicClient = useCallback(() => {
+    if (dashWalletProvider) {
+      return createPublicClient({ chain: arcTestnet, transport: custom(dashWalletProvider) });
+    }
+    return fallbackPublicClient;
+  }, [dashWalletProvider]);
 
   // --- Balances ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
@@ -62,13 +87,13 @@ export default function DashboardPage() {
     const fetchBalances = async () => {
       try {
         const [dibs, gas] = await Promise.all([
-          publicClient.readContract({
+          getPublicClient().readContract({
             address: DIBS_CONTRACT_ADDRESS,
             abi: dibsBalanceOfABI,
             functionName: "balanceOf",
             args: [userAddress],
           }),
-          publicClient.getBalance({ address: userAddress }),
+          getPublicClient().getBalance({ address: userAddress }),
         ]);
         if (!cancelled) {
           setDibsBalanceRaw(dibs);
@@ -107,7 +132,7 @@ export default function DashboardPage() {
     const fetchStakes = async () => {
       setStakedLoading(true);
       try {
-        const count = (await publicClient.readContract({
+        const count = (await getPublicClient().readContract({
           address: VAULT_ADDRESS,
           abi: vaultABI,
           functionName: "getUserStakesCount",
@@ -116,7 +141,7 @@ export default function DashboardPage() {
 
         let total = BigInt(0);
         for (let i = 0; i < Number(count); i++) {
-          const raw = (await publicClient.readContract({
+          const raw = (await getPublicClient().readContract({
             address: VAULT_ADDRESS,
             abi: vaultABI,
             functionName: "userStakes",
@@ -160,35 +185,35 @@ export default function DashboardPage() {
       if (cancelled) return;
       setActivityLoading(true);
       try {
-        const currentBlock = await publicClient.getBlockNumber();
+        const currentBlock = await          getPublicClient().getBlockNumber();
         const fromBlock = currentBlock - BigInt(10000) > BigInt(0) ? currentBlock - BigInt(10000) : BigInt(0);
         const transferEventAbi = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
         const assetSwappedEventAbi = parseAbiItem("event AssetSwapped(address indexed user, string direction, uint256 amountIn, uint256 amountOut)");
         const tokensStakedEventAbi = parseAbiItem("event TokensStaked(address indexed user, uint256 amount, uint256 releaseTime)");
 
         const [sentLogs, receivedLogs, swapLogs, stakeLogs] = await Promise.all([
-          publicClient.getLogs({
+          getPublicClient().getLogs({
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
             args: { from: userAddress },
             fromBlock,
             toBlock: currentBlock,
           }),
-          publicClient.getLogs({
+          getPublicClient().getLogs({
             address: DIBS_CONTRACT_ADDRESS,
             event: transferEventAbi,
             args: { to: userAddress },
             fromBlock,
             toBlock: currentBlock,
           }),
-          publicClient.getLogs({
+          getPublicClient().getLogs({
             address: VAULT_ADDRESS,
             event: assetSwappedEventAbi,
             args: { user: userAddress },
             fromBlock,
             toBlock: currentBlock,
           }),
-          publicClient.getLogs({
+          getPublicClient().getLogs({
             address: VAULT_ADDRESS,
             event: tokensStakedEventAbi,
             args: { user: userAddress },
@@ -205,7 +230,7 @@ export default function DashboardPage() {
         const blockTimestamps = new Map<string, number>();
         const blocks = await Promise.all(
           uniqueBlockNums.map((bn) =>
-            publicClient.getBlock({ blockNumber: BigInt(bn) }).catch(() => null)
+            getPublicClient().getBlock({ blockNumber: BigInt(bn) }).catch(() => null)
           )
         );
         blocks.forEach((block, i) => {

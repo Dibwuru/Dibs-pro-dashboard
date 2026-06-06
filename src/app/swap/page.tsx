@@ -20,7 +20,7 @@ import {
   switchToArcTestnet,
 } from "@/vaultConfig";
 
-const publicClient = createPublicClient({
+const fallbackPublicClient = createPublicClient({
   chain: arcTestnet,
   transport: http(),
 });
@@ -40,7 +40,33 @@ export default function SwapPage() {
     activeSwapChainId !== null &&
     activeSwapChainId !== ARC_TESTNET_CHAIN_ID;
 
-  const userAddress = ((user?.wallet?.address || swapWallets[0]?.address) as `0x${string}` | undefined);
+  const userAddress = (swapWallets[0]?.address as `0x${string}` | undefined);
+
+  // Dynamic provider state so balance reads & writes route through the active wallet
+  const [swapWalletProvider, setSwapWalletProvider] = useState<any>(null);
+
+  useEffect(() => {
+    const wallet = swapWallets[0];
+    if (!wallet) {
+      setSwapWalletProvider(null);
+      return;
+    }
+    let cancelled = false;
+    wallet.getEthereumProvider().then((p: any) => {
+      if (!cancelled) setSwapWalletProvider(p);
+    }).catch(() => {
+      if (!cancelled) setSwapWalletProvider(null);
+    });
+    return () => { cancelled = true; };
+  }, [swapWallets]);
+
+  // Helper that builds a public client through the active wallet when available
+  const getPublicClient = useCallback(() => {
+    if (swapWalletProvider) {
+      return createPublicClient({ chain: arcTestnet, transport: custom(swapWalletProvider) });
+    }
+    return fallbackPublicClient;
+  }, [swapWalletProvider]);
 
   // --- Token flip state ---
   const [fromToken, setFromToken] = useState<"USDC" | "DIBS">("USDC");
@@ -59,7 +85,8 @@ export default function SwapPage() {
     let cancelled = false;
     const fetchGas = async () => {
       try {
-        const bal = await publicClient.getBalance({ address: userAddress });
+        const client = getPublicClient();
+        const bal = await client.getBalance({ address: userAddress });
         if (!cancelled) {
           setGasBalance(parseFloat(formatEther(bal)));
         }
@@ -86,7 +113,8 @@ export default function SwapPage() {
     let cancelled = false;
     const fetchDibs = async () => {
       try {
-        const bal = await publicClient.readContract({
+        const client = getPublicClient();
+        const bal = await client.readContract({
           address: DIBS_CONTRACT_ADDRESS,
           abi: dibsBalanceOfABI,
           functionName: "balanceOf",
@@ -168,7 +196,8 @@ export default function SwapPage() {
     let cancelled = false;
     const fetchVaultLiquidity = async () => {
       try {
-        const bal = await publicClient.readContract({
+        const client = getPublicClient();
+        const bal = await client.readContract({
           address: DIBS_CONTRACT_ADDRESS,
           abi: dibsBalanceOfABI,
           functionName: "balanceOf",
@@ -256,7 +285,8 @@ export default function SwapPage() {
               functionName: "approve",
               args: [VAULT_ADDRESS, amountWei],
             });
-            const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+            const client = getPublicClient();
+            const approveReceipt = await client.waitForTransactionReceipt({ hash: approveHash });
             if (approveReceipt.status !== "success") {
               throw new Error("Transaction Failed/Reverted — Approval step failed");
             }
@@ -271,7 +301,8 @@ export default function SwapPage() {
           }
 
           // Wait for on-chain confirmation
-          const receipt = await publicClient.waitForTransactionReceipt({ hash });
+          const client = getPublicClient();
+          const receipt = await client.waitForTransactionReceipt({ hash });
           if (receipt.status !== "success") {
             throw new Error("Transaction Failed/Reverted");
           }
@@ -298,9 +329,10 @@ export default function SwapPage() {
           // Immediately refresh balances
           if (userAddress) {
             try {
+              const client = getPublicClient();
               const [newGas, newDibs] = await Promise.all([
-                publicClient.getBalance({ address: userAddress }),
-                publicClient.readContract({
+                client.getBalance({ address: userAddress }),
+                client.readContract({
                   address: DIBS_CONTRACT_ADDRESS,
                   abi: dibsBalanceOfABI,
                   functionName: "balanceOf",
