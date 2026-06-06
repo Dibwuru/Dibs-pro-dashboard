@@ -3,6 +3,7 @@
 import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useChainId } from "wagmi";
 import { createPublicClient, http, custom, formatUnits, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import { GlassCard } from "@/components/GlassCard";
@@ -41,10 +42,6 @@ export default function DashboardPage() {
   const activeDashboardChainId = activeDashboardWallet
     ? Number(activeDashboardWallet.chainId.replace("eip155:", ""))
     : null;
-  const isWrongNetwork =
-    isUIActive &&
-    activeDashboardChainId !== null &&
-    activeDashboardChainId !== ARC_TESTNET_CHAIN_ID;
 
   const userAddress = (dashboardWallets[0]?.address as `0x${string}` | undefined);
 
@@ -76,6 +73,15 @@ export default function DashboardPage() {
   // --- Balances ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
   const [gasBalance, setGasBalance] = useState<string>("0");
+  const [gasBalanceLoaded, setGasBalanceLoaded] = useState(false);
+
+  const wagmiChainId = useChainId();
+  const isWrongNetwork =
+    isUIActive &&
+    activeDashboardChainId !== null &&
+    activeDashboardChainId !== ARC_TESTNET_CHAIN_ID &&
+    wagmiChainId !== ARC_TESTNET_CHAIN_ID &&
+    !gasBalanceLoaded;
 
   useEffect(() => {
     if (!userAddress) {
@@ -98,6 +104,7 @@ export default function DashboardPage() {
         if (!cancelled) {
           setDibsBalanceRaw(dibs);
           setGasBalance(formatUnits(gas, 18));
+          setGasBalanceLoaded(true);
         }
       } catch {
         if (!cancelled) {

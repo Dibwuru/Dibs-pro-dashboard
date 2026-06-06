@@ -2,6 +2,7 @@
 
 import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
 import { useTheme } from "next-themes";
+import { useChainId } from "wagmi";
 import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
@@ -138,10 +139,14 @@ export default function Home() {
   const activeDashboardChainId = activeDashboardWallet
     ? Number(activeDashboardWallet.chainId.replace('eip155:', ''))
     : null;
+  const wagmiChainId = useChainId();
+  const [nativeBalanceFetched, setNativeBalanceFetched] = useState(false);
   const isWrongNetwork =
     isUIActive &&
     activeDashboardChainId !== null &&
-    activeDashboardChainId !== ARC_TESTNET_CHAIN_ID;
+    activeDashboardChainId !== ARC_TESTNET_CHAIN_ID &&
+    wagmiChainId !== ARC_TESTNET_CHAIN_ID &&
+    !nativeBalanceFetched;
 
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
@@ -285,6 +290,7 @@ export default function Home() {
         const bal = await getPublicClient().getBalance({ address: userAddress });
         if (!cancelled) {
           const formatted = formatUnits(bal, 18);
+          setNativeBalanceFetched(true);
           setTokenList((prev) =>
             prev.map((t) =>
               t.address === "Native"

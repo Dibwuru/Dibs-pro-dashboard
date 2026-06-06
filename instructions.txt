@@ -1,26 +1,33 @@
 ACT AS: A Senior Web3 Frontend Architect.
-TASK: Fix the UI conditional rendering trap that is causing MetaMask connections to be ignored by the layout state.
+TASK: Fix the dead Disconnect buttons, remove the false-positive network warnings, and sync the Navbar gas balance with the Dashboard native balance.
 
-CRITICAL BUG FIX:
-Currently, the UI is strictly locked behind Privy's 'authenticated' boolean. However, users who connect via external wallets (like MetaMask) populate the 'useWallets().wallets' array without flipping 'authenticated' to true. This causes the UI to display "Connect Wallet" even while Wagmi successfully reads their balances in the background.
+CRITICAL BUG FIXES:
 
-EXACT IMPLEMENTATION:
+1. FIX THE DEAD DISCONNECT BUTTONS (Navbar.tsx & Sidebar.tsx):
+   - You MUST bind an 'onClick' handler to the Disconnect buttons/icons in BOTH the Navbar and Sidebar components.
+   - Implement this exact function inside both components:
+     ```typescript
+     const { logout } = usePrivy();
+     const { wallets } = useWallets();
+     const handleHardDisconnect = async () => {
+         if (wallets) await wallets.disconnect();
+         await logout();
+         localStorage.clear();
+         window.location.reload();
+     };
+     ```
+   - Bind `onClick={handleHardDisconnect}` to the disconnect elements. Do not leave them as dead UI.
 
-1. CREATE A UNIFIED CONNECTION STATE:
-   - In your layout files (Navbar.tsx, Sidebar.tsx), Dashboard (src/app/dashboard/page.tsx), Swap, and Stake pages, you MUST evaluate BOTH Privy states.
-   - Import both hooks: 
-     `const { authenticated, ready } = usePrivy();`
-     `const { wallets } = useWallets();`
-   - Create a unified active state boolean:
-     `const isUIActive = ready && (authenticated || (wallets && wallets.length > 0));`
+2. FIX FALSE-POSITIVE NETWORK WARNINGS (src/app/page.tsx & Dashboard Layout):
+   - The UI is showing "You are connected to an unsupported network" even when Wagmi successfully reads the Arc Testnet balance.
+   - Update the network warning logic to correctly check BOTH the Wagmi 'useChainId()' and the active Privy wallet's chain. 
+   - Ensure the expected chain ID is strictly '5042002'. If Wagmi successfully returns the native USDC balance, suppress the warning.
 
-2. APPLY CONDITIONAL RENDERING:
-   - Replace any strict `{authenticated ? ... : ...}` checks with `{isUIActive ? ... : ...}`.
-   - If 'isUIActive' is TRUE: 
-     - Sidebar/Navbar: Hide the "Connect Wallet" & "Sign In" buttons. Render the active wallet address and the "Disconnect" button.
-     - Dashboard: Hide the "Connect your wallet to see activity" fallback. Render the actual portfolio stats and Recent Activity tables.
-   - If 'isUIActive' is FALSE: Show the default disconnected states.
+3. SYNC NAVBAR GAS BALANCE (Navbar.tsx):
+   - The Navbar currently shows 'Gas: <0.0001 USDC' while the Dashboard correctly shows '104.37 USDC'.
+   - Update the Navbar component to use the EXACT same native balance fetching hook (e.g., Wagmi's 'useBalance' targeting the active address) that the Dashboard is using.
+   - Format the Navbar display to match: `Gas: ${formattedBalance} USDC`.
 
-3. EXECUTE:
-   - Run 'npm run build' to confirm no type-check errors.
-   - Git commit with message: "fix: unify UI render state to accept both Privy authenticated sessions and external wallet connections" and push to main.
+4. EXECUTE:
+   - Run 'npm run build' to confirm no type errors.
+   - Git commit with message: "fix: bind hard disconnect to buttons, resolve false network warnings, and sync navbar gas balance" and push to main.

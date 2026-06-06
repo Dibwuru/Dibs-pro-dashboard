@@ -1,7 +1,8 @@
 "use client";
 
 import { usePrivy, useConnectWallet, useWallets } from "@privy-io/react-auth";
-import { createPublicClient, http, custom, formatEther } from "viem";
+import { useBalance } from "wagmi";
+import { formatUnits } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
 import { Menu, Coins, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
@@ -10,10 +11,6 @@ import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/SidebarContext";
 import { formatAddress } from "@/lib/format";
 
-const publicClient = createPublicClient({
-  chain: arcTestnet,
-  transport: http(),
-});
 
 export function Navbar() {
   const { theme, setTheme } = useTheme();
@@ -21,7 +18,6 @@ export function Navbar() {
   const { connectWallet } = useConnectWallet();
   const { openMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
-  const [gasBalance, setGasBalance] = useState<string>("--");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -30,6 +26,23 @@ export function Navbar() {
   const { wallets: navWallets } = useWallets();
   const activeAddress = (navWallets[0]?.address as `0x${string}` | undefined) || (user?.wallet?.address as `0x${string}` | undefined);
   const isUIActive = ready && (authenticated || (navWallets && navWallets.length > 0));
+
+  // Use Wagmi's useBalance hook to sync gas balance with the Dashboard
+  const { data: wagmiBalance } = useBalance({
+    address: activeAddress as `0x${string}`,
+    chainId: arcTestnet.id,
+    query: {
+      enabled: !!activeAddress,
+      refetchInterval: 8000,
+    },
+  });
+
+  const gasBalance = !activeAddress || !wagmiBalance
+    ? "--"
+    : (() => {
+        const num = parseFloat(formatUnits(wagmiBalance.value, wagmiBalance.decimals));
+        return num < 0.0001 ? "<0.0001" : num.toFixed(4);
+      })();
 
   // Nuclear disconnect: disconnect external wallets + wipe Privy session + clear caches + reload
   const handleDisconnect = useCallback(async () => {
@@ -49,39 +62,6 @@ export function Navbar() {
     localStorage.clear();
     window.location.reload();
   }, [logout, navWallets]);
-
-  const fetchGasBalance = useCallback(async () => {
-    if (!activeAddress) {
-      setGasBalance("--");
-      return;
-    }
-    try {
-      let client;
-      if (navWallets.length > 0) {
-        const provider = await navWallets[0].getEthereumProvider();
-        client = createPublicClient({
-          chain: arcTestnet,
-          transport: custom(provider),
-        });
-      } else {
-        client = publicClient;
-      }
-      const balance = await client.getBalance({
-        address: activeAddress as `0x${string}`,
-      });
-      const formatted = formatEther(balance);
-      const num = parseFloat(formatted);
-      setGasBalance(num < 0.0001 ? "<0.0001" : num.toFixed(4));
-    } catch {
-      setGasBalance("--");
-    }
-  }, [activeAddress, navWallets]);
-
-  useEffect(() => {
-    fetchGasBalance();
-    const interval = setInterval(fetchGasBalance, 8000);
-    return () => clearInterval(interval);
-  }, [fetchGasBalance]);
 
   // --- Identity capsule helpers ---
   const emailHandle =
