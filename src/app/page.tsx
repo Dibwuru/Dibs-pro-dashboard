@@ -131,6 +131,8 @@ export default function Home() {
   // External wallet address fallback for users who connect via MetaMask without Privy auth
   const externalWalletAddress = dashboardWallets.length > 0 ? (dashboardWallets[0].address as string) : null;
   const isWalletConnected = (authenticated && !!user?.wallet?.address) || !!externalWalletAddress;
+  // Unified active state: supports both Privy auth and external wallet connections
+  const isUIActive = ready && (authenticated || (dashboardWallets && dashboardWallets.length > 0));
 
   const activeDashboardWallet = dashboardWallets[0];
   const activeDashboardChainId = activeDashboardWallet
@@ -1083,10 +1085,13 @@ export default function Home() {
     };
   }, [showReceiveModal, showSendModal, showStakeModal]);
 
-  // ===== AUTH GATEWAY: Matte Obsidian Onboarding Gateway =====
-  // Show gateway when not authenticated via Privy.
-  // Strict check: ONLY use authenticated boolean, never wallets array.
-  if (ready && !authenticated) {
+  // ===== AUTH GATEWAY: Show onboarding only when fully disconnected =====
+  // During initial load (ready === false), render nothing to avoid flash
+  if (!ready) {
+    return null;
+  }
+
+  if (!isUIActive) {
     return (
       <div
         className="flex flex-col items-center justify-center min-h-[80vh] w-full relative overflow-hidden transition-colors duration-300"
@@ -1186,11 +1191,6 @@ export default function Home() {
         </div>
       </div>
     );
-  }
-
-  // During initial load (ready === false), render nothing to avoid flash
-  if (!ready) {
-    return null;
   }
 
   return (

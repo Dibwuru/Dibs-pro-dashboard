@@ -36,6 +36,11 @@ function truncateEmail(email: string): string {
   return `${local.slice(0, 4)}...${local.slice(-4)}`;
 }
 
+function formatAddress(address: string): string {
+  if (!address || address.length < 10) return address || "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 interface ProfileData {
   displayName: string;
   customBio: string;
@@ -109,8 +114,7 @@ export function Sidebar() {
     user?.email?.address || user?.google?.email || "Connected Wallet";
   const embeddedWalletAddress = user?.wallet?.address || "";
   const displayedAddress = activeAddress || embeddedWalletAddress;
-  const truncatedWallet =
-    displayedAddress.slice(0, 6) + "..." + displayedAddress.slice(-4);
+  const truncatedWallet = formatAddress(displayedAddress);
   const displayEmail = activeDisplayName || truncateEmail(emailHandle);
   const avatarLetter = (activeDisplayName || emailHandle).charAt(0).toUpperCase();
 

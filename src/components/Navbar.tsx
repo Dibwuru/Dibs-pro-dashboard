@@ -75,13 +75,12 @@ export function Navbar() {
   }, [fetchGasBalance]);
 
   // --- Identity capsule helpers ---
+  const formatAddress = (address: string) => (!address || address.length < 10 ? address || "" : `${address.slice(0, 6)}...${address.slice(-4)}`);
   const emailHandle =
     user?.email?.address || user?.google?.email || "Connected Wallet";
   const embeddedWalletAddress = user?.wallet?.address || "";
   const displayedAddress = activeAddress || embeddedWalletAddress;
-  const truncatedAddress = displayedAddress
-    ? `${displayedAddress.slice(0, 6)}...${displayedAddress.slice(-4)}`
-    : "";
+  const truncatedAddress = formatAddress(displayedAddress);
 
   const handleCopyAddress = useCallback(async () => {
     if (!displayedAddress) return;
