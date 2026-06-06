@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
+import { usePrivy, useConnectWallet, useWallets } from "@privy-io/react-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -64,7 +64,8 @@ function saveProfile(data: ProfileData) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { authenticated, user, logout, login } = usePrivy();
+  const { authenticated, ready, user, logout, login } = usePrivy();
+  const { wallets: sidebarWallets } = useWallets();
   const { connectWallet } = useConnectWallet();
   const { theme, setTheme } = useTheme();
   const { isMobileOpen, closeMobile, isProfileEditorOpen, openProfileEditor, closeProfileEditor } = useSidebar();
@@ -89,8 +90,8 @@ export function Sidebar() {
     if (stored.pfpUrl) setPfpUrl(stored.pfpUrl);
   }, []);
 
-  // Address derived strictly from authenticated Privy user wallet
-  const isWalletActive = authenticated && !!user?.wallet?.address;
+  // Unified active state: supports both Privy auth and external wallet connections
+  const isUIActive = ready && (authenticated || (sidebarWallets && sidebarWallets.length > 0));
 
   // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
   const handleDisconnect = useCallback(async () => {
@@ -103,10 +104,11 @@ export function Sidebar() {
     window.location.reload();
   }, [logout]);
 
+  const activeAddress = (sidebarWallets[0]?.address as string) || user?.wallet?.address || "";
   const emailHandle =
-    user?.email?.address || user?.google?.email || "Authenticated User";
+    user?.email?.address || user?.google?.email || "Connected Wallet";
   const embeddedWalletAddress = user?.wallet?.address || "";
-  const displayedAddress = embeddedWalletAddress;
+  const displayedAddress = activeAddress || embeddedWalletAddress;
   const truncatedWallet =
     displayedAddress.slice(0, 6) + "..." + displayedAddress.slice(-4);
   const displayEmail = activeDisplayName || truncateEmail(emailHandle);
@@ -186,7 +188,7 @@ export function Sidebar() {
       {/* Bottom area: Profile + Theme + Footer */}
       <div className="px-3 pb-5 space-y-3">
         {/* Privy Identity Capsule */}
-        {isWalletActive ? (
+        {isUIActive ? (
           <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
             {/* Avatar + Info Row */}
             <div className="flex items-center gap-3 px-4 py-3">

@@ -16,7 +16,7 @@ const publicClient = createPublicClient({
 
 export function Navbar() {
   const { theme, setTheme } = useTheme();
-  const { login, authenticated, logout, user } = usePrivy();
+  const { login, authenticated, ready, logout, user } = usePrivy();
   const { connectWallet } = useConnectWallet();
   const { openMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
@@ -25,10 +25,10 @@ export function Navbar() {
 
   useEffect(() => setMounted(true), []);
 
-  // Address derived strictly from authenticated Privy user wallet
+  // Unified active state: supports both Privy auth and external wallet connections
   const { wallets: navWallets } = useWallets();
   const activeAddress = (navWallets[0]?.address as `0x${string}` | undefined) || (user?.wallet?.address as `0x${string}` | undefined);
-  const isWalletActive = authenticated && !!(user?.wallet?.address || navWallets[0]?.address);
+  const isUIActive = ready && (authenticated || (navWallets && navWallets.length > 0));
 
   // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
   const handleDisconnect = useCallback(async () => {
@@ -76,9 +76,9 @@ export function Navbar() {
 
   // --- Identity capsule helpers ---
   const emailHandle =
-    user?.email?.address || user?.google?.email || "Authenticated User";
+    user?.email?.address || user?.google?.email || "Connected Wallet";
   const embeddedWalletAddress = user?.wallet?.address || "";
-  const displayedAddress = embeddedWalletAddress;
+  const displayedAddress = activeAddress || embeddedWalletAddress;
   const truncatedAddress = displayedAddress
     ? `${displayedAddress.slice(0, 6)}...${displayedAddress.slice(-4)}`
     : "";
@@ -166,7 +166,7 @@ export function Navbar() {
               </button>
 
               {/* Privy Identity Capsule / Auth Button */}
-              {isWalletActive ? (
+              {isUIActive ? (
                 <div className="hidden sm:flex items-center gap-1.5">
                   {/* Dual-segmented gold glassmorphic identity capsule */}
                   <div className="flex items-stretch rounded-lg border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 overflow-hidden shadow-sm shadow-amber-500/5">

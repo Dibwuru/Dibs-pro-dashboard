@@ -1,22 +1,26 @@
-ACT AS: A Senior Web3 Architect specializing in Privy integration.
-TASK: Restore independent, dynamic wallet routing so both Google/Email embedded wallets and external MetaMask wallets can execute transactions and read balances without conflicting.
+ACT AS: A Senior Web3 Frontend Architect.
+TASK: Fix the UI conditional rendering trap that is causing MetaMask connections to be ignored by the layout state.
 
-CRITICAL ARCHITECTURE FIX:
-The application is currently hardcoding transaction requests to 'window.ethereum' or an injected Wagmi connector, completely breaking functionality for users who log in via Google/Email (Privy Embedded Wallets). 
+CRITICAL BUG FIX:
+Currently, the UI is strictly locked behind Privy's 'authenticated' boolean. However, users who connect via external wallets (like MetaMask) populate the 'useWallets().wallets' array without flipping 'authenticated' to true. This causes the UI to display "Connect Wallet" even while Wagmi successfully reads their balances in the background.
 
 EXACT IMPLEMENTATION:
 
-1. DYNAMIC PROVIDER RESOLUTION (src/app/swap/page.tsx, src/app/stake/page.tsx, & UI Components):
-   - You MUST remove any hardcoded references to the injected MetaMask provider for transactions and balance reading.
-   - Import 'useWallets' from '@privy-io/react-auth'.
-   - Extract the active wallet: 'const { wallets } = useWallets(); const activeWallet = wallets;'
-   - For ALL balance reads (USDC and DIBS) and ALL contract writes (Swap and Stake), you MUST retrieve the provider dynamically:
-     'const provider = await activeWallet.getEthereumProvider();'
-   - Build your Viem PublicClient and WalletClient using THIS specific 'provider'. This ensures that if a user logs in with Google, the embedded wallet handles the swap. If they connect MetaMask, MetaMask handles it.
+1. CREATE A UNIFIED CONNECTION STATE:
+   - In your layout files (Navbar.tsx, Sidebar.tsx), Dashboard (src/app/dashboard/page.tsx), Swap, and Stake pages, you MUST evaluate BOTH Privy states.
+   - Import both hooks: 
+     `const { authenticated, ready } = usePrivy();`
+     `const { wallets } = useWallets();`
+   - Create a unified active state boolean:
+     `const isUIActive = ready && (authenticated || (wallets && wallets.length > 0));`
 
-2. BALANCE SYNCING:
-   - Ensure the native USDC balance hook specifically queries 'activeWallet.address'. Do not let it default to a disconnected Wagmi state.
+2. APPLY CONDITIONAL RENDERING:
+   - Replace any strict `{authenticated ? ... : ...}` checks with `{isUIActive ? ... : ...}`.
+   - If 'isUIActive' is TRUE: 
+     - Sidebar/Navbar: Hide the "Connect Wallet" & "Sign In" buttons. Render the active wallet address and the "Disconnect" button.
+     - Dashboard: Hide the "Connect your wallet to see activity" fallback. Render the actual portfolio stats and Recent Activity tables.
+   - If 'isUIActive' is FALSE: Show the default disconnected states.
 
 3. EXECUTE:
-   - Run 'npm run build' to confirm clean compilation.
-   - Git commit with message: "fix: implement dynamic provider resolution to support independent Google embedded wallets and MetaMask routing" and push to main.
+   - Run 'npm run build' to confirm no type-check errors.
+   - Git commit with message: "fix: unify UI render state to accept both Privy authenticated sessions and external wallet connections" and push to main.

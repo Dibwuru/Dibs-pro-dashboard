@@ -32,17 +32,17 @@ interface ActivityEntry {
 }
 
 export default function DashboardPage() {
-  const { authenticated, user, login } = usePrivy();
+  const { authenticated, ready, user, login } = usePrivy();
   const { wallets: dashboardWallets } = useWallets();
 
-  const isWalletConnected = authenticated && !!user?.wallet?.address;
+  const isUIActive = ready && (authenticated || (dashboardWallets && dashboardWallets.length > 0));
 
   const activeDashboardWallet = dashboardWallets[0];
   const activeDashboardChainId = activeDashboardWallet
     ? Number(activeDashboardWallet.chainId.replace("eip155:", ""))
     : null;
   const isWrongNetwork =
-    isWalletConnected &&
+    isUIActive &&
     activeDashboardChainId !== null &&
     activeDashboardChainId !== ARC_TESTNET_CHAIN_ID;
 
@@ -384,10 +384,10 @@ export default function DashboardPage() {
               </span>
             </div>
             <p className="text-xl font-bold text-slate-900 dark:text-white">
-              {isWalletConnected ? `${dibsBalanceFormatted} DIBS` : "$0.00"}
+              {isUIActive ? `${dibsBalanceFormatted} DIBS` : "$0.00"}
             </p>
             <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-              {isWalletConnected ? `${gasBalanceFormatted} USDC Gas` : "0 DIBS / 0 ETH"}
+              {isUIActive ? `${gasBalanceFormatted} USDC Gas` : "0 DIBS / 0 ETH"}
             </p>
           </GlassCard>
 
@@ -448,7 +448,7 @@ export default function DashboardPage() {
             </h2>
           </div>
 
-          {!isWalletConnected ? (
+          {!isUIActive ? (
             <div className="text-center py-12">
               <Activity className="w-12 h-12 text-slate-300/30 dark:text-slate-500/30 mx-auto mb-4" />
               <p className="text-slate-500 dark:text-slate-400 text-sm">
