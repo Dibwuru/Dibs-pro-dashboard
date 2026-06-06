@@ -8,6 +8,7 @@ import { Menu, Coins, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from 
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/SidebarContext";
+import { formatAddress } from "@/lib/format";
 
 const publicClient = createPublicClient({
   chain: arcTestnet,
@@ -30,8 +31,16 @@ export function Navbar() {
   const activeAddress = (navWallets[0]?.address as `0x${string}` | undefined) || (user?.wallet?.address as `0x${string}` | undefined);
   const isUIActive = ready && (authenticated || (navWallets && navWallets.length > 0));
 
-  // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
+  // Nuclear disconnect: disconnect external wallets + wipe Privy session + clear caches + reload
   const handleDisconnect = useCallback(async () => {
+    // Disconnect all external wallets first (MetaMask, etc.)
+    if (navWallets.length > 0) {
+      try {
+        await Promise.all(navWallets.map((w) => w.disconnect()));
+      } catch {
+        // ignore wallet disconnect errors
+      }
+    }
     try {
       await logout();
     } catch {
@@ -39,7 +48,7 @@ export function Navbar() {
     }
     localStorage.clear();
     window.location.reload();
-  }, [logout]);
+  }, [logout, navWallets]);
 
   const fetchGasBalance = useCallback(async () => {
     if (!activeAddress) {
@@ -75,7 +84,6 @@ export function Navbar() {
   }, [fetchGasBalance]);
 
   // --- Identity capsule helpers ---
-  const formatAddress = (address: string) => (!address || address.length < 10 ? address || "" : `${address.slice(0, 6)}...${address.slice(-4)}`);
   const emailHandle =
     user?.email?.address || user?.google?.email || "Connected Wallet";
   const embeddedWalletAddress = user?.wallet?.address || "";

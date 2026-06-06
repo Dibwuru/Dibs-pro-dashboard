@@ -139,7 +139,7 @@ export default function Home() {
     ? Number(activeDashboardWallet.chainId.replace('eip155:', ''))
     : null;
   const isWrongNetwork =
-    isWalletConnected &&
+    isUIActive &&
     activeDashboardChainId !== null &&
     activeDashboardChainId !== ARC_TESTNET_CHAIN_ID;
 
@@ -174,17 +174,24 @@ export default function Home() {
     return fallbackPublicClient;
   }, [homeWalletProvider]);
 
-  // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
+  // Nuclear disconnect: disconnect external wallets + wipe Privy session + clear caches + reload
   const handleDisconnect = useCallback(async () => {
+    // Disconnect all external wallets first (MetaMask, etc.)
+    if (dashboardWallets.length > 0) {
+      try {
+        await Promise.all(dashboardWallets.map((w) => w.disconnect()));
+      } catch {
+        // ignore wallet disconnect errors
+      }
+    }
     try {
       await logout();
     } catch {
       // logout may be no-op if not authenticated
     }
-    // Clear wagmi/privy stale cache that causes auto-reconnect loops
     localStorage.clear();
     window.location.reload();
-  }, [logout]);
+  }, [logout, dashboardWallets]);
 
   // --- Live $DIBS Balance Fetching (polls every 8 seconds) ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
@@ -1471,9 +1478,9 @@ export default function Home() {
                 {/* Execute Swap */}
                 <button
                   onClick={handleSwapExecute}
-                  disabled={!isWalletConnected || !isValidSwap || isSwapping || isWrongNetwork}
+                  disabled={!isUIActive || !isValidSwap || isSwapping || isWrongNetwork}
                   className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all duration-200 ${
-                    !isWalletConnected || !isValidSwap || isSwapping || isWrongNetwork
+                    !isUIActive || !isValidSwap || isSwapping || isWrongNetwork
                       ? "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
                       : "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01] active:scale-[0.98]"
                   }`}
@@ -1486,7 +1493,7 @@ export default function Home() {
                       </svg>
                       Swapping...
                     </>
-                  ) : !isWalletConnected ? (
+                  ) : !isUIActive ? (
                     "Connect Wallet to Swap"
                   ) : (
                     <>

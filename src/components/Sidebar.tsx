@@ -19,6 +19,7 @@ import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/SidebarContext";
+import { formatAddress } from "@/lib/format";
 
 const STORAGE_KEY = "arctor_profile";
 
@@ -34,11 +35,6 @@ function truncateEmail(email: string): string {
   const local = email.slice(0, atIndex);
   if (local.length <= 8) return email;
   return `${local.slice(0, 4)}...${local.slice(-4)}`;
-}
-
-function formatAddress(address: string): string {
-  if (!address || address.length < 10) return address || "";
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 interface ProfileData {
@@ -98,8 +94,16 @@ export function Sidebar() {
   // Unified active state: supports both Privy auth and external wallet connections
   const isUIActive = ready && (authenticated || (sidebarWallets && sidebarWallets.length > 0));
 
-  // Nuclear disconnect: wipe Privy session + clear stale caches + full reload
+  // Nuclear disconnect: disconnect external wallets + wipe Privy session + clear caches + reload
   const handleDisconnect = useCallback(async () => {
+    // Disconnect all external wallets first (MetaMask, etc.)
+    if (sidebarWallets.length > 0) {
+      try {
+        await Promise.all(sidebarWallets.map((w) => w.disconnect()));
+      } catch {
+        // ignore wallet disconnect errors
+      }
+    }
     try {
       await logout();
     } catch {
@@ -107,7 +111,7 @@ export function Sidebar() {
     }
     localStorage.clear();
     window.location.reload();
-  }, [logout]);
+  }, [logout, sidebarWallets]);
 
   const activeAddress = (sidebarWallets[0]?.address as string) || user?.wallet?.address || "";
   const emailHandle =
