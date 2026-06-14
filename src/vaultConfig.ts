@@ -1,6 +1,6 @@
 import { type Abi } from "viem";
 
-export const VAULT_ADDRESS = "0xbe84da0258c1c6143553c33801da9c5f9584e5b7";
+export const VAULT_ADDRESS = "0xc45073b9de74c7f286c2545a618b703f31228cb6";
 export const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
 export const EXCHANGE_RATE = 10; // 1 Native Token = 10 DIBS
 export const ARC_TESTNET_CHAIN_ID = 5042002;
@@ -100,6 +100,8 @@ export const vaultABI = [
     outputs: [
       { name: "amount", type: "uint256" },
       { name: "releaseTime", type: "uint256" },
+      { name: "apyRate", type: "uint256" },
+      { name: "lockDays", type: "uint256" },
       { name: "claimed", type: "bool" },
     ],
   },
@@ -127,6 +129,8 @@ export const vaultABI = [
       { name: "user", type: "address", indexed: true },
       { name: "amount", type: "uint256", indexed: false },
       { name: "releaseTime", type: "uint256", indexed: false },
+      { name: "apyRate", type: "uint256", indexed: false },
+      { name: "lockDays", type: "uint256", indexed: false },
     ],
   },
   {
@@ -135,6 +139,7 @@ export const vaultABI = [
     inputs: [
       { name: "user", type: "address", indexed: true },
       { name: "amount", type: "uint256", indexed: false },
+      { name: "reward", type: "uint256", indexed: false },
     ],
   },
 ] as const satisfies Abi;

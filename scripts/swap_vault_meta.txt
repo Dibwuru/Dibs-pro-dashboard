@@ -1,5 +1,5 @@
-DibsSwapVault Contract Address: 0xbe84da0258c1c6143553c33801da9c5f9584e5b7
+DibsSwapVault Contract Address: 0xc45073b9de74c7f286c2545a618b703f31228cb6
 Deployer: 0x979Bd52451C723456Df1EBEF8a0Ee197765Df294
-Transaction Hash: 0x014340bf84c140361b43b36e4fcb4ffdbb7ec0e15db0c10451a73b95c90128b0
+Transaction Hash: 0x44837e54c6e2ad01f8668a894e32b1c9acb1a4507489fa69de55760a8eb99ea4
 Network: Arc Testnet (Chain ID: 5042002)
 DIBS Token: 0x2b0ec237e5Cf460962E3eDe88cb676d83C807912

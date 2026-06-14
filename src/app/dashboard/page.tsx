@@ -258,9 +258,9 @@ export default function DashboardPage() {
             abi: vaultABI,
             functionName: "userStakes",
             args: [userAddress, BigInt(i)],
-          })) as [bigint, bigint, boolean];
+          })) as [bigint, bigint, bigint, bigint, boolean];
           // Only count unclaimed stakes
-          if (!raw[2]) {
+          if (!raw[4]) {
             total += raw[0];
           }
         }

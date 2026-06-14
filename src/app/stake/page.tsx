@@ -35,6 +35,8 @@ type UserStake = {
   index: number;
   amount: bigint;
   releaseTime: bigint;
+  apyRate: bigint;
+  lockDays: bigint;
   claimed: boolean;
 };
 
@@ -313,13 +315,15 @@ export default function StakePage() {
             abi: vaultABI,
             functionName: "userStakes",
             args: [userAddress, BigInt(i)],
-          }) as [bigint, bigint, boolean];
+          }) as [bigint, bigint, bigint, bigint, boolean];
 
           stakes.push({
             index: i,
             amount: raw[0],
             releaseTime: raw[1],
-            claimed: raw[2],
+            apyRate: raw[2],
+            lockDays: raw[3],
+            claimed: raw[4],
           });
         }
         if (!cancelled) {

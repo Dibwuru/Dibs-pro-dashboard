@@ -819,8 +819,8 @@ export default function Home() {
             abi: vaultConfigABI,
             functionName: "userStakes",
             args: [userAddress, BigInt(i)],
-          })) as [bigint, bigint, boolean];
-          if (!raw[2]) {
+          })) as [bigint, bigint, bigint, bigint, boolean];
+          if (!raw[4]) {
             total += raw[0];
           }
         }

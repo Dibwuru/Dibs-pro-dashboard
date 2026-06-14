@@ -1,31 +1,29 @@
-ACT AS: A Senior Web3 Frontend Architect.
-TASK: Resolve the final three follow-up items on the /dashboard view to achieve 100% feature harmony.
+ACT AS: An Elite Solidity Smart Contract Security Auditor and Engineer.
+TASK: Deploy a permanent, production-hardened Staking & Vault Contract on Arc Testnet with defensive state guards.
 
-IMPLEMENTATION:
+CONTRACT SPECIFICATIONS (Solidity):
 
-1. WIRE STAKE MODAL (src/app/dashboard/page.tsx):
-   - Locate the 'Stake' quick-action button in the dashboard view.
-   - Mirror the working modal pattern: import 'StakeModal' if it exists, establish a 'showStakeModal' state toggle, and bind it to the button's onClick event. 
+1. MULTI-STAKE ARRAY STRUCT:
+   - Define the stake data structure exactly as:
+     `struct UserStake { uint256 amount; uint256 releaseTime; uint256 apyRate; bool claimed; }`
+   - Map it globally: `mapping(address => UserStake[]) public userStakes;`
 
-2. BIND CARD DISCONNECT (src/app/dashboard/page.tsx):
-   - Locate the red 'Disconnect' button inside the main dashboard portfolio metric block.
-   - Ensure it imports and implements the absolute hard reset handler to clear wagmi/privy cache and force reload:
-     ```typescript
-     const { logout } = usePrivy();
-     const { wallets } = useWallets();
-     const handleHardDisconnect = async () => {
-         if (wallets) await wallets.disconnect();
-         await logout();
-         localStorage.clear();
-         window.location.reload();
-     };
-     ```
-   - Bind `onClick={handleHardDisconnect}` directly to that element.
+2. DEFENSIVE 'unstake(uint256 stakeIndex)' LOGIC:
+   - RE-ENTRANCY & DOUBLE-DIP GUARD: 
+     Fetch the stake: `UserStake storage stake = userStakes[msg.sender][stakeIndex];`
+     Enforce: `require(!stake.claimed, "Already claimed");`
+   - TIME-GATE LOCK: 
+     Enforce: `require(block.timestamp >= stake.releaseTime, "Lock period has not expired yet");`
+   - STATE FLIP FIRST: 
+     Set `stake.claimed = true;` BEFORE executing any token transfers to secure the transaction state.
 
-3. CLEAN UP ANIMATION CLASSES:
-   - Search the project files for any lingering instances of the old class 'activity-row-new'.
-   - Globally replace 'activity-row-new' with our working Tailwind class 'animate-fade-in' to ensure all item updates animate correctly.
+3. REWARD CALCULATION LINT:
+   - Calculate rewards up to the releaseTime cap only:
+     `uint256 reward = (stake.amount * stake.apyRate * lockDays) / (365 * 100);`
+   - Execute the single combined mint/transfer token release payload to return (stake.amount + reward) to msg.sender.
 
-4. DEPLOY:
-   - Run 'npm run build' to ensure no hanging modal props cause compilation errors.
-   - Git commit with message: "fix: finalize dashboard modal triggers, card disconnect click, and animation class unification" and push to main.
+DEPLOYMENT STEP:
+1. Compile and verify code stability.
+2. Deploy contract to Arc Testnet (5042002).
+3. Replace the active 'VAULT_ADDRESS' string configuration inside 'src/vaultConfig.ts' with this updated deploy signature, preserving the named ABI inputs so frontend components never experience type-regressions.
+4. Verify 'npm run build' outputs clean. Pushed directly to main.

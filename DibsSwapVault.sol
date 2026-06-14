@@ -12,18 +12,20 @@ contract DibsSwapVault {
     IERC20 public dibsToken;
     uint256 public exchangeRate = 10; // 1 Native Token = 10 DIBS
 
-    struct StakeInfo {
+    struct UserStake {
         uint256 amount;
         uint256 releaseTime;
+        uint256 apyRate;
+        uint256 lockDays;
         bool claimed;
     }
 
-    mapping(address => StakeInfo[]) public userStakes;
+    mapping(address => UserStake[]) public userStakes;
 
     event AssetSwapped(address indexed user, string direction, uint256 amountIn, uint256 amountOut);
     event ExchangeRateUpdated(uint256 oldRate, uint256 newRate);
-    event TokensStaked(address indexed user, uint256 amount, uint256 releaseTime);
-    event TokensUnstaked(address indexed user, uint256 amount);
+    event TokensStaked(address indexed user, uint256 amount, uint256 releaseTime, uint256 apyRate, uint256 lockDays);
+    event TokensUnstaked(address indexed user, uint256 amount, uint256 reward);
 
     constructor(address _dibsToken) {
         owner = msg.sender;
@@ -59,44 +61,70 @@ contract DibsSwapVault {
         require(address(this).balance >= usdcAmount, "Vault lacks native USDC liquidity");
 
         require(dibsToken.transferFrom(msg.sender, address(this), dibsAmount), "DIBS transfer failed");
-        
+
         (bool success, ) = payable(msg.sender).call{value: usdcAmount}("");
         require(success, "USDC transfer failed");
 
         emit AssetSwapped(msg.sender, "DIBS_TO_USDC", dibsAmount, usdcAmount);
     }
 
-    // 3. Stake DIBS with variable time locks
+    // 3. Stake DIBS with variable time locks and APY rewards
     function stake(uint256 amount, uint256 lockDays) external {
         require(amount > 0, "Cannot stake 0 tokens");
         require(lockDays == 7 || lockDays == 30 || lockDays == 90 || lockDays == 180, "Invalid lock duration");
 
         require(dibsToken.transferFrom(msg.sender, address(this), amount), "DIBS deposit failed");
 
+        // Determine APY rate (in basis points) based on lock duration
+        // 7 days -> 8.5% (850 bps), 30 days -> 12.5% (1250 bps)
+        // 90 days -> 18.0% (1800 bps), 180 days -> 24.0% (2400 bps)
+        uint256 apyRate;
+        if (lockDays == 7) {
+            apyRate = 850;
+        } else if (lockDays == 30) {
+            apyRate = 1250;
+        } else if (lockDays == 90) {
+            apyRate = 1800;
+        } else {
+            // lockDays == 180
+            apyRate = 2400;
+        }
+
         uint256 releaseTime = block.timestamp + (lockDays * 1 days);
-        userStakes[msg.sender].push(StakeInfo({
+        userStakes[msg.sender].push(UserStake({
             amount: amount,
             releaseTime: releaseTime,
+            apyRate: apyRate,
+            lockDays: lockDays,
             claimed: false
         }));
 
-        emit TokensStaked(msg.sender, amount, releaseTime);
+        emit TokensStaked(msg.sender, amount, releaseTime, apyRate, lockDays);
     }
 
-    // 4. Unstake DIBS after lock duration expires
+    // 4. Unstake DIBS after lock duration expires — with reward payout
     function unstake(uint256 stakeIndex) external {
         require(stakeIndex < userStakes[msg.sender].length, "Invalid stake index");
-        StakeInfo storage userStake = userStakes[msg.sender][stakeIndex];
-        
-        require(!userStake.claimed, "Stake already claimed");
-        require(block.timestamp >= userStake.releaseTime, "Tokens are still locked");
+        UserStake storage s = userStakes[msg.sender][stakeIndex];
 
-        userStake.claimed = true;
-        uint256 amountToReturn = userStake.amount;
+        // RE-ENTRANCY & DOUBLE-CLAIM GUARD: enforce claim flag before any transfers
+        require(!s.claimed, "Already claimed");
 
-        require(dibsToken.transfer(msg.sender, amountToReturn), "DIBS return failed");
+        // TIME-GATE LOCK: enforce maturity before release
+        require(block.timestamp >= s.releaseTime, "Lock period has not expired yet");
 
-        emit TokensUnstaked(msg.sender, amountToReturn);
+        // STATE FLIP FIRST — mark claimed BEFORE any external calls (checks-effects-interactions)
+        s.claimed = true;
+
+        // Calculate rewards capped at maturity
+        // Formula: reward = (amount * apyRate * lockDays) / (365 * 100)
+        // apyRate is in basis points (e.g. 850 = 8.5%), 365 days, 100 for percentage
+        uint256 reward = (s.amount * s.apyRate * s.lockDays) / (365 * 100);
+        uint256 totalPayout = s.amount + reward;
+
+        require(dibsToken.transfer(msg.sender, totalPayout), "DIBS payout failed");
+
+        emit TokensUnstaked(msg.sender, s.amount, reward);
     }
 
     // Helper view function for frontend integration
