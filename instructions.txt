@@ -1,33 +1,34 @@
-ACT AS: A Senior Web3 Frontend Architect.
-TASK: Fix the dead Disconnect buttons, remove the false-positive network warnings, and sync the Navbar gas balance with the Dashboard native balance.
+ACT AS: A Senior Web3 Protocol Architect.
+TASK: Integrate Circle's App Kit SDK to activate the 'Send' modal, while strictly preserving all existing UI states, balance hooks, and dynamic routing logic.
 
-CRITICAL BUG FIXES:
+CRITICAL PRESERVATION RULES (DO NOT DEVIATE):
+1. UI STATE LOCK: Do NOT alter `src/app/page.tsx`, `Navbar.tsx`, or `Sidebar.tsx`. The unified `isUIActive` layout logic and the `handleHardDisconnect` functions are locked and working perfectly.
+2. NETWORK & BALANCE LOCK: Do NOT modify any balance-fetching logic. USDC remains the native gas token on Arc Testnet. Do not introduce ERC-20 `balanceOf` checks for USDC.
+3. ROUTING LOCK: Do NOT use `window.ethereum`. You MUST preserve the dynamic Privy provider extraction: `const provider = await activeWallet.getEthereumProvider();`.
 
-1. FIX THE DEAD DISCONNECT BUTTONS (Navbar.tsx & Sidebar.tsx):
-   - You MUST bind an 'onClick' handler to the Disconnect buttons/icons in BOTH the Navbar and Sidebar components.
-   - Implement this exact function inside both components:
+IMPLEMENTATION STEPS (SEND MODAL ONLY):
+
+1. INSTALL DEPENDENCIES:
+   - Run: `npm install @circle-fin/app-kit @circle-fin/adapter-viem-v2 viem`
+
+2. WIRE THE SEND COMPONENT (e.g., `src/components/SendModal.tsx`):
+   - Import the App Kit and the Viem adapter.
+   - On submit, retrieve the active provider from Privy's `useWallets()`.
+   - Wrap the provider using the viem adapter configuration.
+   - Instantiate the kit: `const kit = new AppKit();`
+
+3. EXECUTE P2P TRANSFER:
+   - Bind the user's destination address and amount inputs directly into the SDK's send method:
      ```typescript
-     const { logout } = usePrivy();
-     const { wallets } = useWallets();
-     const handleHardDisconnect = async () => {
-         if (wallets) await wallets.disconnect();
-         await logout();
-         localStorage.clear();
-         window.location.reload();
-     };
+     await kit.send({
+       from: { adapter: viemAdapter, chain: "Arc_Testnet" },
+       to: recipientAddressInput,
+       amount: transferAmountInput,
+       token: "USDC",
+     });
      ```
-   - Bind `onClick={handleHardDisconnect}` to the disconnect elements. Do not leave them as dead UI.
+   - Maintain our established UX standards: wrap the call in a `try/catch` block. Catch error code 4001 or "rejected" signatures to display a "Transaction Canceled" toast without freezing the UI. Trigger a success toast with the transaction hash upon completion.
 
-2. FIX FALSE-POSITIVE NETWORK WARNINGS (src/app/page.tsx & Dashboard Layout):
-   - The UI is showing "You are connected to an unsupported network" even when Wagmi successfully reads the Arc Testnet balance.
-   - Update the network warning logic to correctly check BOTH the Wagmi 'useChainId()' and the active Privy wallet's chain. 
-   - Ensure the expected chain ID is strictly '5042002'. If Wagmi successfully returns the native USDC balance, suppress the warning.
-
-3. SYNC NAVBAR GAS BALANCE (Navbar.tsx):
-   - The Navbar currently shows 'Gas: <0.0001 USDC' while the Dashboard correctly shows '104.37 USDC'.
-   - Update the Navbar component to use the EXACT same native balance fetching hook (e.g., Wagmi's 'useBalance' targeting the active address) that the Dashboard is using.
-   - Format the Navbar display to match: `Gas: ${formattedBalance} USDC`.
-
-4. EXECUTE:
-   - Run 'npm run build' to confirm no type errors.
-   - Git commit with message: "fix: bind hard disconnect to buttons, resolve false network warnings, and sync navbar gas balance" and push to main.
+4. DEPLOY:
+   - Run `npm run build` to ensure type-safety across the new viem adapters.
+   - Git commit with message: "feat: integrate circle app kit for p2p usdc sends and strictly preserve auth states" and push to main.
