@@ -1,29 +1,24 @@
-ACT AS: An Elite Solidity Smart Contract Security Auditor and Engineer.
-TASK: Deploy a permanent, production-hardened Staking & Vault Contract on Arc Testnet with defensive state guards.
+ACT AS: A Senior Web3 Frontend Architect.
+TASK: Clean up the frontend staking view cards to display the updated 5-field userStakes tuple data.
 
-CONTRACT SPECIFICATIONS (Solidity):
+PRESERVATION LOCKS:
+- Do NOT touch the newly deployed contract address (0xc45073b9de74c7f286c2545a618b703f31228cb6) or modify 'src/vaultConfig.ts'. 
+- Retain all working Privy isUIActive layouts and native balance systems.
 
-1. MULTI-STAKE ARRAY STRUCT:
-   - Define the stake data structure exactly as:
-     `struct UserStake { uint256 amount; uint256 releaseTime; uint256 apyRate; bool claimed; }`
-   - Map it globally: `mapping(address => UserStake[]) public userStakes;`
+IMPLEMENTATION:
+1. UPDATE UNSTAKE / ACTIVE STAKES DISPLAY (src/app/stake/page.tsx or Dashboard view):
+   - Locate where the 'userStakes' contract data is being read and mapped to the UI.
+   - Ensure the map index references match the new 5-field tuple return format:
+     - stake: amount
+     - stake: releaseTime
+     - stake: apyRate
+     - stake: lockDays
+     - stake: claimed
+   - Update the UI row component to render the real, historical 'apyRate' fetched directly from the tuple: `${Number(stake.apyRate)}% APY`.
 
-2. DEFENSIVE 'unstake(uint256 stakeIndex)' LOGIC:
-   - RE-ENTRANCY & DOUBLE-DIP GUARD: 
-     Fetch the stake: `UserStake storage stake = userStakes[msg.sender][stakeIndex];`
-     Enforce: `require(!stake.claimed, "Already claimed");`
-   - TIME-GATE LOCK: 
-     Enforce: `require(block.timestamp >= stake.releaseTime, "Lock period has not expired yet");`
-   - STATE FLIP FIRST: 
-     Set `stake.claimed = true;` BEFORE executing any token transfers to secure the transaction state.
+2. REMOVE FIXED FUNDING WARNINGS:
+   - Clean up any dead code, comment placeholders, or console logs regarding "funding the rewards reservoir" since the contract utilizes programmatic minting on maturity.
 
-3. REWARD CALCULATION LINT:
-   - Calculate rewards up to the releaseTime cap only:
-     `uint256 reward = (stake.amount * stake.apyRate * lockDays) / (365 * 100);`
-   - Execute the single combined mint/transfer token release payload to return (stake.amount + reward) to msg.sender.
-
-DEPLOYMENT STEP:
-1. Compile and verify code stability.
-2. Deploy contract to Arc Testnet (5042002).
-3. Replace the active 'VAULT_ADDRESS' string configuration inside 'src/vaultConfig.ts' with this updated deploy signature, preserving the named ABI inputs so frontend components never experience type-regressions.
-4. Verify 'npm run build' outputs clean. Pushed directly to main.
+3. EXECUTE:
+   - Run 'npm run build' to verify total component and data-mapping type-safety.
+   - Git commit with message: "fix: map 5-field staking tuple to UI and clean up reward logs" and push to main.

@@ -709,7 +709,7 @@ export default function StakePage() {
                               : "bg-amber-50/50 dark:bg-amber-500/5 border-amber-200/30 dark:border-amber-500/10"
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
                             {amountNum.toLocaleString(undefined, { maximumFractionDigits: 2 })} DIBS
                           </span>
@@ -725,6 +725,17 @@ export default function StakePage() {
                             {isClaimed ? "Claimed" : isUnlocked ? "Ready" : "Locked"}
                           </span>
                         </div>
+                        {!isClaimed && (
+                          <div className="flex items-center gap-1.5 mb-2 text-xs">
+                            <TrendingUp className="w-3 h-3 text-primary" />
+                            <span className="font-medium text-primary">
+                              {(Number(stake.apyRate) / 100).toFixed(1)}% APY
+                            </span>
+                            <span className="text-slate-400 dark:text-slate-500">
+                              &middot; {Number(stake.lockDays)}d lock
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-500 dark:text-slate-400">
                             {isClaimed
