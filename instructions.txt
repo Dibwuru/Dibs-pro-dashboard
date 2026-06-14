@@ -1,34 +1,17 @@
-ACT AS: A Senior Web3 Protocol Architect.
-TASK: Integrate Circle's App Kit SDK to activate the 'Send' modal, while strictly preserving all existing UI states, balance hooks, and dynamic routing logic.
+ACT AS: A Senior Web3 Frontend Architect.
+TASK: Mount the newly created SendModal component onto the main Dashboard view and wire up its trigger button.
 
-CRITICAL PRESERVATION RULES (DO NOT DEVIATE):
-1. UI STATE LOCK: Do NOT alter `src/app/page.tsx`, `Navbar.tsx`, or `Sidebar.tsx`. The unified `isUIActive` layout logic and the `handleHardDisconnect` functions are locked and working perfectly.
-2. NETWORK & BALANCE LOCK: Do NOT modify any balance-fetching logic. USDC remains the native gas token on Arc Testnet. Do not introduce ERC-20 `balanceOf` checks for USDC.
-3. ROUTING LOCK: Do NOT use `window.ethereum`. You MUST preserve the dynamic Privy provider extraction: `const provider = await activeWallet.getEthereumProvider();`.
+CRITICAL PRESERVATION RULES:
+- Do NOT touch the internal logic of 'src/components/SendModal.tsx' or the underlying App Kit integration. It is compiling perfectly.
+- Retain all 'isUIActive', 'handleHardDisconnect', and native network balance states.
 
-IMPLEMENTATION STEPS (SEND MODAL ONLY):
+IMPLEMENTATION:
+1. UPDATE DASHBOARD VIEW (src/app/page.tsx or the main authenticated layout):
+   - Import the newly created 'SendModal' component at the top of the file.
+   - Set up a simple React state to manage the modal's visibility: `const [isSendOpen, setIsSendOpen] = useState(false);`
+   - Locate the 'Send' quick-action button inside your dashboard portfolio card. Attach an 'onClick' handler to flip this state: `onClick={() => setIsSendOpen(true)}`.
+   - Render the `<SendModal isOpen={isSendOpen} onClose={() => setIsSendOpen(false)} />` element safely within the authenticated layout wrapper.
 
-1. INSTALL DEPENDENCIES:
-   - Run: `npm install @circle-fin/app-kit @circle-fin/adapter-viem-v2 viem`
-
-2. WIRE THE SEND COMPONENT (e.g., `src/components/SendModal.tsx`):
-   - Import the App Kit and the Viem adapter.
-   - On submit, retrieve the active provider from Privy's `useWallets()`.
-   - Wrap the provider using the viem adapter configuration.
-   - Instantiate the kit: `const kit = new AppKit();`
-
-3. EXECUTE P2P TRANSFER:
-   - Bind the user's destination address and amount inputs directly into the SDK's send method:
-     ```typescript
-     await kit.send({
-       from: { adapter: viemAdapter, chain: "Arc_Testnet" },
-       to: recipientAddressInput,
-       amount: transferAmountInput,
-       token: "USDC",
-     });
-     ```
-   - Maintain our established UX standards: wrap the call in a `try/catch` block. Catch error code 4001 or "rejected" signatures to display a "Transaction Canceled" toast without freezing the UI. Trigger a success toast with the transaction hash upon completion.
-
-4. DEPLOY:
-   - Run `npm run build` to ensure type-safety across the new viem adapters.
-   - Git commit with message: "feat: integrate circle app kit for p2p usdc sends and strictly preserve auth states" and push to main.
+2. EXECUTE:
+   - Run 'npm run build' to confirm the layout properties match the modal's export signatures.
+   - Git commit with message: "feat: connect SendModal trigger to main dashboard layout" and push to main.
