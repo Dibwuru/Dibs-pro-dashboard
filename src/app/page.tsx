@@ -1366,7 +1366,7 @@ export default function Home() {
                         return (
                           <tr
                             key={tx.key || (tx.fullHash + i)}
-                            className={`border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors activity-row-new ${tx.status === "Pending" ? "activity-pending-row" : ""}`}
+                            className={`border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors animate-fade-in ${tx.status === "Pending" ? "activity-pending-row" : ""}`}
                           >
                             {/* Action Badge */}
                             <td className="py-3.5 px-2">

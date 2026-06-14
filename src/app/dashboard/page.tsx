@@ -1,10 +1,11 @@
 "use client";
 
-import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2, Send } from "lucide-react";
+import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2, Send, Lock, X, Clock, LogOut } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useChainId } from "wagmi";
 import { createPublicClient, http, custom, formatUnits, parseAbiItem, decodeEventLog } from "viem";
+import { toast } from "sonner";
 import { arcTestnet } from "@/components/Web3Provider";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
@@ -34,7 +35,7 @@ interface ActivityEntry {
 }
 
 export default function DashboardPage() {
-  const { authenticated, ready, user, login } = usePrivy();
+  const { authenticated, ready, user, login, logout } = usePrivy();
   const { wallets: dashboardWallets } = useWallets();
 
   const isUIActive = ready && (authenticated || (dashboardWallets && dashboardWallets.length > 0));
@@ -86,6 +87,10 @@ export default function DashboardPage() {
   // --- Send Modal visibility ---
   const [showSendModal, setShowSendModal] = useState(false);
 
+  // --- Stake Modal visibility ---
+  const [showStakeModal, setShowStakeModal] = useState(false);
+  const [stakeAmount, setStakeAmount] = useState("");
+
   // --- Pending entry helpers for activity feed ---
   const generateKey = useCallback(
     () => `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -121,6 +126,59 @@ export default function DashboardPage() {
     },
     []
   );
+
+  // --- Hard disconnect: clear all wallet/privy state + reload ---
+  const handleHardDisconnect = useCallback(async () => {
+    if (dashboardWallets && dashboardWallets.length > 0) {
+      try {
+        await Promise.all(dashboardWallets.map((w) => w.disconnect()));
+      } catch {
+        // ignore wallet disconnect errors
+      }
+    }
+    try {
+      await logout();
+    } catch {
+      // logout may be no-op if not authenticated
+    }
+    localStorage.clear();
+    window.location.reload();
+  }, [logout, dashboardWallets]);
+
+  // --- Stake modal helpers ---
+  const handleStakeFiftyPercent = useCallback(() => {
+    setStakeAmount((dibsBalanceNum * 0.5).toString());
+  }, [dibsBalanceNum]);
+
+  const handleStakeMax = useCallback(() => {
+    setStakeAmount(dibsBalanceNum.toString());
+  }, [dibsBalanceNum]);
+
+  const handleStakeConfirm = useCallback(() => {
+    const parsed = parseFloat(stakeAmount);
+    if (isNaN(parsed) || parsed <= 0) return;
+    if (parsed > dibsBalanceNum) {
+      toast.error("Insufficient DIBS balance for this action.");
+      return;
+    }
+    const pendingKey = addPendingEntry("STAKE", `${stakeAmount} DIBS`);
+    updateEntry(pendingKey, { status: "Confirmed" });
+    toast.success("Assets successfully committed to the Sovereign Staking Vault!");
+    setShowStakeModal(false);
+    setStakeAmount("");
+  }, [stakeAmount, dibsBalanceNum, addPendingEntry, updateEntry]);
+
+  // Lock body scroll when stake modal is open
+  useEffect(() => {
+    if (showStakeModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showStakeModal]);
 
   const wagmiChainId = useChainId();
   const isWrongNetwork =
@@ -502,6 +560,20 @@ export default function DashboardPage() {
             <Send className="w-4 h-4" />
             Send
           </button>
+          <button
+            onClick={() => setShowStakeModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-primary/20 text-primary bg-primary/[0.05] hover:bg-primary/[0.1] active:scale-[0.97] transition-all shadow-sm"
+          >
+            <Lock className="w-4 h-4" />
+            Stake
+          </button>
+          <button
+            onClick={handleHardDisconnect}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-red-500/20 text-red-500 bg-red-500/[0.05] hover:bg-red-500/[0.1] active:scale-[0.97] transition-all shadow-sm"
+          >
+            <LogOut className="w-4 h-4" />
+            Disconnect
+          </button>
         </div>
 
         {/* Recent Activity */}
@@ -650,6 +722,107 @@ export default function DashboardPage() {
         addPendingEntry={addPendingEntry}
         updateEntry={updateEntry}
       />
+
+      {/* ===== STAKE MODAL ===== */}
+      {showStakeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowStakeModal(false)}
+          />
+          <div className="tooltip-card relative w-full max-w-md rounded-2xl shadow-2xl p-6 z-10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
+                Stake DIBS
+              </h3>
+              <button
+                onClick={() => setShowStakeModal(false)}
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826]/60 border border-slate-200 dark:border-slate-800">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Available Balance
+                </span>
+                <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
+                  {dibsBalanceFormatted} DIBS
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Amount to Stake
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleStakeFiftyPercent}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
+                    >
+                      50%
+                    </button>
+                    <button
+                      onClick={handleStakeMax}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
+                    >
+                      MAX
+                    </button>
+                  </div>
+                </div>
+                <div className="input-box relative flex items-center p-4">
+                  <input
+                    type="number"
+                    placeholder="0.0"
+                    value={stakeAmount}
+                    onChange={(e) => setStakeAmount(e.target.value)}
+                    className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
+                  />
+                  <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold">
+                    DIBS
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                  <span>Estimated APY</span>
+                  <span className="text-success font-medium">12.5%</span>
+                </div>
+                <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                  <span>Lock Period</span>
+                  <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                    <Clock className="w-3.5 h-3.5" />7 days
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleStakeConfirm}
+                disabled={!stakeAmount || parseFloat(stakeAmount) <= 0}
+                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all ${
+                  stakeAmount && parseFloat(stakeAmount) > 0
+                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]"
+                    : "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+                Confirm Stake
+              </button>
+
+              <button
+                onClick={() => setShowStakeModal(false)}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

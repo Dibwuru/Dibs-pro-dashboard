@@ -279,17 +279,6 @@ html.light .btn-gradient * { color: #0A0A0A !important; }
 /* ============================================================
    ACTIVITY FEED ANIMATIONS
    ============================================================ */
-@keyframes activityFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes activityPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
@@ -304,10 +293,6 @@ html.light .btn-gradient * { color: #0A0A0A !important; }
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.activity-row-new {
-  animation: activityFadeIn 0.4s ease-out forwards;
 }
 
 .activity-pending-row {

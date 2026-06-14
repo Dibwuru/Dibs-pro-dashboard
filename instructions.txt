@@ -1,28 +1,31 @@
 ACT AS: A Senior Web3 Frontend Architect.
-TASK: Sync the SendModal component with the deep /dashboard route, and upgrade the Activity Bar transaction logic with high-detail layout specs.
-
-PRESERVATION LOCKS:
-- Do NOT touch the internal Circle App Kit logic inside 'src/components/SendModal.tsx'. 
-- Preserve the 'isUIActive' unified view hooks and the dynamic provider logic completely.
+TASK: Resolve the final three follow-up items on the /dashboard view to achieve 100% feature harmony.
 
 IMPLEMENTATION:
 
-1. SYNC SEND MODAL WITH DASHBOARD (src/app/dashboard/page.tsx):
-   - Mirror the working configuration from 'src/app/page.tsx' to the deep dashboard page.
-   - Import 'SendModal' from '@components/SendModal'.
-   - Add the visibility state hook: `const [showSendModal, setShowSendModal] = useState(false);`
-   - Bind `onClick={() => setShowSendModal(true)}` to the designated Send action button.
-   - Render the `<SendModal isOpen={showSendModal} onClose={() => setShowSendModal(false)} />` component inside the layout, passing down the required balance and tracking state props.
+1. WIRE STAKE MODAL (src/app/dashboard/page.tsx):
+   - Locate the 'Stake' quick-action button in the dashboard view.
+   - Mirror the working modal pattern: import 'StakeModal' if it exists, establish a 'showStakeModal' state toggle, and bind it to the button's onClick event. 
 
-2. ACTIVITY BAR TRANSFORMATION:
-   - Update the Recent Activity feed component to render detailed transaction mapping records.
-   - EXPLORER LINK FIX: Force all transaction hash anchor links to explicitly target the ArcScan Testnet format: `https://testnet.arcscan.app/tx/[transactionHash]`.
-   - HIGH-DETAIL ENTRIES: Each transaction item must dynamically parse and render:
-     a) Clear action identifiers: 'BURN', 'SEND', or 'STAKE'.
-     b) Human-readable time metrics (e.g., '3 mins ago' or relative time strings).
-     c) Status badges colored dynamically based on status ('Confirmed' = green, 'Pending' = pulsing yellow, 'Failed' = red).
-   - LAYOUT POLISH: Sort the activity array dynamically so newest transactions always sit at the top index (index 0). Apply the Tailwind CSS class 'animate-fade-in' to container items for a subtle appearance animation.
+2. BIND CARD DISCONNECT (src/app/dashboard/page.tsx):
+   - Locate the red 'Disconnect' button inside the main dashboard portfolio metric block.
+   - Ensure it imports and implements the absolute hard reset handler to clear wagmi/privy cache and force reload:
+     ```typescript
+     const { logout } = usePrivy();
+     const { wallets } = useWallets();
+     const handleHardDisconnect = async () => {
+         if (wallets) await wallets.disconnect();
+         await logout();
+         localStorage.clear();
+         window.location.reload();
+     };
+     ```
+   - Bind `onClick={handleHardDisconnect}` directly to that element.
 
-3. EXECUTE:
-   - Run 'npm run build' to confirm no layout parameter mismatches.
-   - Git commit with message: "feat: mirror SendModal to dashboard route and complete high-detail Activity Bar polish" and push to main.
+3. CLEAN UP ANIMATION CLASSES:
+   - Search the project files for any lingering instances of the old class 'activity-row-new'.
+   - Globally replace 'activity-row-new' with our working Tailwind class 'animate-fade-in' to ensure all item updates animate correctly.
+
+4. DEPLOY:
+   - Run 'npm run build' to ensure no hanging modal props cause compilation errors.
+   - Git commit with message: "fix: finalize dashboard modal triggers, card disconnect click, and animation class unification" and push to main.
