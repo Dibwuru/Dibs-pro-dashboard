@@ -32,6 +32,7 @@
   --color-blue-600: #2563EB;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --animate-fade-in: fade-in 0.4s ease-out forwards;
 }
 
 /* Use class-based dark mode so next-themes dark/light toggle works natively */
@@ -292,6 +293,17 @@ html.light .btn-gradient * { color: #0A0A0A !important; }
 @keyframes activityPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .activity-row-new {

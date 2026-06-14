@@ -1,17 +1,28 @@
 ACT AS: A Senior Web3 Frontend Architect.
-TASK: Mount the newly created SendModal component onto the main Dashboard view and wire up its trigger button.
+TASK: Sync the SendModal component with the deep /dashboard route, and upgrade the Activity Bar transaction logic with high-detail layout specs.
 
-CRITICAL PRESERVATION RULES:
-- Do NOT touch the internal logic of 'src/components/SendModal.tsx' or the underlying App Kit integration. It is compiling perfectly.
-- Retain all 'isUIActive', 'handleHardDisconnect', and native network balance states.
+PRESERVATION LOCKS:
+- Do NOT touch the internal Circle App Kit logic inside 'src/components/SendModal.tsx'. 
+- Preserve the 'isUIActive' unified view hooks and the dynamic provider logic completely.
 
 IMPLEMENTATION:
-1. UPDATE DASHBOARD VIEW (src/app/page.tsx or the main authenticated layout):
-   - Import the newly created 'SendModal' component at the top of the file.
-   - Set up a simple React state to manage the modal's visibility: `const [isSendOpen, setIsSendOpen] = useState(false);`
-   - Locate the 'Send' quick-action button inside your dashboard portfolio card. Attach an 'onClick' handler to flip this state: `onClick={() => setIsSendOpen(true)}`.
-   - Render the `<SendModal isOpen={isSendOpen} onClose={() => setIsSendOpen(false)} />` element safely within the authenticated layout wrapper.
 
-2. EXECUTE:
-   - Run 'npm run build' to confirm the layout properties match the modal's export signatures.
-   - Git commit with message: "feat: connect SendModal trigger to main dashboard layout" and push to main.
+1. SYNC SEND MODAL WITH DASHBOARD (src/app/dashboard/page.tsx):
+   - Mirror the working configuration from 'src/app/page.tsx' to the deep dashboard page.
+   - Import 'SendModal' from '@components/SendModal'.
+   - Add the visibility state hook: `const [showSendModal, setShowSendModal] = useState(false);`
+   - Bind `onClick={() => setShowSendModal(true)}` to the designated Send action button.
+   - Render the `<SendModal isOpen={showSendModal} onClose={() => setShowSendModal(false)} />` component inside the layout, passing down the required balance and tracking state props.
+
+2. ACTIVITY BAR TRANSFORMATION:
+   - Update the Recent Activity feed component to render detailed transaction mapping records.
+   - EXPLORER LINK FIX: Force all transaction hash anchor links to explicitly target the ArcScan Testnet format: `https://testnet.arcscan.app/tx/[transactionHash]`.
+   - HIGH-DETAIL ENTRIES: Each transaction item must dynamically parse and render:
+     a) Clear action identifiers: 'BURN', 'SEND', or 'STAKE'.
+     b) Human-readable time metrics (e.g., '3 mins ago' or relative time strings).
+     c) Status badges colored dynamically based on status ('Confirmed' = green, 'Pending' = pulsing yellow, 'Failed' = red).
+   - LAYOUT POLISH: Sort the activity array dynamically so newest transactions always sit at the top index (index 0). Apply the Tailwind CSS class 'animate-fade-in' to container items for a subtle appearance animation.
+
+3. EXECUTE:
+   - Run 'npm run build' to confirm no layout parameter mismatches.
+   - Git commit with message: "feat: mirror SendModal to dashboard route and complete high-detail Activity Bar polish" and push to main.

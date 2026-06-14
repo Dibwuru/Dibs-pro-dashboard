@@ -1,13 +1,14 @@
 "use client";
 
-import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2, Send } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useChainId } from "wagmi";
 import { createPublicClient, http, custom, formatUnits, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/Button";
+import { SendModal } from "@/components/SendModal";
 import {
   VAULT_ADDRESS,
   DIBS_CONTRACT_ADDRESS,
@@ -74,6 +75,52 @@ export default function DashboardPage() {
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
   const [gasBalance, setGasBalance] = useState<string>("0");
   const [gasBalanceLoaded, setGasBalanceLoaded] = useState(false);
+
+  // Numeric balance values for SendModal props
+  const gasBalanceNum = useMemo(() => parseFloat(gasBalance) || 0, [gasBalance]);
+  const dibsBalanceNum = useMemo(
+    () => (dibsBalanceRaw != null ? parseFloat(formatUnits(dibsBalanceRaw, 18)) : 0),
+    [dibsBalanceRaw]
+  );
+
+  // --- Send Modal visibility ---
+  const [showSendModal, setShowSendModal] = useState(false);
+
+  // --- Pending entry helpers for activity feed ---
+  const generateKey = useCallback(
+    () => `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    []
+  );
+
+  const addPendingEntry = useCallback(
+    (action: ActivityEntry["action"], amount: string): string => {
+      const key = generateKey();
+      const entry: ActivityEntry = {
+        action,
+        hash: "Pending...",
+        fullHash: "",
+        amount,
+        timestamp: Math.floor(Date.now() / 1000),
+        status: "Pending",
+        key,
+      };
+      setActivityLogs((prev) => [entry, ...prev].slice(0, 10));
+      return key;
+    },
+    [generateKey]
+  );
+
+  const updateEntry = useCallback(
+    (key: string, updates: Partial<Pick<ActivityEntry, "hash" | "fullHash" | "status">>) => {
+      setActivityLogs((prev) =>
+        prev.map((e) => {
+          if (e.key !== key) return e;
+          return { ...e, ...updates } as ActivityEntry;
+        })
+      );
+    },
+    []
+  );
 
   const wagmiChainId = useChainId();
   const isWrongNetwork =
@@ -446,6 +493,17 @@ export default function DashboardPage() {
           </GlassCard>
         </div>
 
+        {/* Quick Actions */}
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => setShowSendModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-950 dark:bg-slate-50 text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-200 active:scale-[0.97] transition-all shadow-sm"
+          >
+            <Send className="w-4 h-4" />
+            Send
+          </button>
+        </div>
+
         {/* Recent Activity */}
         <GlassCard>
           <div className="flex items-center gap-2 mb-4">
@@ -529,7 +587,7 @@ export default function DashboardPage() {
                     return (
                       <tr
                         key={tx.key || (tx.fullHash + i)}
-                        className={`border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors activity-row-new ${tx.status === "Pending" ? "activity-pending-row" : ""}`}
+                        className={`border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors animate-fade-in ${tx.status === "Pending" ? "activity-pending-row" : ""}`}
                       >
                         <td className="py-3.5 px-2">
                           <span
@@ -582,6 +640,16 @@ export default function DashboardPage() {
           )}
         </GlassCard>
       </div>
+
+      {/* ===== SEND ASSET MODAL ===== */}
+      <SendModal
+        isOpen={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        gasBalanceNum={gasBalanceNum}
+        dibsBalanceNum={dibsBalanceNum}
+        addPendingEntry={addPendingEntry}
+        updateEntry={updateEntry}
+      />
     </div>
   );
 }
