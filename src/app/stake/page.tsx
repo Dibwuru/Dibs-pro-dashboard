@@ -734,6 +734,11 @@ export default function StakePage() {
                             <span className="text-slate-400 dark:text-slate-500">
                               &middot; {Number(stake.lockDays)}d lock
                             </span>
+                            <span className="text-slate-400 dark:text-slate-500">&middot;</span>
+                            <span className="text-slate-400 dark:text-slate-500">Reward:</span>
+                            <span className="font-medium text-success">
+                              +{((amountNum * Number(stake.apyRate) * Number(stake.lockDays)) / (365 * 10000)).toFixed(2)} DIBS
+                            </span>
                           </div>
                         )}
                         <div className="flex items-center justify-between text-xs">

@@ -694,6 +694,14 @@ export default function DashboardPage() {
                           </span>
                         </div>
                       </div>
+                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5">
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          Est. Reward:
+                        </span>
+                        <span className="text-[11px] font-semibold text-success">
+                          +{((amountNum * Number(stake.apyRate) * Number(stake.lockDays)) / (365 * 10000)).toFixed(2)} DIBS
+                        </span>
+                      </div>
                       {isUnlocked && (
                         <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                           <p className="text-xs text-success font-medium">
