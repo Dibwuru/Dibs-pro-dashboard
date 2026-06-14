@@ -1,9 +1,10 @@
 "use client";
 
-import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2, Send, Lock, X, Clock, LogOut } from "lucide-react";
+import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2, Send, Lock, LogOut } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useChainId } from "wagmi";
+import { useRouter } from "next/navigation";
 import { createPublicClient, http, custom, formatUnits, parseAbiItem, decodeEventLog } from "viem";
 import { toast } from "sonner";
 import { arcTestnet } from "@/components/Web3Provider";
@@ -33,6 +34,15 @@ interface ActivityEntry {
   status: "Confirmed" | "Pending" | "Failed";
   key: string;
 }
+
+type UserStake = {
+  index: number;
+  amount: bigint;
+  releaseTime: bigint;
+  apyRate: bigint;
+  lockDays: bigint;
+  claimed: boolean;
+};
 
 export default function DashboardPage() {
   const { authenticated, ready, user, login, logout } = usePrivy();
@@ -87,9 +97,64 @@ export default function DashboardPage() {
   // --- Send Modal visibility ---
   const [showSendModal, setShowSendModal] = useState(false);
 
-  // --- Stake Modal visibility ---
-  const [showStakeModal, setShowStakeModal] = useState(false);
-  const [stakeAmount, setStakeAmount] = useState("");
+  // --- Stakes state ---
+  const [userStakes, setUserStakes] = useState<UserStake[]>([]);
+  const [stakesLoading, setStakesLoading] = useState(false);
+
+  const router = useRouter();
+
+  // Fetch user stakes from the vault
+  useEffect(() => {
+    if (!userAddress) {
+      setUserStakes([]);
+      return;
+    }
+    let cancelled = false;
+    const fetchStakes = async () => {
+      setStakesLoading(true);
+      try {
+        const client = getPublicClient();
+        const count = (await client.readContract({
+          address: VAULT_ADDRESS,
+          abi: vaultABI,
+          functionName: "getUserStakesCount",
+          args: [userAddress],
+        })) as bigint;
+
+        const stakes: UserStake[] = [];
+        for (let i = 0; i < Number(count); i++) {
+          const raw = (await client.readContract({
+            address: VAULT_ADDRESS,
+            abi: vaultABI,
+            functionName: "userStakes",
+            args: [userAddress, BigInt(i)],
+          })) as [bigint, bigint, bigint, bigint, boolean];
+
+          stakes.push({
+            index: i,
+            amount: raw[0],
+            releaseTime: raw[1],
+            apyRate: raw[2],
+            lockDays: raw[3],
+            claimed: raw[4],
+          });
+        }
+        if (!cancelled) {
+          setUserStakes(stakes);
+        }
+      } catch {
+        if (!cancelled) setUserStakes([]);
+      } finally {
+        if (!cancelled) setStakesLoading(false);
+      }
+    };
+    fetchStakes();
+    const interval = setInterval(fetchStakes, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [userAddress]);
 
   // --- Pending entry helpers for activity feed ---
   const generateKey = useCallback(
@@ -144,41 +209,6 @@ export default function DashboardPage() {
     localStorage.clear();
     window.location.reload();
   }, [logout, dashboardWallets]);
-
-  // --- Stake modal helpers ---
-  const handleStakeFiftyPercent = useCallback(() => {
-    setStakeAmount((dibsBalanceNum * 0.5).toString());
-  }, [dibsBalanceNum]);
-
-  const handleStakeMax = useCallback(() => {
-    setStakeAmount(dibsBalanceNum.toString());
-  }, [dibsBalanceNum]);
-
-  const handleStakeConfirm = useCallback(() => {
-    const parsed = parseFloat(stakeAmount);
-    if (isNaN(parsed) || parsed <= 0) return;
-    if (parsed > dibsBalanceNum) {
-      toast.error("Insufficient DIBS balance for this action.");
-      return;
-    }
-    const pendingKey = addPendingEntry("STAKE", `${stakeAmount} DIBS`);
-    updateEntry(pendingKey, { status: "Confirmed" });
-    toast.success("Assets successfully committed to the Sovereign Staking Vault!");
-    setShowStakeModal(false);
-    setStakeAmount("");
-  }, [stakeAmount, dibsBalanceNum, addPendingEntry, updateEntry]);
-
-  // Lock body scroll when stake modal is open
-  useEffect(() => {
-    if (showStakeModal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [showStakeModal]);
 
   const wagmiChainId = useChainId();
   const isWrongNetwork =
@@ -301,7 +331,7 @@ export default function DashboardPage() {
         const fromBlock = currentBlock - BigInt(10000) > BigInt(0) ? currentBlock - BigInt(10000) : BigInt(0);
         const transferEventAbi = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
         const assetSwappedEventAbi = parseAbiItem("event AssetSwapped(address indexed user, string direction, uint256 amountIn, uint256 amountOut)");
-        const tokensStakedEventAbi = parseAbiItem("event TokensStaked(address indexed user, uint256 amount, uint256 releaseTime)");
+        const tokensStakedEventAbi = parseAbiItem("event TokensStaked(address indexed user, uint256 amount, uint256 releaseTime, uint256 apyRate, uint256 lockDays)");
 
         const [sentLogs, receivedLogs, swapLogs, stakeLogs] = await Promise.all([
           getPublicClient().getLogs({
@@ -561,7 +591,7 @@ export default function DashboardPage() {
             Send
           </button>
           <button
-            onClick={() => setShowStakeModal(true)}
+            onClick={() => router.push("/stake")}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-primary/20 text-primary bg-primary/[0.05] hover:bg-primary/[0.1] active:scale-[0.97] transition-all shadow-sm"
           >
             <Lock className="w-4 h-4" />
@@ -575,6 +605,115 @@ export default function DashboardPage() {
             Disconnect
           </button>
         </div>
+
+        {/* Active Positions */}
+        {userStakes.filter((s) => !s.claimed).length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Lock className="w-4 h-4 text-primary" />
+              <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                Active Positions
+              </h2>
+              <span className="text-xs text-slate-400 dark:text-slate-500 ml-2">
+                {userStakes.filter((s) => !s.claimed).length} active
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {userStakes
+                .filter((s) => !s.claimed)
+                .map((stake) => {
+                  const now = Math.floor(Date.now() / 1000);
+                  const releaseTimeNum = Number(stake.releaseTime);
+                  const isUnlocked = now >= releaseTimeNum;
+                  const amountNum = Number(formatUnits(stake.amount, 18));
+                  const apyDisplay = (Number(stake.apyRate) / 100).toFixed(1);
+
+                  const formatLockTime = (rt: bigint): string => {
+                    const remaining = Number(rt) - now;
+                    if (remaining <= 0) return "Ready";
+                    const days = Math.ceil(remaining / 86400);
+                    if (days <= 1) return "< 1 day left";
+                    return `${days} days left`;
+                  };
+
+                  const formatDate = (rt: bigint): string =>
+                    new Date(Number(rt) * 1000).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    });
+
+                  return (
+                    <GlassCard
+                      key={stake.index}
+                      className={`p-4 border transition-all ${
+                        isUnlocked ? "border-success/30 bg-success/[0.02]" : ""
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
+                          {amountNum.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          DIBS
+                        </span>
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            isUnlocked
+                              ? "bg-success/15 text-success"
+                              : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
+                          {isUnlocked ? "Ready" : "Locked"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <span className="text-slate-400 dark:text-slate-500 block">
+                            APY
+                          </span>
+                          <span className="font-semibold text-primary">
+                            {apyDisplay}%
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 dark:text-slate-500 block">
+                            Duration
+                          </span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                            {Number(stake.lockDays)}d
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 dark:text-slate-500 block">
+                            Unlocks
+                          </span>
+                          <span
+                            className={`font-semibold ${isUnlocked ? "text-success" : "text-slate-700 dark:text-slate-300"}`}
+                          >
+                            {isUnlocked ? formatLockTime(stake.releaseTime) : formatDate(stake.releaseTime)}
+                          </span>
+                        </div>
+                      </div>
+                      {isUnlocked && (
+                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                          <p className="text-xs text-success font-medium">
+                            Ready to unstake — visit the{" "}
+                            <a
+                              href="/stake"
+                              className="underline hover:text-success/80 transition-colors"
+                            >
+                              Stake page
+                            </a>{" "}
+                            to claim
+                          </p>
+                        </div>
+                      )}
+                    </GlassCard>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         {/* Recent Activity */}
         <GlassCard>
@@ -721,108 +860,6 @@ export default function DashboardPage() {
         dibsBalanceNum={dibsBalanceNum}
         addPendingEntry={addPendingEntry}
         updateEntry={updateEntry}
-      />
-
-      {/* ===== STAKE MODAL ===== */}
-      {showStakeModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setShowStakeModal(false)}
-          />
-          <div className="tooltip-card relative w-full max-w-md rounded-2xl shadow-2xl p-6 z-10">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">
-                Stake DIBS
-              </h3>
-              <button
-                onClick={() => setShowStakeModal(false)}
-                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-100 dark:bg-[#121826]/60 border border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Available Balance
-                </span>
-                <span className="text-sm font-bold text-slate-950 dark:text-slate-50">
-                  {dibsBalanceFormatted} DIBS
-                </span>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    Amount to Stake
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={handleStakeFiftyPercent}
-                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
-                    >
-                      50%
-                    </button>
-                    <button
-                      onClick={handleStakeMax}
-                      className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40 active:scale-[0.95] transition-all"
-                    >
-                      MAX
-                    </button>
-                  </div>
-                </div>
-                <div className="input-box relative flex items-center p-4">
-                  <input
-                    type="number"
-                    placeholder="0.0"
-                    value={stakeAmount}
-                    onChange={(e) => setStakeAmount(e.target.value)}
-                    className="w-full bg-transparent text-2xl font-semibold text-slate-950 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500/50 pr-20"
-                  />
-                  <span className="token-badge absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-semibold">
-                    DIBS
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                  <span>Estimated APY</span>
-                  <span className="text-success font-medium">12.5%</span>
-                </div>
-                <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                  <span>Lock Period</span>
-                  <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                    <Clock className="w-3.5 h-3.5" />7 days
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={handleStakeConfirm}
-                disabled={!stakeAmount || parseFloat(stakeAmount) <= 0}
-                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-base font-semibold transition-all ${
-                  stakeAmount && parseFloat(stakeAmount) > 0
-                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]"
-                    : "opacity-50 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500"
-                }`}
-              >
-                <Lock className="w-4 h-4" />
-                Confirm Stake
-              </button>
-
-              <button
-                onClick={() => setShowStakeModal(false)}
-                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      />    </div>
   );
 }
