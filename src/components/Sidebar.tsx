@@ -192,13 +192,13 @@ export function Sidebar() {
       {/* Circle Faucet Button — high-visibility amber callout */}
       <div className="px-3 pb-2">
         <a
-          href="https://faucet.arc.io/"
+          href="https://faucet.circle.com/"
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleNavClick}
           className="text-amber-400 hover:text-amber-300 font-medium tracking-wide border border-amber-500/30 rounded-lg p-2 block text-center bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 transition-all"
         >
-          🚰 Arc Faucet (Get USDC)
+          🚰 Circle Faucet (Get USDC)
         </a>
       </div>
 

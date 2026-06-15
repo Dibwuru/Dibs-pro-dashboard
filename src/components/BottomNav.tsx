@@ -13,7 +13,7 @@ const tabs: NavTab[] = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },
   { href: "/stake", label: "Stake", icon: Lock },
-  { href: "https://faucet.arc.io/", label: "Faucet", icon: ExternalLink, isExternal: true },
+  { href: "https://faucet.circle.com/", label: "Faucet", icon: ExternalLink, isExternal: true },
   { label: "Profile", icon: User, isAction: true },
 ];
 
