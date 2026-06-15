@@ -98,15 +98,15 @@ export function Sidebar() {
   // Unified active state: supports both Privy auth and external wallet connections
   const isUIActive = ready && (authenticated || (sidebarWallets && sidebarWallets.length > 0));
 
-  // Nuclear disconnect: clear wagmi state + disconnect external wallets + wipe Privy session + clear caches + reload
+  // Nuclear disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload
   const handleDisconnect = useCallback(async () => {
-    // Clear Wagmi connector state (via @privy-io/wagmi bridge)
+    // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
     try {
-      disconnect();
+      await logout();
     } catch {
-      // noop
+      // logout may be no-op if not authenticated
     }
-    // Disconnect all external wallets first (MetaMask, etc.)
+    // Step 2: Disconnect all external wallets (MetaMask, etc.)
     if (sidebarWallets.length > 0) {
       try {
         await Promise.all(sidebarWallets.map((w) => w.disconnect()));
@@ -114,15 +114,17 @@ export function Sidebar() {
         // ignore wallet disconnect errors
       }
     }
+    // Step 3: Wagmi disconnect as cleanup (belt-and-suspenders)
     try {
-      await logout();
+      disconnect();
     } catch {
-      // logout may be no-op if not authenticated
+      // noop
     }
+    // Step 4: Wipe all cached state and hard-reload
     localStorage.clear();
     window.sessionStorage.clear();
     window.location.reload();
-  }, [disconnect, logout, sidebarWallets]);
+  }, [logout, disconnect, sidebarWallets]);
 
   const activeAddress = (sidebarWallets[0]?.address as string) || user?.wallet?.address || "";
   const emailHandle =

@@ -22,7 +22,7 @@ export function BottomNav() {
   const { openProfileEditor } = useSidebar();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 block md:hidden bg-[#0A0F1A]/90 dark:bg-[#0A0F1A]/90 backdrop-blur-xl border-t border-amber-500/20 shadow-[0_-4px_24px_rgba(0,0,0,0.3)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 block lg:hidden bg-[#0A0F1A]/90 dark:bg-[#0A0F1A]/90 backdrop-blur-xl border-t border-amber-500/20 shadow-[0_-4px_24px_rgba(0,0,0,0.3)]">
       <div className="flex items-stretch h-16">
         {tabs.map((tab) => {
           const Icon = tab.icon;

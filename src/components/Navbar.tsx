@@ -45,15 +45,15 @@ export function Navbar() {
         return num < 0.0001 ? "<0.0001" : num.toFixed(4);
       })();
 
-  // Nuclear disconnect: clear wagmi state + disconnect external wallets + wipe Privy session + clear caches + reload
+  // Nuclear disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload
   const handleDisconnect = useCallback(async () => {
-    // Clear Wagmi connector state (via @privy-io/wagmi bridge)
+    // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
     try {
-      disconnect();
+      await logout();
     } catch {
-      // noop
+      // logout may be no-op if not authenticated
     }
-    // Disconnect all external wallets first (MetaMask, etc.)
+    // Step 2: Disconnect all external wallets (MetaMask, etc.)
     if (navWallets.length > 0) {
       try {
         await Promise.all(navWallets.map((w) => w.disconnect()));
@@ -61,15 +61,17 @@ export function Navbar() {
         // ignore wallet disconnect errors
       }
     }
+    // Step 3: Wagmi disconnect as cleanup (belt-and-suspenders)
     try {
-      await logout();
+      disconnect();
     } catch {
-      // logout may be no-op if not authenticated
+      // noop
     }
+    // Step 4: Wipe all cached state and hard-reload
     localStorage.clear();
     window.sessionStorage.clear();
     window.location.reload();
-  }, [disconnect, logout, navWallets]);
+  }, [logout, disconnect, navWallets]);
 
   // --- Identity capsule helpers ---
   const emailHandle =

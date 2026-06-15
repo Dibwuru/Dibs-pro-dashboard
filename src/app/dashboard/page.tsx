@@ -193,13 +193,15 @@ export default function DashboardPage() {
     []
   );
 
-  // --- Hard disconnect: clear wagmi state + wallet + privy + caches + reload ---
+  // --- Hard disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload ---
   const handleHardDisconnect = useCallback(async () => {
+    // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
     try {
-      disconnect();
+      await logout();
     } catch {
-      // noop
+      // logout may be no-op if not authenticated
     }
+    // Step 2: Disconnect all external wallets (MetaMask, etc.)
     if (dashboardWallets && dashboardWallets.length > 0) {
       try {
         await Promise.all(dashboardWallets.map((w) => w.disconnect()));
@@ -207,15 +209,17 @@ export default function DashboardPage() {
         // ignore wallet disconnect errors
       }
     }
+    // Step 3: Wagmi disconnect as cleanup (belt-and-suspenders)
     try {
-      await logout();
+      disconnect();
     } catch {
-      // logout may be no-op if not authenticated
+      // noop
     }
+    // Step 4: Wipe all cached state and hard-reload
     localStorage.clear();
     window.sessionStorage.clear();
     window.location.reload();
-  }, [disconnect, logout, dashboardWallets]);
+  }, [logout, disconnect, dashboardWallets]);
 
   useEffect(() => {
     if (!userAddress) {
