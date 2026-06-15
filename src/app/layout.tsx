@@ -9,6 +9,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { SidebarProvider } from "@/components/SidebarContext";
 import { Footer } from "@/components/Footer";
+import { NetworkGuard } from "@/components/NetworkGuard";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -52,6 +53,7 @@ export default function RootLayout({
                   <Sidebar />
                   <div className="flex-1 flex flex-col min-w-0">
                     <Navbar />
+                    <NetworkGuard />
                     <main className="flex-1 flex flex-col relative z-10 pb-16 md:pb-0">{children}</main>
                     <BottomNav />
                     <Footer />

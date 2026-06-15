@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Info, AlertTriangle } from "lucide-react";
+import { ArrowLeftRight, Info } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { parseUnits, createPublicClient, http, formatEther, formatUnits, createWalletClient, custom, decodeEventLog } from "viem";
@@ -17,7 +17,6 @@ import {
   vaultABI,
   dibsBalanceOfABI,
   erc20ApproveABI,
-  switchToArcTestnet,
 } from "@/vaultConfig";
 
 const fallbackPublicClient = createPublicClient({
@@ -250,9 +249,6 @@ export default function SwapPage() {
     try {
       const activeWallet = swapWallets[0];
 
-      // Programmatically switch wallet to Arc Testnet (5042002) — works for both external and embedded wallets
-      await switchToArcTestnet(activeWallet);
-
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
         account: activeWallet.address as `0x${string}`,
@@ -399,16 +395,6 @@ export default function SwapPage() {
             Trade USDC for $DIBS — and back — on Arc Testnet
           </p>
         </div>
-
-        {/* Wrong Network Warning */}
-        {isWrongNetwork && (
-          <div className="flex items-center justify-center gap-3 px-4 py-3 mb-6 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 flex-shrink-0" />
-            <p className="text-xs text-amber-800 dark:text-amber-200/90">
-              Switch to Arc Testnet (Chain ID: {ARC_TESTNET_CHAIN_ID})
-            </p>
-          </div>
-        )}
 
         {/* Swap Card */}
         <GlassCard className="space-y-4">

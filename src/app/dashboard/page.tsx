@@ -1,9 +1,9 @@
 "use client";
 
-import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, AlertTriangle, CheckCircle, Loader2, Send, Lock, LogOut } from "lucide-react";
+import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, CheckCircle, Loader2, Send, Lock, LogOut } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { useChainId } from "wagmi";
+import { useDisconnect } from "wagmi";
 import { useRouter } from "next/navigation";
 import { createPublicClient, http, custom, formatUnits, parseAbiItem, decodeEventLog } from "viem";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ import { SendModal } from "@/components/SendModal";
 import {
   VAULT_ADDRESS,
   DIBS_CONTRACT_ADDRESS,
-  ARC_TESTNET_CHAIN_ID,
   ARC_EXPLORER_URL,
   dibsBalanceOfABI,
   vaultABI,
@@ -47,13 +46,9 @@ type UserStake = {
 export default function DashboardPage() {
   const { authenticated, ready, user, login, logout } = usePrivy();
   const { wallets: dashboardWallets } = useWallets();
+  const { disconnect } = useDisconnect();
 
   const isUIActive = ready && (authenticated || (dashboardWallets && dashboardWallets.length > 0));
-
-  const activeDashboardWallet = dashboardWallets[0];
-  const activeDashboardChainId = activeDashboardWallet
-    ? Number(activeDashboardWallet.chainId.replace("eip155:", ""))
-    : null;
 
   const userAddress = (dashboardWallets[0]?.address as `0x${string}` | undefined);
 
@@ -85,7 +80,6 @@ export default function DashboardPage() {
   // --- Balances ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
   const [gasBalance, setGasBalance] = useState<string>("0");
-  const [gasBalanceLoaded, setGasBalanceLoaded] = useState(false);
 
   // Numeric balance values for SendModal props
   const gasBalanceNum = useMemo(() => parseFloat(gasBalance) || 0, [gasBalance]);
@@ -96,6 +90,13 @@ export default function DashboardPage() {
 
   // --- Send Modal visibility ---
   const [showSendModal, setShowSendModal] = useState(false);
+
+  // Live countdown tracker for time-based badges
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // --- Stakes state ---
   const [userStakes, setUserStakes] = useState<UserStake[]>([]);
@@ -192,8 +193,13 @@ export default function DashboardPage() {
     []
   );
 
-  // --- Hard disconnect: clear all wallet/privy state + reload ---
+  // --- Hard disconnect: clear wagmi state + wallet + privy + caches + reload ---
   const handleHardDisconnect = useCallback(async () => {
+    try {
+      disconnect();
+    } catch {
+      // noop
+    }
     if (dashboardWallets && dashboardWallets.length > 0) {
       try {
         await Promise.all(dashboardWallets.map((w) => w.disconnect()));
@@ -208,15 +214,7 @@ export default function DashboardPage() {
     }
     localStorage.clear();
     window.location.reload();
-  }, [logout, dashboardWallets]);
-
-  const wagmiChainId = useChainId();
-  const isWrongNetwork =
-    isUIActive &&
-    activeDashboardChainId !== null &&
-    activeDashboardChainId !== ARC_TESTNET_CHAIN_ID &&
-    wagmiChainId !== ARC_TESTNET_CHAIN_ID &&
-    !gasBalanceLoaded;
+  }, [disconnect, logout, dashboardWallets]);
 
   useEffect(() => {
     if (!userAddress) {
@@ -239,7 +237,6 @@ export default function DashboardPage() {
         if (!cancelled) {
           setDibsBalanceRaw(dibs);
           setGasBalance(formatUnits(gas, 18));
-          setGasBalanceLoaded(true);
         }
       } catch {
         if (!cancelled) {
@@ -506,18 +503,8 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Wrong Network Warning */}
-        {isWrongNetwork && (
-          <div className="flex items-center justify-center gap-3 px-4 py-3 mb-6 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 flex-shrink-0" />
-            <p className="text-xs text-amber-800 dark:text-amber-200/90">
-              Switch to Arc Testnet (Chain ID: {ARC_TESTNET_CHAIN_ID})
-            </p>
-          </div>
-        )}
-
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <GlassCard className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <Wallet className="w-4 h-4 text-primary" />
@@ -579,6 +566,30 @@ export default function DashboardPage() {
             </p>
             <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Total transactions</p>
           </GlassCard>
+
+          <GlassCard className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+                Total Accumulated Yield
+              </span>
+            </div>
+            <p className="text-xl font-bold text-slate-900 dark:text-white">
+              {userStakes
+                .filter((s) => !s.claimed)
+                .reduce((sum, s) => {
+                  const amt = Number(formatUnits(s.amount, 18));
+                  return sum + (amt * Number(s.apyRate) * Number(s.lockDays)) / (365 * 10000);
+                }, 0)
+                .toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+              <span className="text-sm font-normal text-slate-400 dark:text-slate-500">DIBS</span>
+            </p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+              {userStakes.filter((s) => !s.claimed).length > 0
+                ? "Pending from active positions"
+                : "Stake DIBS to earn yield"}
+            </p>
+          </GlassCard>
         </div>
 
         {/* Quick Actions */}
@@ -622,25 +633,22 @@ export default function DashboardPage() {
               {userStakes
                 .filter((s) => !s.claimed)
                 .map((stake) => {
-                  const now = Math.floor(Date.now() / 1000);
                   const releaseTimeNum = Number(stake.releaseTime);
                   const isUnlocked = now >= releaseTimeNum;
                   const amountNum = Number(formatUnits(stake.amount, 18));
                   const apyDisplay = (Number(stake.apyRate) / 100).toFixed(1);
 
-                  const formatLockTime = (rt: bigint): string => {
+                  const formatCountdown = (rt: bigint): { text: string; isReady: boolean } => {
                     const remaining = Number(rt) - now;
-                    if (remaining <= 0) return "Ready";
-                    const days = Math.ceil(remaining / 86400);
-                    if (days <= 1) return "< 1 day left";
-                    return `${days} days left`;
+                    if (remaining <= 0) return { text: "✅ Ready to Claim", isReady: true };
+                    const days = Math.floor(remaining / 86400);
+                    const hours = Math.floor((remaining % 86400) / 3600);
+                    if (days > 0) return { text: `⏳ Unlocks in ${days}d ${hours}h`, isReady: false };
+                    const mins = Math.floor((remaining % 3600) / 60);
+                    return { text: `⏳ Unlocks in ${hours}h ${mins}m`, isReady: false };
                   };
 
-                  const formatDate = (rt: bigint): string =>
-                    new Date(Number(rt) * 1000).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    });
+                  const countdown = formatCountdown(stake.releaseTime);
 
                   return (
                     <GlassCard
@@ -663,7 +671,7 @@ export default function DashboardPage() {
                               : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                           }`}
                         >
-                          {isUnlocked ? "Ready" : "Locked"}
+                          {countdown.isReady ? "✅ Ready" : "Locked"}
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-xs">
@@ -688,9 +696,9 @@ export default function DashboardPage() {
                             Unlocks
                           </span>
                           <span
-                            className={`font-semibold ${isUnlocked ? "text-success" : "text-slate-700 dark:text-slate-300"}`}
+                            className={`font-semibold text-[11px] ${countdown.isReady ? "text-success" : "text-amber-600 dark:text-amber-400"}`}
                           >
-                            {isUnlocked ? formatLockTime(stake.releaseTime) : formatDate(stake.releaseTime)}
+                            {countdown.text}
                           </span>
                         </div>
                       </div>

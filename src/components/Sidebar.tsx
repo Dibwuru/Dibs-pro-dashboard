@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/SidebarContext";
 import { formatAddress } from "@/lib/format";
+import { useDisconnect } from "wagmi";
 
 const STORAGE_KEY = "arctor_profile";
 
@@ -68,6 +69,7 @@ export function Sidebar() {
   const { authenticated, ready, user, logout, login } = usePrivy();
   const { wallets: sidebarWallets } = useWallets();
   const { connectWallet } = useConnectWallet();
+  const { disconnect } = useDisconnect();
   const { theme, setTheme } = useTheme();
   const { isMobileOpen, closeMobile, isProfileEditorOpen, openProfileEditor, closeProfileEditor } = useSidebar();
   const [mounted, setMounted] = useState(false);
@@ -94,8 +96,14 @@ export function Sidebar() {
   // Unified active state: supports both Privy auth and external wallet connections
   const isUIActive = ready && (authenticated || (sidebarWallets && sidebarWallets.length > 0));
 
-  // Nuclear disconnect: disconnect external wallets + wipe Privy session + clear caches + reload
+  // Nuclear disconnect: clear wagmi state + disconnect external wallets + wipe Privy session + clear caches + reload
   const handleDisconnect = useCallback(async () => {
+    // Clear Wagmi connector state (via @privy-io/wagmi bridge)
+    try {
+      disconnect();
+    } catch {
+      // noop
+    }
     // Disconnect all external wallets first (MetaMask, etc.)
     if (sidebarWallets.length > 0) {
       try {
@@ -111,7 +119,7 @@ export function Sidebar() {
     }
     localStorage.clear();
     window.location.reload();
-  }, [logout, sidebarWallets]);
+  }, [disconnect, logout, sidebarWallets]);
 
   const activeAddress = (sidebarWallets[0]?.address as string) || user?.wallet?.address || "";
   const emailHandle =

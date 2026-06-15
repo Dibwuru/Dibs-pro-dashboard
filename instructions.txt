@@ -1,24 +1,24 @@
 ACT AS: A Senior Web3 Frontend Architect.
-TASK: Clean up the frontend staking view cards to display the updated 5-field userStakes tuple data.
+TASK: Implement the final 3 product features on the staking and dashboard layouts using our secure 5-field on-chain userStakes tuple state.
 
-PRESERVATION LOCKS:
-- Do NOT touch the newly deployed contract address (0xc45073b9de74c7f286c2545a618b703f31228cb6) or modify 'src/vaultConfig.ts'. 
-- Retain all working Privy isUIActive layouts and native balance systems.
+DEVELOPMENT PROTOCOLS:
 
-IMPLEMENTATION:
-1. UPDATE UNSTAKE / ACTIVE STAKES DISPLAY (src/app/stake/page.tsx or Dashboard view):
-   - Locate where the 'userStakes' contract data is being read and mapped to the UI.
-   - Ensure the map index references match the new 5-field tuple return format:
-     - stake: amount
-     - stake: releaseTime
-     - stake: apyRate
-     - stake: lockDays
-     - stake: claimed
-   - Update the UI row component to render the real, historical 'apyRate' fetched directly from the tuple: `${Number(stake.apyRate)}% APY`.
+1. FEATURE 1: REWARD COUNTDOWN TIMER (src/app/dashboard/page.tsx & /stake):
+   - Inside the Active Positions rows, read the block timestamp countdown until maturity.
+   - Logic: `const remainingTime = Number(stake.releaseTime) - Math.floor(Date.now() / 1000);`
+   - If `remainingTime > 0`, calculate days, hours, and minutes remaining and render a dynamic badge or text (e.g., "⏳ Unlocks in 12d 4h"). 
+   - If `remainingTime <= 0`, render a green, high-visibility badge: "✅ Ready to Claim".
 
-2. REMOVE FIXED FUNDING WARNINGS:
-   - Clean up any dead code, comment placeholders, or console logs regarding "funding the rewards reservoir" since the contract utilizes programmatic minting on maturity.
+2. FEATURE 2: PREVIEW ESTIMATOR ON STAKING CONFIRM MODAL (src/app/stake/page.tsx):
+   - Locate the input selection section where users choose their lock parameters before confirming their stake transaction.
+   - Add a client-side reactive text element right below the inputs. As the user adjusts the amount input and clicks different tier buttons (7d, 30d, 90d, 180d), dynamically compute and display their projected return using our established formula:
+     `Preview Yield: +X.XX DIBS (${selectedApy}% APY)`
 
-3. EXECUTE:
-   - Run 'npm run build' to verify total component and data-mapping type-safety.
-   - Git commit with message: "fix: map 5-field staking tuple to UI and clean up reward logs" and push to main.
+3. FEATURE 3: TOTAL PENDING REWARDS STAT CARD (src/app/dashboard/page.tsx):
+   - In the upper metrics grid block, add a brand-new dashboard stats card component styled to match your layout's dark/gold palette.
+   - Title: "Total Accumulated Yield"
+   - Value calculation: Iterate through the active `userStakes` array, filtering for instances where `claimed === false`. Accumulate the live pending reward results of all rows and display the aggregated total number boldly (e.g., "45.12 DIBS").
+
+4. DEPLOYMENT CHECKLIST:
+   - Run 'npm run build' to ensure zero React prop compilation mismatches.
+   - Git commit with message: "feat: implement active countdown timers, preview yield modal estimates, and combined pending rewards stats panel" and push to main.

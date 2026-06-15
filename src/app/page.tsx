@@ -3,7 +3,7 @@
 import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useChainId } from "wagmi";
+import { useChainId, useDisconnect } from "wagmi";
 import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import {
   Shield,
   Lock,
-  AlertTriangle,
   TrendingUp,
   Coins,
   ArrowDown,
@@ -37,7 +36,6 @@ import {
   EXCHANGE_RATE,
   ARC_TESTNET_CHAIN_ID,
   ARC_EXPLORER_URL,
-  switchToArcTestnet,
   vaultABI as vaultConfigABI,
 } from "@/vaultConfig";
 
@@ -116,6 +114,7 @@ export default function Home() {
   const { authenticated, ready, user, login, logout } = usePrivy();
   const { connectWallet } = useConnectWallet();
   const { wallets: dashboardWallets } = useWallets();
+  const { disconnect } = useDisconnect();
 
   // External wallet address fallback for users who connect via MetaMask without Privy auth
   const externalWalletAddress = dashboardWallets.length > 0 ? (dashboardWallets[0].address as string) : null;
@@ -167,8 +166,13 @@ export default function Home() {
     return fallbackPublicClient;
   }, [homeWalletProvider]);
 
-  // Nuclear disconnect: disconnect external wallets + wipe Privy session + clear caches + reload
+  // Nuclear disconnect: clear wagmi state + disconnect external wallets + wipe Privy session + clear caches + reload
   const handleDisconnect = useCallback(async () => {
+    try {
+      disconnect();
+    } catch {
+      // noop
+    }
     // Disconnect all external wallets first (MetaMask, etc.)
     if (dashboardWallets.length > 0) {
       try {
@@ -184,7 +188,7 @@ export default function Home() {
     }
     localStorage.clear();
     window.location.reload();
-  }, [logout, dashboardWallets]);
+  }, [disconnect, logout, dashboardWallets]);
 
   // --- Live $DIBS Balance Fetching (polls every 8 seconds) ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);
@@ -703,9 +707,6 @@ export default function Home() {
     try {
       const activeWallet = dashboardWallets[0];
 
-      // Programmatically switch wallet to Arc Testnet (5042002) — works for both external and embedded wallets
-      await switchToArcTestnet(activeWallet);
-
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
         account: activeWallet.address as `0x${string}`,
@@ -962,17 +963,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col flex-1">
-      {/* Wrong Network Warning Banner */}
-      {isWrongNetwork && (
-        <div className="sticky top-16 z-40 flex items-center justify-center gap-3 px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 backdrop-blur-md">
-          <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 flex-shrink-0" />
-          <p className="text-sm text-amber-800 dark:text-amber-200/90">
-            You are connected to an unsupported network. Please switch to Arc
-            Testnet (Chain ID: {ARC_TESTNET_CHAIN_ID}) in your wallet.
-          </p>
-        </div>
-      )}
-
       <section className="relative flex-1 overflow-hidden">
         <div className="relative max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
           {/* ===== DASHBOARD VIEW ===== */}

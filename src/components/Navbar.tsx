@@ -1,7 +1,7 @@
 "use client";
 
 import { usePrivy, useConnectWallet, useWallets } from "@privy-io/react-auth";
-import { useBalance } from "wagmi";
+import { useBalance, useDisconnect } from "wagmi";
 import { formatUnits } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
@@ -17,6 +17,7 @@ export function Navbar() {
   const { login, authenticated, ready, logout, user } = usePrivy();
   const { connectWallet } = useConnectWallet();
   const { openMobile } = useSidebar();
+  const { disconnect } = useDisconnect();
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -44,8 +45,14 @@ export function Navbar() {
         return num < 0.0001 ? "<0.0001" : num.toFixed(4);
       })();
 
-  // Nuclear disconnect: disconnect external wallets + wipe Privy session + clear caches + reload
+  // Nuclear disconnect: clear wagmi state + disconnect external wallets + wipe Privy session + clear caches + reload
   const handleDisconnect = useCallback(async () => {
+    // Clear Wagmi connector state (via @privy-io/wagmi bridge)
+    try {
+      disconnect();
+    } catch {
+      // noop
+    }
     // Disconnect all external wallets first (MetaMask, etc.)
     if (navWallets.length > 0) {
       try {
@@ -61,7 +68,7 @@ export function Navbar() {
     }
     localStorage.clear();
     window.location.reload();
-  }, [logout, navWallets]);
+  }, [disconnect, logout, navWallets]);
 
   // --- Identity capsule helpers ---
   const emailHandle =

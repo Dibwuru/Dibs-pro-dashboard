@@ -8,7 +8,7 @@ import { AppKit } from "@circle-fin/app-kit";
 import { ViemAdapter } from "@circle-fin/adapter-viem-v2";
 import { toast } from "sonner";
 import { Send, X } from "lucide-react";
-import { DIBS_CONTRACT_ADDRESS, switchToArcTestnet } from "@/vaultConfig";
+import { DIBS_CONTRACT_ADDRESS } from "@/vaultConfig";
 
 interface ActivityEntry {
   action: "SEND" | "BURN" | "STAKE" | "RECEIVE" | "SWAP";
@@ -100,9 +100,6 @@ export function SendModal({
     const pendingKey = addPendingEntry("SEND", pendingAmount);
 
     try {
-      // Switch wallet to Arc Testnet before sending
-      await switchToArcTestnet(activeWallet);
-
       // Dynamic Privy provider extraction — locked routing pattern
       const provider = await activeWallet.getEthereumProvider();
 

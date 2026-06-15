@@ -16,7 +16,6 @@ import {
   vaultABI,
   dibsBalanceOfABI,
   erc20ApproveABI,
-  switchToArcTestnet,
 } from "@/vaultConfig";
 
 const fallbackPublicClient = createPublicClient({
@@ -40,14 +39,14 @@ type UserStake = {
   claimed: boolean;
 };
 
-function formatLockDays(releaseTime: bigint): string {
-  const now = Math.floor(Date.now() / 1000);
-  const release = Number(releaseTime);
-  const secondsRemaining = release - now;
-  if (secondsRemaining <= 0) return "Unlocked";
-  const days = Math.ceil(secondsRemaining / 86400);
-  if (days <= 1) return "< 1 day";
-  return `${days} days`;
+function formatCountdown(releaseTime: bigint): string {
+  const remaining = Number(releaseTime) - Math.floor(Date.now() / 1000);
+  if (remaining <= 0) return "✅ Ready to Claim";
+  const days = Math.floor(remaining / 86400);
+  const hours = Math.floor((remaining % 86400) / 3600);
+  if (days > 0) return `⏳ Unlocks in ${days}d ${hours}h`;
+  const mins = Math.floor((remaining % 3600) / 60);
+  return `⏳ Unlocks in ${hours}h ${mins}m`;
 }
 
 function formatReleaseDate(releaseTime: bigint): string {
@@ -158,6 +157,13 @@ export default function StakePage() {
   const [lockPeriodDays, setLockPeriodDays] = useState<number>(7);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  // Live countdown tracker for time-based badges
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const selectedLockPeriod = LOCK_PERIODS.find((lp) => lp.days === lockPeriodDays) ?? LOCK_PERIODS[0];
 
   // --- 50% / MAX shortcuts ---
@@ -189,9 +195,6 @@ export default function StakePage() {
 
     try {
       const activeWallet = stakeWallets[0];
-
-      // Programmatically switch wallet to Arc Testnet (5042002) — works for both external and embedded wallets
-      await switchToArcTestnet(activeWallet);
 
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
@@ -351,9 +354,6 @@ export default function StakePage() {
     try {
       const activeWallet = stakeWallets[0];
 
-      // Programmatically switch wallet to Arc Testnet (5042002) — works for both external and embedded wallets
-      await switchToArcTestnet(activeWallet);
-
       const provider = await activeWallet.getEthereumProvider();
       const walletClient = createWalletClient({
         account: activeWallet.address as `0x${string}`,
@@ -452,16 +452,6 @@ export default function StakePage() {
             Earn rewards by staking your DIBS tokens
           </p>
         </div>
-
-        {/* Wrong Network Warning */}
-        {isWrongNetwork && (
-          <div className="flex items-center justify-center gap-3 px-4 py-3 mb-6 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 flex-shrink-0" />
-            <p className="text-xs text-amber-800 dark:text-amber-200/90">
-              Switch to Arc Testnet (Chain ID: {ARC_TESTNET_CHAIN_ID})
-            </p>
-          </div>
-        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 mb-6">
@@ -692,7 +682,6 @@ export default function StakePage() {
                 {/* Individual stakes */}
                 <div className="space-y-2">
                   {userStakes.map((stake) => {
-                    const now = Math.floor(Date.now() / 1000);
                     const releaseTimeNum = Number(stake.releaseTime);
                     const isUnlocked = now >= releaseTimeNum;
                     const isClaimed = stake.claimed;
@@ -722,7 +711,7 @@ export default function StakePage() {
                                   : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                             }`}
                           >
-                            {isClaimed ? "Claimed" : isUnlocked ? "Ready" : "Locked"}
+                            {isClaimed ? "Claimed" : isUnlocked ? "✅ Ready" : "Locked"}
                           </span>
                         </div>
                         {!isClaimed && (
@@ -745,9 +734,7 @@ export default function StakePage() {
                           <span className="text-slate-500 dark:text-slate-400">
                             {isClaimed
                               ? `Released ${formatReleaseDate(stake.releaseTime)}`
-                              : isUnlocked
-                                ? "Unlocked — ready to withdraw"
-                                : `Unlocks ${formatLockDays(stake.releaseTime)} (${formatReleaseDate(stake.releaseTime)})`}
+                              : formatCountdown(stake.releaseTime)}
                           </span>
                           {!isClaimed && isUnlocked && (
                             <Button
@@ -827,6 +814,13 @@ export default function StakePage() {
                 <div className="flex justify-between">
                   <span className="text-slate-500 dark:text-slate-400">APY</span>
                   <span className="font-semibold text-success">{selectedLockPeriod.apy}</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
+                  <span className="text-slate-500 dark:text-slate-400">Preview Yield</span>
+                  <span className="font-semibold text-success text-xs">
+                    +{((stakeAmountNum * parseFloat(selectedLockPeriod.apy) * selectedLockPeriod.days) / (365 * 100)).toFixed(2)} DIBS{" "}
+                    <span className="text-slate-400 font-normal text-[10px]">({selectedLockPeriod.apy} APY)</span>
+                  </span>
                 </div>
               </div>
 
