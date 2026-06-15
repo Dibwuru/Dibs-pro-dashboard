@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ArrowLeftRight, Lock, User } from "lucide-react";
+import { Home, ArrowLeftRight, Lock, User, ExternalLink } from "lucide-react";
 import { useSidebar } from "@/components/SidebarContext";
 
 type NavTab =
-  | { href: string; label: string; icon: typeof Home; isAction?: undefined }
+  | { href: string; label: string; icon: typeof Home; isAction?: undefined; isExternal?: boolean }
   | { label: string; icon: typeof User; isAction: true };
 
 const tabs: NavTab[] = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },
   { href: "/stake", label: "Stake", icon: Lock },
+  { href: "https://faucet.circle.com/", label: "Faucet", icon: ExternalLink, isExternal: true },
   { label: "Profile", icon: User, isAction: true },
 ];
 
@@ -41,6 +42,23 @@ export function BottomNav() {
                   {tab.label}
                 </span>
               </button>
+            );
+          }
+
+          if ("isExternal" in tab && tab.isExternal) {
+            return (
+              <a
+                key="faucet"
+                href={tab.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative flex-1 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-white/70 transition-all duration-150 active:scale-90"
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium leading-none">
+                  {tab.label}
+                </span>
+              </a>
             );
           }
 
