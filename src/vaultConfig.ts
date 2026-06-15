@@ -1,10 +1,10 @@
 import { type Abi } from "viem";
 
-export const VAULT_ADDRESS = "0xc45073b9de74c7f286c2545a618b703f31228cb6";
-export const DIBS_CONTRACT_ADDRESS = "0x2b0ec237e5Cf460962E3eDe88cb676d83C807912";
+export const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS! as `0x${string}`;
+export const DIBS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIBS_ADDRESS! as `0x${string}`;
 export const EXCHANGE_RATE = 10; // 1 Native Token = 10 DIBS
-export const ARC_TESTNET_CHAIN_ID = 5042002;
-export const ARC_EXPLORER_URL = "https://testnet.arcscan.app";
+export const ARC_TESTNET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID!);
+export const ARC_EXPLORER_URL = process.env.NEXT_PUBLIC_EXPLORER_URL!;
 
 /**
  * Robustly switch the user's wallet to Arc Testnet.
@@ -37,7 +37,7 @@ export async function switchToArcTestnet(wallet: {
             chainId: `0x${ARC_TESTNET_CHAIN_ID.toString(16)}`,
             chainName: "Arc Testnet",
             nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-            rpcUrls: ["https://rpc.testnet.arc.network"],
+            rpcUrls: [process.env.NEXT_PUBLIC_RPC_URL!],
             blockExplorerUrls: [ARC_EXPLORER_URL],
           },
         ],

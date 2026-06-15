@@ -3,7 +3,7 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import { defineChain } from 'viem';
 
 const arcTestnet = defineChain({
-  id: 5042002,
+  id: Number(process.env.NEXT_PUBLIC_CHAIN_ID!),
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: {
@@ -13,13 +13,13 @@ const arcTestnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc.testnet.arc.network'],
+      http: [process.env.NEXT_PUBLIC_RPC_URL!],
     },
   },
   blockExplorers: {
     default: {
       name: 'Arc Explorer',
-      url: 'https://testnet.explorer.arc.network',
+      url: process.env.NEXT_PUBLIC_EXPLORER_URL!,
     },
   },
   testnet: true,
@@ -30,7 +30,7 @@ export { arcTestnet };
 export default function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <PrivyProvider
-      appId="cmpoxpjd900ie0dl86nwbv5hw"
+      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
       config={{
         loginMethods: ['email', 'google', 'twitter'],
         appearance: {

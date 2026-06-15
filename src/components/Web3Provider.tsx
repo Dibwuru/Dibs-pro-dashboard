@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 
 export const arcTestnet = defineChain({
-  id: 5042002,
+  id: Number(process.env.NEXT_PUBLIC_CHAIN_ID!),
   name: "Arc Testnet",
   nativeCurrency: {
     name: "USDC",
@@ -16,13 +16,13 @@ export const arcTestnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ["https://rpc.testnet.arc.network"],
+      http: [process.env.NEXT_PUBLIC_RPC_URL!],
     },
   },
   blockExplorers: {
     default: {
       name: "Arc Explorer",
-      url: "https://testnet.explorer.arc.network",
+      url: process.env.NEXT_PUBLIC_EXPLORER_URL!,
     },
   },
   testnet: true,
