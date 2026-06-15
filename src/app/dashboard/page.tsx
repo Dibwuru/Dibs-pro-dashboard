@@ -3,7 +3,7 @@
 import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, CheckCircle, Loader2, Send, Lock, LogOut } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { useDisconnect } from "wagmi";
+
 import { useRouter } from "next/navigation";
 import { createPublicClient, http, custom, formatUnits, parseAbiItem, decodeEventLog } from "viem";
 import { toast } from "sonner";
@@ -46,7 +46,7 @@ type UserStake = {
 export default function DashboardPage() {
   const { authenticated, ready, user, login, logout } = usePrivy();
   const { wallets: dashboardWallets } = useWallets();
-  const { disconnect } = useDisconnect();
+
 
   const isUIActive = ready && (authenticated || (dashboardWallets && dashboardWallets.length > 0));
 
@@ -193,35 +193,16 @@ export default function DashboardPage() {
     []
   );
 
-  // --- Hard disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload ---
+  // Privy-native disconnect: logout() handles cookies, wagmi state, and embedded wallets
   const handleHardDisconnect = useCallback(async () => {
-    const toastId = toast.loading("Disconnecting wallet...");
-    // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
+    const toastId = toast.loading("Disconnecting...");
     try {
       await logout();
+      toast.success("Disconnected", { id: toastId });
     } catch {
-      // logout may be no-op if not authenticated
+      toast.error("Disconnect failed — try again", { id: toastId });
     }
-    // Step 2: Disconnect all external wallets (MetaMask, etc.)
-    if (dashboardWallets && dashboardWallets.length > 0) {
-      try {
-        await Promise.all(dashboardWallets.map((w) => w.disconnect()));
-      } catch {
-        // ignore wallet disconnect errors
-      }
-    }
-    // Step 3: Wagmi disconnect as cleanup (belt-and-suspenders)
-    try {
-      disconnect();
-    } catch {
-      // noop
-    }
-    // Step 4: Wipe all cached state and hard-reload
-    toast.dismiss(toastId);
-    localStorage.clear();
-    window.sessionStorage.clear();
-    window.location.reload();
-  }, [logout, disconnect, dashboardWallets]);
+  }, [logout]);
 
   useEffect(() => {
     if (!userAddress) {

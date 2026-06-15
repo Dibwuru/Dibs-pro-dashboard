@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/SidebarContext";
 import { formatAddress } from "@/lib/format";
-import { useDisconnect } from "wagmi";
+
 
 const STORAGE_KEY = "arctor_profile";
 
@@ -69,7 +69,7 @@ export function Sidebar() {
   const { authenticated, ready, user, logout, login } = usePrivy();
   const { wallets: sidebarWallets } = useWallets();
   const { connectWallet } = useConnectWallet();
-  const { disconnect } = useDisconnect();
+
   const { theme, setTheme } = useTheme();
   const { isMobileOpen, closeMobile, isProfileEditorOpen, openProfileEditor, closeProfileEditor } = useSidebar();
   const [mounted, setMounted] = useState(false);
@@ -96,44 +96,17 @@ export function Sidebar() {
   // Unified active state: supports both Privy auth and external wallet connections
   const isUIActive = ready && (authenticated || (sidebarWallets && sidebarWallets.length > 0));
 
-  // Identity-aware disconnect: determines login method from linked accounts, then uses the correct cleanup flow
+  // Privy-native disconnect: logout() handles cookies, wagmi state, and embedded wallets
   const handleDisconnect = useCallback(async () => {
-    const toastId = toast.loading("Logging out...");
-    // Derive the login method from Privy linked accounts
-    const linkedTypes = user?.linkedAccounts?.map((a: { type: string }) => a.type) ?? [];
-    const isWalletLogin = linkedTypes.includes("wallet");
-
+    const toastId = toast.loading("Disconnecting...");
     try {
-      if (isWalletLogin) {
-        // Wallet-based login: disconnect wagmi first to clear the blockchain session
-        try {
-          disconnect();
-        } catch {
-          // noop
-        }
-      }
-      // Always disconnect any external wallets (MetaMask, etc.) regardless of auth method
-      if (sidebarWallets.length > 0) {
-        try {
-          await Promise.all(sidebarWallets.map((w) => w.disconnect()));
-        } catch {
-          // ignore wallet disconnect errors
-        }
-      }
-      // Clear the Privy identity in all cases
-      try {
-        await logout();
-      } catch {
-        // logout may be no-op if not authenticated
-      }
-    } finally {
-      // Nuclear cleanup: wipe all browser storage and hard-reload for a completely clean state
-      toast.dismiss(toastId);
-      localStorage.clear();
-      window.sessionStorage.clear();
-      window.location.reload();
+      // Privy logout invalidates HTTP-only auth cookies and cleans up all managed wallets
+      await logout();
+      toast.success("Disconnected", { id: toastId });
+    } catch {
+      toast.error("Disconnect failed — try again", { id: toastId });
     }
-  }, [logout, disconnect, sidebarWallets]);
+  }, [logout]);
 
   const activeAddress = (sidebarWallets[0]?.address as string) || user?.wallet?.address || "";
   const emailHandle =
@@ -219,13 +192,13 @@ export function Sidebar() {
       {/* Circle Faucet Button — high-visibility amber callout */}
       <div className="px-3 pb-2">
         <a
-          href="https://faucet.circle.com/"
+          href="https://faucet.arc.io/"
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleNavClick}
           className="text-amber-400 hover:text-amber-300 font-medium tracking-wide border border-amber-500/30 rounded-lg p-2 block text-center bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 transition-all"
         >
-          🚰 Circle Faucet (Get USDC)
+          🚰 Arc Faucet (Get USDC)
         </a>
       </div>
 

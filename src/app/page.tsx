@@ -3,7 +3,7 @@
 import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useChainId, useDisconnect } from "wagmi";
+import { useChainId } from "wagmi";
 import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
@@ -114,7 +114,7 @@ export default function Home() {
   const { authenticated, ready, user, login, logout } = usePrivy();
   const { connectWallet } = useConnectWallet();
   const { wallets: dashboardWallets } = useWallets();
-  const { disconnect } = useDisconnect();
+
 
   // External wallet address fallback for users who connect via MetaMask without Privy auth
   const externalWalletAddress = dashboardWallets.length > 0 ? (dashboardWallets[0].address as string) : null;
@@ -166,35 +166,16 @@ export default function Home() {
     return fallbackPublicClient;
   }, [homeWalletProvider]);
 
-  // Nuclear disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload
+  // Privy-native disconnect: logout() handles cookies, wagmi state, and embedded wallets
   const handleDisconnect = useCallback(async () => {
-    const toastId = toast.loading("Disconnecting wallet...");
-    // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
+    const toastId = toast.loading("Disconnecting...");
     try {
       await logout();
+      toast.success("Disconnected", { id: toastId });
     } catch {
-      // logout may be no-op if not authenticated
+      toast.error("Disconnect failed — try again", { id: toastId });
     }
-    // Step 2: Disconnect all external wallets (MetaMask, etc.)
-    if (dashboardWallets.length > 0) {
-      try {
-        await Promise.all(dashboardWallets.map((w) => w.disconnect()));
-      } catch {
-        // ignore wallet disconnect errors
-      }
-    }
-    // Step 3: Wagmi disconnect as cleanup (belt-and-suspenders)
-    try {
-      disconnect();
-    } catch {
-      // noop
-    }
-    // Step 4: Wipe all cached state and hard-reload
-    toast.dismiss(toastId);
-    localStorage.clear();
-    window.sessionStorage.clear();
-    window.location.reload();
-  }, [logout, disconnect, dashboardWallets]);
+  }, [logout]);
 
   // --- Live $DIBS Balance Fetching (polls every 8 seconds) ---
   const [dibsBalanceRaw, setDibsBalanceRaw] = useState<bigint | null>(null);

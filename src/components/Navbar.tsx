@@ -1,7 +1,7 @@
 "use client";
 
 import { usePrivy, useConnectWallet, useWallets } from "@privy-io/react-auth";
-import { useBalance, useDisconnect } from "wagmi";
+import { useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
@@ -18,7 +18,7 @@ export function Navbar() {
   const { login, authenticated, ready, logout, user } = usePrivy();
   const { connectWallet } = useConnectWallet();
   const { openMobile } = useSidebar();
-  const { disconnect } = useDisconnect();
+
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -46,35 +46,16 @@ export function Navbar() {
         return num < 0.0001 ? "<0.0001" : num.toFixed(4);
       })();
 
-  // Nuclear disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload
+  // Privy-native disconnect: logout() handles cookies, wagmi state, and embedded wallets
   const handleDisconnect = useCallback(async () => {
-    const toastId = toast.loading("Disconnecting wallet...");
-    // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
+    const toastId = toast.loading("Disconnecting...");
     try {
       await logout();
+      toast.success("Disconnected", { id: toastId });
     } catch {
-      // logout may be no-op if not authenticated
+      toast.error("Disconnect failed — try again", { id: toastId });
     }
-    // Step 2: Disconnect all external wallets (MetaMask, etc.)
-    if (navWallets.length > 0) {
-      try {
-        await Promise.all(navWallets.map((w) => w.disconnect()));
-      } catch {
-        // ignore wallet disconnect errors
-      }
-    }
-    // Step 3: Wagmi disconnect as cleanup (belt-and-suspenders)
-    try {
-      disconnect();
-    } catch {
-      // noop
-    }
-    // Step 4: Wipe all cached state and hard-reload
-    toast.dismiss(toastId);
-    localStorage.clear();
-    window.sessionStorage.clear();
-    window.location.reload();
-  }, [logout, disconnect, navWallets]);
+  }, [logout]);
 
   // --- Identity capsule helpers ---
   const emailHandle =
