@@ -1,27 +1,18 @@
 ACT AS: A Senior Web3 Frontend Architect.
-TASK: Implement a rock-solid, unified "Triple-Kill" logout flow across all components to eliminate ghost sessions completely.
+TASK: Add an external link to the Circle USDC Faucet inside the Sidebar navigation layout.
 
 CRITICAL PRESERVATION RULES:
-- Do NOT alter, refactor, or touch the working 5-field userStakes tuple logic, event mapping, or staking reward formulas.
-- Do NOT touch the newly implemented Privy-Wagmi Single Source of Truth architecture.
-- Focus exclusively on sealing the disconnect execution loop.
+- Do NOT alter, refactor, or disrupt the newly deployed "Triple-Kill" disconnect handlers or the Privy-Wagmi architecture.
+- Focus strictly on a localized UI addition inside the Sidebar component.
 
-IMPLEMENTATION CHANGES:
+IMPLEMENTATION:
+1. UPDATE SIDEBAR COMPONENT (src/components/Sidebar.tsx or your specific navigation layout file):
+   - Locate the navigation container inside the sidebar layout.
+   - Add a new navigation list item or anchor link pointing to: `https://faucet.circle.com/`
+   - Enforce explicit security and window attributes: `target="_blank" rel="noopener noreferrer"`
+   - Style the item to perfectly match your theme (dark/gold navigation design system). 
+   - Use clear text like "Get Test USDC" or "Circle Faucet" alongside a clean external-link icon.
 
-1. IMPLEMENT UNIFIED LOGOUT LOGIC (src/components/Web3Provider.tsx or shared auth hooks):
-   - Create or update the global hard-disconnect sequence to strictly execute the following steps in order inside a try/catch block:
-     a) KILL WAGMI: Invoke `disconnect()` from wagmi's `useDisconnect()`.
-     b) KILL PRIVY: Invoke `logout()` from privy's `usePrivy()`.
-     c) WIPE CACHE: Run `window.localStorage.clear();` and `window.sessionStorage.clear();`.
-     d) HARD RESET: Run `window.location.reload();` to re-initialize the browser with a clean slate.
-
-2. BIND TO ALL UI ELEMENTS:
-   - Audit and apply this exact handler execution to the "Disconnect" click events in:
-     - `src/components/Navbar.tsx`
-     - `src/components/Sidebar.tsx`
-     - The red disconnect action element inside the main dashboard portfolio metric block (`src/app/dashboard/page.tsx`).
-   - Ensure any errors caught during the logout process do not freeze the UI; handle them gracefully while completing the storage wipe and page reload.
-
-3. VERIFY:
-   - Run 'npm run build' to confirm a flawless compilation with zero type mismatches.
-   - Git commit with message: "fix: deploy unified triple-kill disconnect flow to wipe privy, wagmi, and storage state" and push to main.
+2. VERIFY:
+   - Run 'npm run build' to confirm no broken tags or missing icon imports throw type errors.
+   - Git commit with message: "feat: add external Circle faucet link to sidebar navigation" and push to main.

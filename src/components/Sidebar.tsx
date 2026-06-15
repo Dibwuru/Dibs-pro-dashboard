@@ -7,6 +7,8 @@ import {
   ArrowLeftRight,
   Coins,
   ChartBar,
+  ExternalLink,
+  ArrowUpRight,
   X,
   LogOut,
   Copy,
@@ -200,6 +202,19 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* External: Circle USDC Faucet */}
+        <a
+          href="https://faucet.circle.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleNavClick}
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.04] group"
+        >
+          <ExternalLink className="w-4 h-4" />
+          <span className="flex-1">Circle Faucet</span>
+          <ArrowUpRight className="w-3 h-3 opacity-40 group-hover:opacity-70 transition-opacity" />
+        </a>
       </nav>
 
       {/* Bottom area: Profile + Theme + Footer */}
