@@ -6,6 +6,7 @@ import { formatUnits } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
 import { Menu, Coins, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/SidebarContext";
@@ -47,6 +48,7 @@ export function Navbar() {
 
   // Nuclear disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload
   const handleDisconnect = useCallback(async () => {
+    const toastId = toast.loading("Disconnecting wallet...");
     // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
     try {
       await logout();
@@ -68,6 +70,7 @@ export function Navbar() {
       // noop
     }
     // Step 4: Wipe all cached state and hard-reload
+    toast.dismiss(toastId);
     localStorage.clear();
     window.sessionStorage.clear();
     window.location.reload();

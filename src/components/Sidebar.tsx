@@ -100,6 +100,7 @@ export function Sidebar() {
 
   // Nuclear disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload
   const handleDisconnect = useCallback(async () => {
+    const toastId = toast.loading("Disconnecting wallet...");
     // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
     try {
       await logout();
@@ -121,6 +122,7 @@ export function Sidebar() {
       // noop
     }
     // Step 4: Wipe all cached state and hard-reload
+    toast.dismiss(toastId);
     localStorage.clear();
     window.sessionStorage.clear();
     window.location.reload();
