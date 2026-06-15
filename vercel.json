@@ -9,5 +9,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/|static/|_next/|favicon.ico|.*\\..*$).*)",
+      "destination": "/"
+    }
   ]
 }
