@@ -52,7 +52,7 @@ export function BottomNav() {
                 href={tab.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="relative flex-1 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-white/70 transition-all duration-150 active:scale-90"
+                className="relative flex-1 flex flex-col items-center justify-center gap-1 text-amber-400 hover:text-amber-300 font-medium tracking-wide transition-all duration-150 active:scale-90"
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-[10px] font-medium leading-none">

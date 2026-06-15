@@ -7,8 +7,6 @@ import {
   ArrowLeftRight,
   Coins,
   ChartBar,
-  ExternalLink,
-  ArrowUpRight,
   X,
   LogOut,
   Copy,
@@ -98,34 +96,43 @@ export function Sidebar() {
   // Unified active state: supports both Privy auth and external wallet connections
   const isUIActive = ready && (authenticated || (sidebarWallets && sidebarWallets.length > 0));
 
-  // Nuclear disconnect: Privy logout first (handles wagmi internally), then external wallets, then wagmi cleanup, then caches + reload
+  // Identity-aware disconnect: determines login method from linked accounts, then uses the correct cleanup flow
   const handleDisconnect = useCallback(async () => {
-    const toastId = toast.loading("Disconnecting wallet...");
-    // Step 1: Privy logout — this handles the embedded wallet and wagmi connector state
+    const toastId = toast.loading("Logging out...");
+    // Derive the login method from Privy linked accounts
+    const linkedTypes = user?.linkedAccounts?.map((a: { type: string }) => a.type) ?? [];
+    const isWalletLogin = linkedTypes.includes("wallet");
+
     try {
-      await logout();
-    } catch {
-      // logout may be no-op if not authenticated
-    }
-    // Step 2: Disconnect all external wallets (MetaMask, etc.)
-    if (sidebarWallets.length > 0) {
-      try {
-        await Promise.all(sidebarWallets.map((w) => w.disconnect()));
-      } catch {
-        // ignore wallet disconnect errors
+      if (isWalletLogin) {
+        // Wallet-based login: disconnect wagmi first to clear the blockchain session
+        try {
+          disconnect();
+        } catch {
+          // noop
+        }
       }
+      // Always disconnect any external wallets (MetaMask, etc.) regardless of auth method
+      if (sidebarWallets.length > 0) {
+        try {
+          await Promise.all(sidebarWallets.map((w) => w.disconnect()));
+        } catch {
+          // ignore wallet disconnect errors
+        }
+      }
+      // Clear the Privy identity in all cases
+      try {
+        await logout();
+      } catch {
+        // logout may be no-op if not authenticated
+      }
+    } finally {
+      // Nuclear cleanup: wipe all browser storage and hard-reload for a completely clean state
+      toast.dismiss(toastId);
+      localStorage.clear();
+      window.sessionStorage.clear();
+      window.location.reload();
     }
-    // Step 3: Wagmi disconnect as cleanup (belt-and-suspenders)
-    try {
-      disconnect();
-    } catch {
-      // noop
-    }
-    // Step 4: Wipe all cached state and hard-reload
-    toast.dismiss(toastId);
-    localStorage.clear();
-    window.sessionStorage.clear();
-    window.location.reload();
   }, [logout, disconnect, sidebarWallets]);
 
   const activeAddress = (sidebarWallets[0]?.address as string) || user?.wallet?.address || "";
@@ -207,19 +214,20 @@ export function Sidebar() {
           );
         })}
 
-        {/* External: Circle USDC Faucet */}
+      </nav>
+
+      {/* Circle Faucet Button — high-visibility amber callout */}
+      <div className="px-3 pb-2">
         <a
           href="https://faucet.circle.com/"
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleNavClick}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.04] group"
+          className="text-amber-400 hover:text-amber-300 font-medium tracking-wide border border-amber-500/30 rounded-lg p-2 block text-center bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 transition-all"
         >
-          <ExternalLink className="w-4 h-4" />
-          <span className="flex-1">Circle Faucet</span>
-          <ArrowUpRight className="w-3 h-3 opacity-40 group-hover:opacity-70 transition-opacity" />
+          🚰 Circle Faucet (Get USDC)
         </a>
-      </nav>
+      </div>
 
       {/* Bottom area: Profile + Theme + Footer */}
       <div className="px-3 pb-5 space-y-3">
