@@ -118,6 +118,7 @@ export function Sidebar() {
       // logout may be no-op if not authenticated
     }
     localStorage.clear();
+    window.sessionStorage.clear();
     window.location.reload();
   }, [disconnect, logout, sidebarWallets]);
 

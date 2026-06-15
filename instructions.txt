@@ -1,24 +1,27 @@
 ACT AS: A Senior Web3 Frontend Architect.
-TASK: Implement the final 3 product features on the staking and dashboard layouts using our secure 5-field on-chain userStakes tuple state.
+TASK: Implement a rock-solid, unified "Triple-Kill" logout flow across all components to eliminate ghost sessions completely.
 
-DEVELOPMENT PROTOCOLS:
+CRITICAL PRESERVATION RULES:
+- Do NOT alter, refactor, or touch the working 5-field userStakes tuple logic, event mapping, or staking reward formulas.
+- Do NOT touch the newly implemented Privy-Wagmi Single Source of Truth architecture.
+- Focus exclusively on sealing the disconnect execution loop.
 
-1. FEATURE 1: REWARD COUNTDOWN TIMER (src/app/dashboard/page.tsx & /stake):
-   - Inside the Active Positions rows, read the block timestamp countdown until maturity.
-   - Logic: `const remainingTime = Number(stake.releaseTime) - Math.floor(Date.now() / 1000);`
-   - If `remainingTime > 0`, calculate days, hours, and minutes remaining and render a dynamic badge or text (e.g., "⏳ Unlocks in 12d 4h"). 
-   - If `remainingTime <= 0`, render a green, high-visibility badge: "✅ Ready to Claim".
+IMPLEMENTATION CHANGES:
 
-2. FEATURE 2: PREVIEW ESTIMATOR ON STAKING CONFIRM MODAL (src/app/stake/page.tsx):
-   - Locate the input selection section where users choose their lock parameters before confirming their stake transaction.
-   - Add a client-side reactive text element right below the inputs. As the user adjusts the amount input and clicks different tier buttons (7d, 30d, 90d, 180d), dynamically compute and display their projected return using our established formula:
-     `Preview Yield: +X.XX DIBS (${selectedApy}% APY)`
+1. IMPLEMENT UNIFIED LOGOUT LOGIC (src/components/Web3Provider.tsx or shared auth hooks):
+   - Create or update the global hard-disconnect sequence to strictly execute the following steps in order inside a try/catch block:
+     a) KILL WAGMI: Invoke `disconnect()` from wagmi's `useDisconnect()`.
+     b) KILL PRIVY: Invoke `logout()` from privy's `usePrivy()`.
+     c) WIPE CACHE: Run `window.localStorage.clear();` and `window.sessionStorage.clear();`.
+     d) HARD RESET: Run `window.location.reload();` to re-initialize the browser with a clean slate.
 
-3. FEATURE 3: TOTAL PENDING REWARDS STAT CARD (src/app/dashboard/page.tsx):
-   - In the upper metrics grid block, add a brand-new dashboard stats card component styled to match your layout's dark/gold palette.
-   - Title: "Total Accumulated Yield"
-   - Value calculation: Iterate through the active `userStakes` array, filtering for instances where `claimed === false`. Accumulate the live pending reward results of all rows and display the aggregated total number boldly (e.g., "45.12 DIBS").
+2. BIND TO ALL UI ELEMENTS:
+   - Audit and apply this exact handler execution to the "Disconnect" click events in:
+     - `src/components/Navbar.tsx`
+     - `src/components/Sidebar.tsx`
+     - The red disconnect action element inside the main dashboard portfolio metric block (`src/app/dashboard/page.tsx`).
+   - Ensure any errors caught during the logout process do not freeze the UI; handle them gracefully while completing the storage wipe and page reload.
 
-4. DEPLOYMENT CHECKLIST:
-   - Run 'npm run build' to ensure zero React prop compilation mismatches.
-   - Git commit with message: "feat: implement active countdown timers, preview yield modal estimates, and combined pending rewards stats panel" and push to main.
+3. VERIFY:
+   - Run 'npm run build' to confirm a flawless compilation with zero type mismatches.
+   - Git commit with message: "fix: deploy unified triple-kill disconnect flow to wipe privy, wagmi, and storage state" and push to main.
