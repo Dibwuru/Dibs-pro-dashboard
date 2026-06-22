@@ -96,17 +96,28 @@ export function Sidebar() {
   // Unified active state: supports both Privy auth and external wallet connections
   const isUIActive = ready && (authenticated || (sidebarWallets && sidebarWallets.length > 0));
 
-  // Privy-native disconnect: logout() handles cookies, wagmi state, and embedded wallets
+  // Privy-native disconnect: fire the wagmi disconnect hook on every
+  // *external* wallet to clear wagmi session state, then call logout() to
+  // invalidate HTTP-only auth cookies and tear down Privy's managed
+  // embedded wallets (avoiding a double-teardown race on embedded ones).
   const handleDisconnect = useCallback(async () => {
     const toastId = toast.loading("Disconnecting...");
     try {
-      // Privy logout invalidates HTTP-only auth cookies and cleans up all managed wallets
+      const externalWallets = sidebarWallets.filter(
+        (wallet) => wallet.walletClientType !== "privy"
+      );
+      // allSettled so a single wallet failing won't block the rest.
+      await Promise.allSettled(
+        externalWallets.map((wallet) => wallet.disconnect())
+      );
+      // logout() invalidates Privy auth cookies and finalises the session,
+      // including the embedded-wallet store.
       await logout();
       toast.success("Disconnected", { id: toastId });
     } catch {
       toast.error("Disconnect failed — try again", { id: toastId });
     }
-  }, [logout]);
+  }, [logout, sidebarWallets]);
 
   const activeAddress = (sidebarWallets[0]?.address as string) || user?.wallet?.address || "";
   const emailHandle =
