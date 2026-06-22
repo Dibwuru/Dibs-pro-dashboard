@@ -1,18 +1,29 @@
-ACT AS: A Senior Web3 Frontend Architect.
-TASK: Add an external link to the Circle USDC Faucet inside the Sidebar navigation layout.
-
-CRITICAL PRESERVATION RULES:
-- Do NOT alter, refactor, or disrupt the newly deployed "Triple-Kill" disconnect handlers or the Privy-Wagmi architecture.
-- Focus strictly on a localized UI addition inside the Sidebar component.
+ACT AS: Senior Next.js DevOps Engineer
+TASK: Update vercel.json to include standard SPA rewrite rules to fix the direct page 404 errors on Vercel deployment domains.
 
 IMPLEMENTATION:
-1. UPDATE SIDEBAR COMPONENT (src/components/Sidebar.tsx or your specific navigation layout file):
-   - Locate the navigation container inside the sidebar layout.
-   - Add a new navigation list item or anchor link pointing to: `https://faucet.circle.com/`
-   - Enforce explicit security and window attributes: `target="_blank" rel="noopener noreferrer"`
-   - Style the item to perfectly match your theme (dark/gold navigation design system). 
-   - Use clear text like "Get Test USDC" or "Circle Faucet" alongside a clean external-link icon.
+Modify 'vercel.json' so it retains the existing "headers" block, but add a "rewrites" block right below it to route all page requests to the root index layout.
 
-2. VERIFY:
-   - Run 'npm run build' to confirm no broken tags or missing icon imports throw type errors.
-   - Git commit with message: "feat: add external Circle faucet link to sidebar navigation" and push to main.
+The updated vercel.json structure must look exactly like this:
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self' https://auth.privy.io https://*.privy.io; frame-src 'self' https://auth.privy.io https://*.privy.io;"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/|static/|_next/|favicon.ico|.*\\..*$).*)",
+      "destination": "/"
+    }
+  ]
+}
+
+SANITY CHECK:
+Verify json syntax formatting, run a quick 'npm run build' check, then commit and push directly to main branch.
