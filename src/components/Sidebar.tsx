@@ -7,6 +7,7 @@ import {
   ArrowLeftRight,
   Coins,
   ChartBar,
+  BookOpen,
   X,
   LogOut,
   Copy,
@@ -28,6 +29,7 @@ const navLinks = [
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },
   { href: "/stake", label: "Stake", icon: Coins },
   { href: "/dashboard", label: "Dashboard", icon: ChartBar },
+  { href: "/docs", label: "Documentation", icon: BookOpen },
 ];
 
 function truncateEmail(email: string): string {

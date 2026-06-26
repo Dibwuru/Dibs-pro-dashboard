@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ArrowLeftRight, Lock, User, ExternalLink } from "lucide-react";
+import { Home, ArrowLeftRight, Lock, User, ExternalLink, BookOpen } from "lucide-react";
 import { useSidebar } from "@/components/SidebarContext";
 
 type NavTab =
@@ -13,6 +13,7 @@ const tabs: NavTab[] = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },
   { href: "/stake", label: "Stake", icon: Lock },
+  { href: "/docs", label: "Docs", icon: BookOpen },
   { href: "https://faucet.circle.com/", label: "Faucet", icon: ExternalLink, isExternal: true },
   { label: "Profile", icon: User, isAction: true },
 ];
