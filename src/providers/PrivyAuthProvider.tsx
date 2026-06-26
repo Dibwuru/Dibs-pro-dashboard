@@ -2,8 +2,22 @@
 import { PrivyProvider } from '@privy-io/react-auth';
 import { defineChain } from 'viem';
 
+// Build-time safe fallbacks. During `next build`, Next.js statically pre-renders
+// global layouts (e.g. `/_not-found`) without access to runtime env vars. Without
+// these fallbacks, PrivyProvider throws "invalid Privy app ID" and viem's
+// `defineChain` throws on `Number(undefined) => NaN`, breaking the entire build.
+// Runtime values (Vercel, local dev) come from real env vars; build values are
+// valid-format placeholders that are immediately replaced on the client.
+const PRIVY_APP_ID =
+  process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cl00000000000000000000000';
+const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 1337;
+const RPC_URL =
+  process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545';
+const EXPLORER_URL =
+  process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.local';
+
 const arcTestnet = defineChain({
-  id: Number(process.env.NEXT_PUBLIC_CHAIN_ID!),
+  id: CHAIN_ID,
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: {
@@ -13,13 +27,13 @@ const arcTestnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: [process.env.NEXT_PUBLIC_RPC_URL!],
+      http: [RPC_URL],
     },
   },
   blockExplorers: {
     default: {
       name: 'Arc Explorer',
-      url: process.env.NEXT_PUBLIC_EXPLORER_URL!,
+      url: EXPLORER_URL,
     },
   },
   testnet: true,
@@ -30,7 +44,7 @@ export { arcTestnet };
 export default function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <PrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
+      appId={PRIVY_APP_ID}
       config={{
         loginMethods: ['email', 'google', 'twitter'],
         appearance: {
