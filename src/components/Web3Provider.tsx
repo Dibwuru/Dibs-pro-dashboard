@@ -8,13 +8,14 @@ import { type ReactNode, useState } from "react";
 
 // Build-time safe fallbacks so `next build` doesn't crash on
 // `Number(undefined) => NaN` or undefined URLs when statically pre-rendering
-// global layouts. Real values are injected at runtime by Vercel/local env.
-// `Number(undefined) || 1337` correctly evaluates to `1337` because NaN is falsy.
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 1337;
+// global layouts. Real values are injected at runtime by Vercel/local env;
+// fallbacks default to the Arc Testnet (chain 5042002) so the wallet state
+// resolves correctly even when env vars are missing.
+const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 5042002;
 const RPC_URL =
-  process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545";
+  process.env.NEXT_PUBLIC_RPC_URL || "https://arc-testnet.drpc.org";
 const EXPLORER_URL =
-  process.env.NEXT_PUBLIC_EXPLORER_URL || "https://explorer.local";
+  process.env.NEXT_PUBLIC_EXPLORER_URL || "https://arc-testnet.drpc.org";
 
 export const arcTestnet = defineChain({
   id: CHAIN_ID,

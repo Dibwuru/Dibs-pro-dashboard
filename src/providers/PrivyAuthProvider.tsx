@@ -10,11 +10,11 @@ import { defineChain } from 'viem';
 // valid-format placeholders that are immediately replaced on the client.
 const PRIVY_APP_ID =
   process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cl00000000000000000000000';
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 1337;
+const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 5042002;
 const RPC_URL =
-  process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545';
+  process.env.NEXT_PUBLIC_RPC_URL || 'https://arc-testnet.drpc.org';
 const EXPLORER_URL =
-  process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.local';
+  process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://arc-testnet.drpc.org';
 
 const arcTestnet = defineChain({
   id: CHAIN_ID,
