@@ -3,8 +3,15 @@ import { type Abi } from "viem";
 export const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS! as `0x${string}`;
 export const DIBS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DIBS_ADDRESS! as `0x${string}`;
 export const EXCHANGE_RATE = 10; // 1 Native Token = 10 DIBS
-export const ARC_TESTNET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID!);
-export const ARC_EXPLORER_URL = process.env.NEXT_PUBLIC_EXPLORER_URL!;
+// Harmonize with Web3Provider/PrivyAuthProvider fallbacks so chain ID guards
+// never evaluate against NaN when env vars are missing — guarantees the
+// global banner check resolves to the canonical Arc Testnet (5042002).
+export const ARC_TESTNET_CHAIN_ID =
+  Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 5042002;
+export const ARC_EXPLORER_URL =
+  process.env.NEXT_PUBLIC_EXPLORER_URL || "https://arc-testnet.drpc.org";
+export const ARC_RPC_URL =
+  process.env.NEXT_PUBLIC_RPC_URL || "https://arc-testnet.drpc.org";
 
 /**
  * Robustly switch the user's wallet to Arc Testnet.
@@ -31,13 +38,12 @@ export async function switchToArcTestnet(wallet: {
     ) {
       const provider = await wallet.getEthereumProvider();
       await provider.request({
-        method: "wallet_addEthereumChain",
-        params: [
+        method: "wallet_addEthereumChain",          params: [
           {
             chainId: `0x${ARC_TESTNET_CHAIN_ID.toString(16)}`,
             chainName: "Arc Testnet",
             nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-            rpcUrls: [process.env.NEXT_PUBLIC_RPC_URL!],
+            rpcUrls: [ARC_RPC_URL],
             blockExplorerUrls: [ARC_EXPLORER_URL],
           },
         ],

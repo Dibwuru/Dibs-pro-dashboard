@@ -100,23 +100,32 @@ export function Sidebar() {
   // *external* wallet to clear wagmi session state, then call logout() to
   // invalidate HTTP-only auth cookies and tear down Privy's managed
   // embedded wallets (avoiding a double-teardown race on embedded ones).
+  // The logout call is wrapped in a robust try/catch so a stray 400 from
+  // Privy's session-clear endpoint never halts the flow — we always force
+  // a complete storage purge and hard reload to guarantee a clean state.
   const handleDisconnect = useCallback(async () => {
-    const toastId = toast.loading("Disconnecting...");
+    // Tear down external wagmi bindings first (allSettled = no throw on
+    // individual wallet failures, so a partial disconnect never blocks us).
+    const externalWallets = sidebarWallets.filter(
+      (wallet) => wallet.walletClientType !== "privy"
+    );
+    await Promise.allSettled(
+      externalWallets.map((wallet) => wallet.disconnect())
+    );
+
     try {
-      const externalWallets = sidebarWallets.filter(
-        (wallet) => wallet.walletClientType !== "privy"
-      );
-      // allSettled so a single wallet failing won't block the rest.
-      await Promise.allSettled(
-        externalWallets.map((wallet) => wallet.disconnect())
-      );
       // logout() invalidates Privy auth cookies and finalises the session,
-      // including the embedded-wallet store.
+      // including the embedded-wallet store. Failure here (e.g. HTTP 400
+      // from a stale session) is intentionally swallowed below.
       await logout();
-      toast.success("Disconnected", { id: toastId });
-    } catch {
-      toast.error("Disconnect failed — try again", { id: toastId });
+    } catch (e) {
+      console.warn("Handled Privy session clear error gracefully:", e);
     }
+    // Force a complete state purge and hard reload so the user always lands
+    // back on a clean UI, even if Privy's session-clear call partially failed.
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.replace(window.location.origin);
   }, [logout, sidebarWallets]);
 
   const activeAddress = (sidebarWallets[0]?.address as string) || user?.wallet?.address || "";

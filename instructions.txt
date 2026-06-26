@@ -1,29 +1,31 @@
-ACT AS: Senior Next.js DevOps Engineer
-TASK: Update vercel.json to include standard SPA rewrite rules to fix the direct page 404 errors on Vercel deployment domains.
+ACT AS: Principal Web3 Frontend Systems Architect
+TASK: Harmonize global chain ID banner checks, verify DIBS token contract address reads, and add a fail-safe try/catch wrapper around Privy disconnect calls.
 
-IMPLEMENTATION:
-Modify 'vercel.json' so it retains the existing "headers" block, but add a "rewrites" block right below it to route all page requests to the root index layout.
+IMPLEMENTATION CRITERIA:
+1. Harmonize Banners Across All Pages (Swap & Stake):
+   - Audit 'src/app/swap/page.tsx', 'src/app/stake/page.tsx', and any relevant UI layout files for the text string: "Wrong Network. Please switch to Arc Testnet to use DibsCoin."
+   - Refactor the conditional check so it validates purely against the correct numeric Chain ID (5042002). Remove any references to hardcoded placeholder chain variables or mismatched network definitions.
 
-The updated vercel.json structure must look exactly like this:
-{
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://auth.privy.io https://*.privy.io; frame-src 'self' https://auth.privy.io https://*.privy.io;"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/((?!api/|static/|_next/|favicon.ico|.*\\..*$).*)",
-      "destination": "/"
-    }
-  ]
-}
+2. Fix DIBS Token Balance Visibility:
+   - Locate the token configuration file or contract address definitions (e.g., matching DIBS and USDC addresses).
+   - Ensure the DIBS token contract address matches your active deployment on the Arc Testnet.
+   - Verify the balance fetching function (Wagmi useReadContract or useBalance) explicitly targets Chain ID 5042002.
+   - Confirm that the DIBS token balance formatting uses the correct token decimals (e.g., 18 or 6 decimals depending on your ERC-20 setup) so the UI doesn't truncate or drop the balance to 0.
+
+3. Bulletproof the Disconnect Loop (Fix Privy 400 Misfire):
+   - Locate your global logout / disconnect action handler (e.g., in 'src/components/Sidebar.tsx' or wherever your disconnect button triggers).
+   - Wrap the Privy 'await logout()' call inside a robust try/catch block. This ensures that even if Privy's server drops a 400 Bad Request error during session clearing, the application execution does not halt.
+   - In both the try and catch blocks, enforce a complete state purge and hard reload:
+     ```typescript
+     try {
+         await logout();
+     } catch (e) {
+         console.warn("Handled Privy session clear error gracefully:", e);
+     }
+     localStorage.clear();
+     sessionStorage.clear();
+     window.location.replace(window.location.origin);
+     ```
 
 SANITY CHECK:
-Verify json syntax formatting, run a quick 'npm run build' check, then commit and push directly to main branch.
+Run 'npm run build' to verify clear production compilation with no TypeScript or linting errors. Commit all modified files and push directly to main.

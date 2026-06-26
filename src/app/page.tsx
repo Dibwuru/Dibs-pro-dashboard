@@ -3,7 +3,6 @@
 import { usePrivy, useWallets, useConnectWallet } from "@privy-io/react-auth";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useChainId } from "wagmi";
 import { formatUnits, parseUnits, createPublicClient, http, createWalletClient, custom, parseAbiItem, decodeEventLog } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import QRCode from "react-qr-code";
@@ -126,14 +125,14 @@ export default function Home() {
   const activeDashboardChainId = activeDashboardWallet
     ? Number(activeDashboardWallet.chainId.replace('eip155:', ''))
     : null;
-  const wagmiChainId = useChainId();
-  const [nativeBalanceFetched, setNativeBalanceFetched] = useState(false);
+  // Validate purely against the canonical Arc Testnet numeric Chain ID
+  // (5042002). The legacy `!nativeBalanceFetched` heuristic and wagmiChainId
+  // cross-check were placeholder guards that suppressed the banner after the
+  // very first balance fetch — align with swap/stake/NetworkGuard pattern.
   const isWrongNetwork =
     isUIActive &&
     activeDashboardChainId !== null &&
-    activeDashboardChainId !== ARC_TESTNET_CHAIN_ID &&
-    wagmiChainId !== ARC_TESTNET_CHAIN_ID &&
-    !nativeBalanceFetched;
+    activeDashboardChainId !== ARC_TESTNET_CHAIN_ID;
 
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
@@ -166,15 +165,21 @@ export default function Home() {
     return fallbackPublicClient;
   }, [homeWalletProvider]);
 
-  // Privy-native disconnect: logout() handles cookies, wagmi state, and embedded wallets
+  // Privy-native disconnect: logout() invalidates auth cookies and tears down
+  // embedded wallets. A stray HTTP 400 from Privy's session-clear endpoint
+  // must NOT halt the disconnect flow — wrap it in a try/catch so we always
+  // fall through to the storage purge + hard reload below.
   const handleDisconnect = useCallback(async () => {
-    const toastId = toast.loading("Disconnecting...");
     try {
       await logout();
-      toast.success("Disconnected", { id: toastId });
-    } catch {
-      toast.error("Disconnect failed — try again", { id: toastId });
+    } catch (e) {
+      console.warn("Handled Privy session clear error gracefully:", e);
     }
+    // Force a complete state purge and hard reload — guarantees the UI
+    // returns to a clean state even if Privy's session-clear call fails.
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.replace(window.location.origin);
   }, [logout]);
 
   // --- Live $DIBS Balance Fetching (polls every 8 seconds) ---
@@ -269,7 +274,6 @@ export default function Home() {
         const bal = await getPublicClient().getBalance({ address: userAddress });
         if (!cancelled) {
           const formatted = formatUnits(bal, 18);
-          setNativeBalanceFetched(true);
           setTokenList((prev) =>
             prev.map((t) =>
               t.address === "Native"

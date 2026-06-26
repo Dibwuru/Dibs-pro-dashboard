@@ -20,6 +20,11 @@ export function NetworkGuard() {
     ? Number(activeWallet.chainId.replace("eip155:", ""))
     : null;
 
+  // Validate against the canonical Arc Testnet numeric Chain ID (5042002).
+  // Cross-check with wagmiChainId as a defensive guard so the banner appears
+  // if either the active wallet's reported chainId OR the wagmi-reported
+  // chain is on the wrong network — covers lag between Privy's internal
+  // chain cache and wagmi's RPC-backed chainId after a fresh connect/switch.
   const isWrongNetwork =
     !!activeWallet &&
     activeChainId !== null &&

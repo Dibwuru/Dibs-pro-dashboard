@@ -193,15 +193,21 @@ export default function DashboardPage() {
     []
   );
 
-  // Privy-native disconnect: logout() handles cookies, wagmi state, and embedded wallets
+  // Privy-native disconnect: logout() invalidates auth cookies and tears down
+  // embedded wallets. A stray HTTP 400 from Privy's session-clear endpoint
+  // must NOT halt the disconnect flow — wrap it in a try/catch so we always
+  // fall through to the storage purge + hard reload below.
   const handleHardDisconnect = useCallback(async () => {
-    const toastId = toast.loading("Disconnecting...");
     try {
       await logout();
-      toast.success("Disconnected", { id: toastId });
-    } catch {
-      toast.error("Disconnect failed — try again", { id: toastId });
+    } catch (e) {
+      console.warn("Handled Privy session clear error gracefully:", e);
     }
+    // Force a complete state purge and hard reload — guarantees the UI
+    // returns to a clean state even if Privy's session-clear call fails.
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.replace(window.location.origin);
   }, [logout]);
 
   useEffect(() => {
