@@ -586,28 +586,28 @@ export default function DashboardPage() {
           </GlassCard>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3 mb-6">
+        {/* Quick Actions — proportional 3-col grid keeps every button inside the card */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-full mb-6">
           <button
             onClick={() => setShowSendModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-950 dark:bg-slate-50 text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-200 active:scale-[0.97] transition-all shadow-sm"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold bg-slate-950 dark:bg-slate-50 text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-200 active:scale-[0.97] transition-all shadow-sm min-w-0"
           >
-            <Send className="w-4 h-4" />
-            Send
+            <Send className="w-4 h-4 shrink-0" />
+            <span className="truncate">Send</span>
           </button>
           <button
             onClick={() => router.push("/stake")}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-primary/20 text-primary bg-primary/[0.05] hover:bg-primary/[0.1] active:scale-[0.97] transition-all shadow-sm"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold border border-primary/20 text-primary bg-primary/[0.05] hover:bg-primary/[0.1] active:scale-[0.97] transition-all shadow-sm min-w-0"
           >
-            <Lock className="w-4 h-4" />
-            Stake
+            <Lock className="w-4 h-4 shrink-0" />
+            <span className="truncate">Stake</span>
           </button>
           <button
             onClick={handleHardDisconnect}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-red-500/20 text-red-500 bg-red-500/[0.05] hover:bg-red-500/[0.1] active:scale-[0.97] transition-all shadow-sm"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold border border-red-500/20 text-red-500 bg-red-500/[0.05] hover:bg-red-500/[0.1] active:scale-[0.97] transition-all shadow-sm min-w-0"
           >
-            <LogOut className="w-4 h-4" />
-            Disconnect
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span className="truncate">Disconnect</span>
           </button>
         </div>
 

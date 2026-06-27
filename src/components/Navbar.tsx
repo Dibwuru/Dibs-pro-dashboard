@@ -114,11 +114,11 @@ export function Navbar() {
 
             {/* Right Side Actions: [Gas Pill] → [Theme Toggle] → [Sign In] → [Wallet] → [Arc Badge] → [Disconnect] */}
             <div className="flex items-center gap-3">
-              {/* USDC Gas Status Pill */}
-              <div className="relative group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600/10 border border-amber-500/20 dark:bg-amber-400/10 dark:border-amber-400/20">
-                <Fuel className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                <span className="text-xs font-medium text-amber-600 dark:text-amber-400 tracking-wide">
-                  Gas: {gasBalance} USDC
+              {/* Gas Status Pill — icon + numeric value only */}
+              <div className="relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-amber-600/10 border border-amber-500/20 dark:bg-amber-400/10 dark:border-amber-400/20 shrink-0 min-w-0 max-w-[88px] sm:max-w-none">
+                <Fuel className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="text-xs font-medium text-amber-600 dark:text-amber-400 tracking-wide truncate">
+                  {gasBalance}
                 </span>
                 {/* Tooltip */}
                 <div className="absolute top-full mt-2 right-0 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">

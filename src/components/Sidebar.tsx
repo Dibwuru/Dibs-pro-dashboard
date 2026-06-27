@@ -8,6 +8,7 @@ import {
   Coins,
   ChartBar,
   BookOpen,
+  Droplet,
   X,
   LogOut,
   Copy,
@@ -15,6 +16,7 @@ import {
   Settings,
   Sun,
   Moon,
+  ExternalLink,
 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
@@ -211,44 +213,49 @@ export function Sidebar() {
 
       </nav>
 
-      {/* Circle Faucet Button — high-visibility amber callout */}
+      {/* Circle Faucet — minimalist nav-link style, sits inline with primary menu */}
       <div className="px-3 pb-2">
         <a
           href="https://faucet.circle.com/"
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleNavClick}
-          className="text-amber-400 hover:text-amber-300 font-medium tracking-wide border border-amber-500/30 rounded-lg p-2 block text-center bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 transition-all"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/[0.06] dark:hover:bg-amber-500/[0.06] transition-all"
         >
-          🚰 Circle Faucet (Get USDC)
+          <Droplet className="w-4 h-4 shrink-0" />
+          <span className="flex-1 truncate">Circle Faucet</span>
+          <ExternalLink className="w-3 h-3 opacity-60 shrink-0" />
         </a>
       </div>
 
       {/* Bottom area: Profile + Theme + Footer */}
-      <div className="px-3 pb-5 space-y-3">
-        {/* Privy Identity Capsule */}
+      <div className="px-3 pb-5 space-y-1">
+        {/* Privy Identity — slim inline nav-links (matches primary menu spacing) */}
         {isUIActive ? (
-          <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04] backdrop-blur-md overflow-hidden">
-            {/* Avatar + Info Row */}
-            <div className="flex items-center gap-3 px-4 py-3">
-              <button
-                onClick={openProfileEditor}
-                className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/10 border-2 border-amber-400/50 dark:border-amber-500/40 flex items-center justify-center flex-shrink-0 hover:border-amber-500 dark:hover:border-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/20 transition-all group"
-                title="Edit profile"
-              >
-                <span className="text-base font-bold text-amber-600 dark:text-amber-400 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
+          <>
+            {/* Profile trigger — compact avatar + email + copyable address, one nav-link row */}
+            <div
+              onClick={openProfileEditor}
+              title="Edit profile"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/[0.06] cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 leading-none">
                   {avatarLetter}
                 </span>
-              </button>
+              </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-amber-700 dark:text-amber-300/90 truncate">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
                   {displayEmail}
                 </p>
                 {displayedAddress && (
                   <button
-                    onClick={handleCopyAddress}
-                    className="flex items-center gap-1 text-[10px] font-mono text-amber-600/70 dark:text-amber-500/70 hover:text-amber-700 dark:hover:text-amber-400 transition-colors mt-0.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyAddress();
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-mono text-slate-400 dark:text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                   >
                     {copied ? (
                       <>
@@ -257,8 +264,8 @@ export function Sidebar() {
                       </>
                     ) : (
                       <>
-                        {truncatedWallet}
-                        <Copy className="w-2.5 h-2.5 opacity-60" />
+                        <span className="truncate">{truncatedWallet}</span>
+                        <Copy className="w-2.5 h-2.5 opacity-60 shrink-0" />
                       </>
                     )}
                   </button>
@@ -266,16 +273,17 @@ export function Sidebar() {
               </div>
             </div>
 
+            {/* Disconnect — slim nav-link row, no border-t or boxed wrapper */}
             <button
               onClick={handleDisconnect}
-              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all border-t border-amber-500/10"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/[0.05] dark:hover:bg-red-500/[0.05]"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              Disconnect
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span className="truncate">Disconnect</span>
             </button>
-          </div>
+          </>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 pt-1">
             <button
               onClick={() => connectWallet()}
               className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-semibold shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:scale-[1.01] active:scale-[0.98] transition-all"
