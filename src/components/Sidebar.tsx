@@ -17,6 +17,7 @@ import {
   Sun,
   Moon,
   ExternalLink,
+  Cpu,
 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ const navLinks = [
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },
   { href: "/stake", label: "Stake", icon: Coins },
   { href: "/dashboard", label: "Dashboard", icon: ChartBar },
+  { href: "/agent", label: "Agent", icon: Cpu },
   { href: "/docs", label: "Documentation", icon: BookOpen },
 ];
 

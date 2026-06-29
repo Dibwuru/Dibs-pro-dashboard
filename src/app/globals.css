@@ -307,3 +307,115 @@ html.light .btn-gradient * { color: #0A0A0A !important; }
 .dark ::-webkit-scrollbar-track { background: #030810; }
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
 .dark ::-webkit-scrollbar-thumb { background: #1E3047; }
+
+/* ============================================================
+   AGENT CONTROL CENTER — Phase 2 isolated UI primitives
+   ============================================================ */
+
+/* Animated shimmer that grazes across the velocity progress bar while
+   the spend-rate stays at zero. Keeps the meter feeling "live" without
+   pretending to read data the contract hasn't exposed yet. */
+@keyframes velocity-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.velocity-shimmer {
+  animation: velocity-shimmer 2.4s ease-in-out infinite;
+}
+
+/* Skeleton shimmer used by the LI.FI quote preview panel while the
+   SDK hand-shake is in flight. */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.85; }
+}
+
+.skeleton-bar {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.18) 0%,
+    rgba(148, 163, 184, 0.55) 50%,
+    rgba(148, 163, 184, 0.18) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* Cross-browser styled range slider used by the SpendingLimiter.vy
+   velocity preview. We only style the track + thumb; pointer interaction
+   is the browser-native range behaviour. */
+.velocity-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.velocity-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.85) 0%,
+    rgba(251, 191, 36, 0.85) var(--velocity-pct, 0%),
+    rgba(30, 41, 59, 0.8) var(--velocity-pct, 0%),
+    rgba(30, 41, 59, 0.8) 100%
+  );
+}
+
+.velocity-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.85) 0%,
+    rgba(251, 191, 36, 0.85) var(--velocity-pct, 0%),
+    rgba(30, 41, 59, 0.8) var(--velocity-pct, 0%),
+    rgba(30, 41, 59, 0.8) 100%
+  );
+}
+
+.velocity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #FDE68A, #F97316);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4),
+              0 4px 10px rgba(249, 115, 22, 0.45);
+  margin-top: -7px;
+  cursor: grab;
+  transition: transform 120ms ease;
+}
+
+.velocity-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+.velocity-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #FDE68A, #F97316);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4),
+              0 4px 10px rgba(249, 115, 22, 0.45);
+  cursor: grab;
+}
+
+.velocity-slider:focus-visible {
+  outline: none;
+}
+.velocity-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.45),
+              0 4px 10px rgba(249, 115, 22, 0.45);
+}
+.velocity-slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.45),
+              0 4px 10px rgba(249, 115, 22, 0.45);
+}

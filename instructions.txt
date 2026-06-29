@@ -1,31 +1,20 @@
-ACT AS: Principal Web3 Frontend Systems Architect
-TASK: Harmonize global chain ID banner checks, verify DIBS token contract address reads, and add a fail-safe try/catch wrapper around Privy disconnect calls.
+ACT AS: Principal Web3 Systems Architect
+TASK: Initialize the Phase 2 infrastructure stack by injecting cross-chain deposit packages and establishing an isolated Agent Automation view route.
+
+GUARDRAILS:
+- Do NOT touch or refactor any components verified by our test runner in 'src/__tests__/'. Maintain absolute code isolation.
 
 IMPLEMENTATION CRITERIA:
-1. Harmonize Banners Across All Pages (Swap & Stake):
-   - Audit 'src/app/swap/page.tsx', 'src/app/stake/page.tsx', and any relevant UI layout files for the text string: "Wrong Network. Please switch to Arc Testnet to use DibsCoin."
-   - Refactor the conditional check so it validates purely against the correct numeric Chain ID (5042002). Remove any references to hardcoded placeholder chain variables or mismatched network definitions.
+1. Package Injection:
+   - Run 'npm install @lifi/sdk @lifi/sdk-provider-ethereum' to embed the necessary cross-chain swap-and-bridge developer kits.
+2. Build Agent Analytics View:
+   - Create a brand new folder route at 'src/app/agent/'.
+   - Add a clean, production-ready 'src/app/agent/page.tsx' layout. 
+   - Design a premium dark-mode dashboard interface for this page that features:
+     * An "Agent Identity Registration (ERC-8004)" profile card module displaying an avatar placeholder, code verification hashes, and status.
+     * A "Programmable Workflow Controls (SpendingLimiter.vy)" container visualizing current spending velocity metrics (e.g., "Current Velocity: 0.00 / 500.00 USDC" with a simulated progress tracker bar).
+     * A "Cross-Chain Onboarding Bridge" input form panel designed to collect target parameters for cross-chain liquidity paths via LI.FI.
 
-2. Fix DIBS Token Balance Visibility:
-   - Locate the token configuration file or contract address definitions (e.g., matching DIBS and USDC addresses).
-   - Ensure the DIBS token contract address matches your active deployment on the Arc Testnet.
-   - Verify the balance fetching function (Wagmi useReadContract or useBalance) explicitly targets Chain ID 5042002.
-   - Confirm that the DIBS token balance formatting uses the correct token decimals (e.g., 18 or 6 decimals depending on your ERC-20 setup) so the UI doesn't truncate or drop the balance to 0.
-
-3. Bulletproof the Disconnect Loop (Fix Privy 400 Misfire):
-   - Locate your global logout / disconnect action handler (e.g., in 'src/components/Sidebar.tsx' or wherever your disconnect button triggers).
-   - Wrap the Privy 'await logout()' call inside a robust try/catch block. This ensures that even if Privy's server drops a 400 Bad Request error during session clearing, the application execution does not halt.
-   - In both the try and catch blocks, enforce a complete state purge and hard reload:
-     ```typescript
-     try {
-         await logout();
-     } catch (e) {
-         console.warn("Handled Privy session clear error gracefully:", e);
-     }
-     localStorage.clear();
-     sessionStorage.clear();
-     window.location.replace(window.location.origin);
-     ```
-
-SANITY CHECK:
-Run 'npm run build' to verify clear production compilation with no TypeScript or linting errors. Commit all modified files and push directly to main.
+VALIDATION:
+- Run 'npm test' to ensure the existing 30 assertions continue to pass perfectly.
+- Run 'npm run build' to confirm successful static compilation of the new route. Commit and push directly to main.
