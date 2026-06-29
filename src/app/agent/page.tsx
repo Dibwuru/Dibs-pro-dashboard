@@ -60,80 +60,79 @@ import {
   CircleDot,
 } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
+import { useWallets } from "@privy-io/react-auth";
+import {
+  createPublicClient,
+  createWalletClient,
+  custom,
+  formatUnits,
+  http,
+  parseUnits,
+} from "viem";
+import { arcTestnet } from "@/components/Web3Provider";
+import { toast } from "sonner";
+import {
+  createClient,
+  executeRoute,
+  getRoutes,
+  type Route,
+  type RouteExtended,
+  type SDKClient,
+  type SDKProvider,
+} from "@lifi/sdk";
+import { EthereumProvider } from "@lifi/sdk-provider-ethereum";
 
-// =========================================================================
-// Module data — deterministic Phase-2 demo fixtures. Pure presentation.
-// =========================================================================
+import {
+  SPENDING_LIMITER_ADDRESS,
+  SPENDING_LIMITER_DECIMALS,
+  SPENDING_LIMITER_POLL_MS,
+  spendingLimiterABI,
+} from "./spendingLimiterConfig";
+import {
+  BRIDGE_ASSETS,
+  IDENTITY,
+  SLIPPAGE_PRESETS,
+  SOURCE_CHAINS,
+  SPENDING_CATEGORIES,
+  SPENDING_DEFAULTS,
+  calcCategoryShare,
+  calcNetReceive,
+  formatResetCountdown,
+  isValidEvmAddress,
+  parseSlippageToDecimal,
+  truncateAddress,
+  truncateMiddle,
+} from "./agentHelpers";
 
-const IDENTITY = {
-  agentId: "AGENT-0042",
-  displayName: "ARCTOR Relay Node",
-  walletBinding: "0xc45073b9de74c7f286c2545a618b703f31228cb6",
-  registeredAt: "2026-06-12 · 14:23 UTC",
-  reputationScore: 98.7,
-  status: ["REGISTERED", "ATTESTED", "ON-CHAIN"] as const,
-  hashes: [
-    {
-      label: "ERC-8004 Signature",
-      value: "0x9f4c8a2b7e1d3a5c0b6e9f2a4d8c1b5e7f0a2c4d6b9e3f1a5c8d2b6e4f0a1c3d",
-    },
-    {
-      label: "Manifest CID",
-      value: "ipfs://bafybeiabc7d3xqy2vc4kyz5mnqxuh4uc7zqxp3wjlzhsrg5vkndwuvg6ay",
-    },
-    {
-      label: "Registration TX",
-      value: "0x7e2c1b9a4f6d8c0e2b5a7f9d3c1b6e4f2a8d0c5e9b3f1a7c2d4e6b0a8f3c5d1e",
-    },
-  ],
-} as const;
-
-const SPENDING_LIMITER = {
-  velocitySpent: 0.0,
-  velocityCap: 500.0,
-  currency: "USDC",
-  burstAllowance: 50.0,
-  resetWindowRemaining: "14h 23m",
-  burnRatePerHour: 0.0,
-  txnsThisWindow: 0,
-  windowLength: "24h rolling",
-  categories: [
-    { name: "Gas", amount: 0, share: 0, accent: "amber" },
-    { name: "Bridge", amount: 0, share: 0, accent: "emerald" },
-    { name: "Stake", amount: 0, share: 0, accent: "sky" },
-  ] as const,
-} as const;
-
-const SOURCE_CHAINS = [
-  { id: "ethereum", label: "Ethereum", chainId: 1, ticker: "ETH", note: "L1 Settlement" },
-  { id: "sepolia", label: "Sepolia", chainId: 11155111, ticker: "ETH", note: "Testnet" },
-  { id: "base", label: "Base", chainId: 8453, ticker: "ETH", note: "OP Stack" },
-  { id: "arbitrum", label: "Arbitrum", chainId: 42161, ticker: "ETH", note: "L2 Rollup" },
-  { id: "optimism", label: "Optimism", chainId: 10, ticker: "ETH", note: "OP Stack" },
-  { id: "polygon", label: "Polygon", chainId: 137, ticker: "MATIC", note: "PoS Sidechain" },
-] as const;
-
-const BRIDGE_ASSETS = [
-  { symbol: "USDC", note: "Native Bridge Asset", tone: "emerald" },
-  { symbol: "WETH", note: "Wrapped Native Gas", tone: "sky" },
-  { symbol: "DIBS", note: "Settlement Token", tone: "amber" },
-  { symbol: "WBTC", note: "Bitcoin-backed", tone: "orange" },
-] as const;
-
-const SLIPPAGE_PRESETS = ["0.5%", "1.0%", "2.0%", "5.0%"] as const;
-
-// =========================================================================
-// Helpers — tiny, framework-agnostic formatters. No React/DOM coupling.
-// =========================================================================
-
-function truncateAddress(addr: string, head = 6, tail = 4): string {
-  if (addr.length < head + tail + 2) return addr;
-  return `${addr.slice(0, head)}…${addr.slice(-tail)}`;
+// Constants used by the active route. Sourced from agentHelpers so the
+// vitest regression suite can pin every entry from outside the React
+// boundary — keeping the /agent module strictly isolated from the
+// test-pinned swap/stake/dashboard state.
+const ARC_TESTNET_CHAIN_ID = 5042002;
+const LI_FI_INTEGRATOR = "arctor-terminal";
+const ZERO_ADDRESS: `0x${string}` =
+  "0x0000000000000000000000000000000000000000";
+// LI.FI mergeFields-style options kept narrow on purpose: only the keys
+// the @lifi/sdk v4 RoutesRequest / ExecuteRouteOptions types require
+// for a successful quote + execution cycle. New fields should be added
+// here AND updated through the helper exports in agentHelpers.ts.
+interface LiveQuoteSummary {
+  receive: number;
+  fee: number;
+  bridgeSeconds: number;
+  bridges: number;
+  swaps: number;
 }
-
-function truncateMiddle(value: string, head = 14, tail = 10): string {
-  if (value.length <= head + tail + 1) return value;
-  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+interface LiveSpendingState {
+  spent: number;
+  cap: number;
+  burstAllowance: number;
+  windowSeconds: number;
+  lastReset: number;
+  txnsInWindow: number;
+  categoryGas: number;
+  categoryBridge: number;
+  categoryStake: number;
 }
 
 // =========================================================================
@@ -141,19 +140,34 @@ function truncateMiddle(value: string, head = 14, tail = 10): string {
 // =========================================================================
 
 export default function AgentPage() {
-  // Module 2 — Spending velocity state (live-adjustable via presets; default 0.00)
+  // Active Privy wallet — used to drive both SpendingLimiter reads (EIP-1193
+  // provider → viem public client) and LI.FI executeRoute (EVM() signer
+  // adapter).  Lives in the agent module layer so /swap, /stake, /dashboard
+  // are unaffected.
+  const { wallets: agentWallets } = useWallets();
+  const agentWallet = agentWallets[0];
+
+  // ----- Module 2 state --------------------------------------------------
   const [velocitySpent, setVelocitySpent] = useState<number>(
-    SPENDING_LIMITER.velocitySpent
+    SPENDING_DEFAULTS.velocitySpent
   );
   const [enforceLimits, setEnforceLimits] = useState(true);
-  // SPENDING_LIMITER.resetWindowRemaining is typed as a literal string under
-  // `as const`; explicitly widen the useState type so setResetCountdown can
-  // accept any hh X mm format we compute in the rolling-window tick below.
+  // SPENDING_DEFAULTS.resetWindowRemaining is a literal string under `as const`;
+  // widen via the explicit <string> annotation so the rolling-window tick
+  // can write any "Hh Mm" format the helper computes.
   const [resetCountdown, setResetCountdown] = useState<string>(
-    SPENDING_LIMITER.resetWindowRemaining
+    SPENDING_DEFAULTS.resetWindowRemaining
   );
 
-  // Module 3 — Cross-chain bridge form state
+  // Live SpendingLimiter.vy state.  Null when neither the wallet is connected
+  // nor the contract address is configured.  Reads back every
+  // SPENDING_LIMITER_POLL_MS via viem readContract against the active wallet's
+  // EIP-1193 transport — see the polling useEffect below.
+  const [liveSpending, setLiveSpending] = useState<LiveSpendingState | null>(
+    null
+  );
+
+  // ----- Module 3 state (cross-chain bridge) ----------------------------
   const [sourceChain, setSourceChain] = useState<(typeof SOURCE_CHAINS)[number]>(
     SOURCE_CHAINS[0]
   );
@@ -162,25 +176,235 @@ export default function AgentPage() {
   );
   const [bridgeAmount, setBridgeAmount] = useState<string>("");
   // Pre-fill the recipient slot with the canonical Arc Testnet wallet binding
-  // for the demo so the form is interactive on first render. The user can
-  // paste any 0x... address to override.
-  const DEFAULT_RECIPIENT = "0xc45073b9de74c7f286c2545a618b703f31228cb6";
-  const [recipient, setRecipient] = useState<string>(DEFAULT_RECIPIENT);
+  // for the demo so the form is interactive on first render.  The user can
+  // paste any 0x… address to override.
+  const [recipient, setRecipient] = useState<string>(IDENTITY.walletBinding);
   const [slippage, setSlippage] = useState<string>("1.0%");
   const [customSlippage, setCustomSlippage] = useState<string>("");
   const [quoteState, setQuoteState] = useState<
-    "idle" | "loading" | "ready" | "empty"
+    "idle" | "loading" | "ready" | "empty" | "executing"
   >("idle");
   const [quoteRuntimeMs, setQuoteRuntimeMs] = useState<number>(0);
+  // Typed as RouteExtended (not just Route) so that the
+  // executing JSX row can read LiFiStepExtended.execution?.status
+  // without an `as any` cast. After getRoutes the runtime object
+  // already satisfies the extended shape; executeRoute then populates
+  // execution metadata in-place.
+  const [selectedRoute, setSelectedRoute] = useState<RouteExtended | null>(
+    null
+  );
+  const [quote, setQuote] = useState<LiveQuoteSummary | null>(null);
+
+  // Wallet-switch reset (BLOCK-B2): any previously fetched Route is
+  // stamped for the wallet's fromAddress. If the user disconnects or
+  // swaps wallets in mid-session, the cached route is stale and would
+  // re-sign with the wrong account. Clear the LI.FI quote state so the
+  // user re-fetches against the new EIP-1193 source.
+  useEffect(() => {
+    setSelectedRoute(null);
+    setQuote(null);
+    setQuoteState("idle");
+    setQuoteRuntimeMs(0);
+  }, [agentWallet?.address]);
 
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
-  // Live reset-window countdown — refresh the rolling "14h 23m" once a minute.
+  // LI.FI SDK client (v4 requires a per-call SDKClient — not a global
+  // config). Built lazily on mount and rebuilt whenever the active
+  // Privy wallet changes so the EVM EthereumProvider is always bound
+  // to the freshly connected EIP-1193 source. The provider exposes a
+  // viem `Client` via `getWalletClient()` rather than the legacy v3
+  // `{ provider }` shape — wrapping the EIP-1193 handle in a viem
+  // `createWalletClient({ chain: arcTestnet, transport: custom(eip1193) })`
+  // keeps signTypedData + writeContract calls inside LI.FI's StepExecutor
+  // compatible with our wagmi/Privy signer stack.
+  const [sdkClient, setSdkClient] = useState<SDKClient | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    const buildClient = async () => {
+      try {
+        // @lifi/sdk v4 wants `providers: SDKProvider[]`; the bundled
+        // EthereumProvider class satisfies that interface directly via
+        // its `getWalletClient / switchChain / setOptions` shape.
+        const providers: SDKProvider[] = [];
+        if (agentWallet?.address) {
+          try {
+            const eip1193 = await agentWallet.getEthereumProvider();
+            const walletClient = createWalletClient({
+              account: agentWallet.address as `0x${string}`,
+              chain: arcTestnet,
+              transport: custom(eip1193),
+            });
+            providers.push(
+              // v4 ships EthereumProvider as a factory function (NOT a
+              // class — the d.ts is `declare function EthereumProvider(
+              //   options?: EthereumProviderOptions
+              // ): EthereumSDKProvider`), so no `new` keyword here.
+              EthereumProvider({
+                getWalletClient: async () => walletClient,
+                // NIT (deferred): a real `switchChain` impl deserves a
+                // proper viem chain-resolver map. Until then outbound
+                // chains other than the source/destination fall back to
+                // the wallet's own chain-switch RPC, which is the same
+                // behaviour @privy-io injects today.
+              })
+            );
+          } catch (signerErr) {
+            // Provider assembly failed (wallet revoked permission etc.) —
+            // quote fetch still works, only executeRoute will gate until
+            // the user reconnects. Surface a toast so the user sees the
+            // exact cause rather than a generic "quote failed" later.
+            // eslint-disable-next-line no-console
+            console.warn(
+              "[agent] LI.FI EthereumProvider assemble warning:",
+              signerErr
+            );
+            toast.error(
+              "Wallet signer unavailable — reconnect to enable LI.FI execution."
+            );
+          }
+        }
+        if (cancelled) return;
+        setSdkClient(
+          createClient({
+            integrator: LI_FI_INTEGRATOR,
+            providers,
+          })
+        );
+      } catch (e) {
+        // Failure is non-fatal — the GET QUOTE button will surface a
+        // gated toast until the client is re-created on next mount.
+        // eslint-disable-next-line no-console
+        console.warn("[agent] LI.FI createClient warning:", e);
+      }
+    };
+    buildClient();
+    return () => {
+      cancelled = true;
+    };
+  }, [agentWallet]);
+
+  // ----- Effective spend values -----------------------------------------
+  // Live contract read wins whenever it is present; otherwise fall back to
+  // the slider-driven demo on SPENDING_DEFAULTS.  This composes the demo
+  // surface ("Simulate Spend" slider) with the real read path without
+  // needing a separate render branch.
+  const effectiveCap = liveSpending?.cap ?? SPENDING_DEFAULTS.velocityCap;
+  const effectiveSpent = liveSpending?.spent ?? velocitySpent;
+  const effectiveTxns =
+    liveSpending?.txnsInWindow ?? SPENDING_DEFAULTS.txnsThisWindow;
+  const effectiveBurst =
+    liveSpending?.burstAllowance ?? SPENDING_DEFAULTS.burstAllowance;
+
+  // ----- SpendingLimiter.vy live reads ----------------------------------
+  // Polled every SPENDING_LIMITER_POLL_MS while a wallet is connected AND
+  // the env var points at a real contract.  All reads go through a fresh
+  // viem public client backed by the wallet's EIP-1193 provider so that
+  // we never depend on Wagmi/Privy for a read call.  Any catch silently
+  // leaves the previous state in place — the UI keeps rendering with the
+  // deterministic 0.00 fallback to ensure the dashboard never blows up.
+  useEffect(() => {
+    if (!agentWallet || SPENDING_LIMITER_ADDRESS === ZERO_ADDRESS) {
+      setLiveSpending(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchSpending = async () => {
+      try {
+        const provider = await agentWallet.getEthereumProvider();
+        const client = createPublicClient({
+          chain: arcTestnet,
+          transport: custom(provider),
+        });
+        const address = SPENDING_LIMITER_ADDRESS;
+        const [vel, burst, win, c0, c1, c2] = await Promise.all([
+          client.readContract({
+            address,
+            abi: spendingLimiterABI,
+            functionName: "getVelocityState",
+          }),
+          client.readContract({
+            address,
+            abi: spendingLimiterABI,
+            functionName: "getBurstAllowance",
+          }),
+          client.readContract({
+            address,
+            abi: spendingLimiterABI,
+            functionName: "getWindowMetrics",
+          }),
+          client.readContract({
+            address,
+            abi: spendingLimiterABI,
+            functionName: "getCategorySpend",
+            args: [0],
+          }),
+          client.readContract({
+            address,
+            abi: spendingLimiterABI,
+            functionName: "getCategorySpend",
+            args: [1],
+          }),
+          client.readContract({
+            address,
+            abi: spendingLimiterABI,
+            functionName: "getCategorySpend",
+            args: [2],
+          }),
+        ]);
+        if (cancelled) return;
+        setLiveSpending({
+          spent: parseFloat(formatUnits(vel[0], SPENDING_LIMITER_DECIMALS)),
+          cap: parseFloat(formatUnits(vel[1], SPENDING_LIMITER_DECIMALS)),
+          burstAllowance: parseFloat(
+            formatUnits(burst, SPENDING_LIMITER_DECIMALS)
+          ),
+          windowSeconds: Number(win[0]),
+          lastReset: Number(win[1]),
+          txnsInWindow: Number(win[2]),
+          categoryGas: parseFloat(
+            formatUnits(c0, SPENDING_LIMITER_DECIMALS)
+          ),
+          categoryBridge: parseFloat(
+            formatUnits(c1, SPENDING_LIMITER_DECIMALS)
+          ),
+          categoryStake: parseFloat(
+            formatUnits(c2, SPENDING_LIMITER_DECIMALS)
+          ),
+        });
+      } catch {
+        // Soft-fail: leave the existing state; UI falls back to defaults.
+      }
+    };
+    fetchSpending();
+    const interval = setInterval(fetchSpending, SPENDING_LIMITER_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [agentWallet]);
+
+  // ----- Reset-window countdown -----------------------------------------
+  // Refresh the "Hh Mm" string every minute.  When the live SpendingLimiter
+  // contract has responded with a (windowLength, lastReset) pair, drive the
+  // countdown from on-chain data via the formatResetCountdown helper.
+  // Otherwise fall back to a deterministic demo counter.
   useEffect(() => {
     let cancelled = false;
     const tick = () => {
       if (cancelled) return;
-      // Phase 2 demonstration: deterministic counter that decrements visibly
+      if (liveSpending?.lastReset && liveSpending.windowSeconds > 0) {
+        const nowSecs = Math.floor(Date.now() / 1000);
+        setResetCountdown(
+          formatResetCountdown(
+            liveSpending.windowSeconds,
+            liveSpending.lastReset,
+            nowSecs
+          )
+        );
+        return;
+      }
       const now = new Date();
       const minutesLeftInDay =
         23 * 60 + 59 - (now.getUTCHours() * 60 + now.getUTCMinutes());
@@ -194,19 +418,37 @@ export default function AgentPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [liveSpending?.lastReset, liveSpending?.windowSeconds]);
 
-  // Live velocity meter: shrink-or-grow with the slider value
+  // ----- Derived computations for render --------------------------------
   const velocityPct = useMemo(() => {
-    const pct = (velocitySpent / SPENDING_LIMITER.velocityCap) * 100;
+    const safeCap = Math.max(effectiveCap, 1); // / 0 guard
+    const pct = (effectiveSpent / safeCap) * 100;
     return Math.max(0, Math.min(100, pct));
-  }, [velocitySpent]);
+  }, [effectiveSpent, effectiveCap]);
 
-  const remaining = Math.max(
-    0,
-    SPENDING_LIMITER.velocityCap - velocitySpent
-  );
+  const remaining = Math.max(0, effectiveCap - effectiveSpent);
+  const remainingDisplay = remaining.toFixed(2);
 
+  // Per-category tile data — merges the static SPENDING_CATEGORIES
+  // metadata (id, name, accent) with the live read categorySpend amounts
+  // and the effective cap-based share percentage.
+  const categoryTiles = SPENDING_CATEGORIES.map((cat) => {
+    const liveAmount =
+      cat.id === 0
+        ? (liveSpending?.categoryGas ?? 0)
+        : cat.id === 1
+          ? (liveSpending?.categoryBridge ?? 0)
+          : (liveSpending?.categoryStake ?? 0);
+    return {
+      name: cat.name,
+      accent: cat.accent,
+      amount: liveAmount,
+      share: calcCategoryShare(liveAmount, effectiveCap),
+    };
+  });
+
+  // ----- Handlers --------------------------------------------------------
   const handleCopyHash = useCallback(async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -218,11 +460,32 @@ export default function AgentPage() {
     }
   }, []);
 
-  // Simulate a LI.FI quote fetch — Phase 2 wires up getQuotes() from @lifi/sdk.
-  // For now the form computes a deterministic preview so the UI stays alive.
-  const handleGetQuote = useCallback(() => {
+  // Get Quote → LIVE LI.FI getRoutes() via @lifi/sdk v4.  The selected
+  // Route is stored in `selectedRoute` so handleExecuteRoute can pass it
+  // straight to executeRoute() without re-asking the user to fetch a
+  // second quote.
+  const handleGetQuote = useCallback(async () => {
+    setSelectedRoute(null);
+    setQuote(null);
+
     const amount = parseFloat(bridgeAmount);
     if (!amount || amount <= 0) {
+      toast.error("Enter a positive amount to bridge.");
+      setQuoteState("empty");
+      return;
+    }
+    if (!isValidEvmAddress(recipient)) {
+      toast.error("Invalid recipient address (must be a 0x… 40-hex string).");
+      setQuoteState("empty");
+      return;
+    }
+    if (!agentWallet?.address) {
+      toast.error("Connect a wallet to fetch a live LI.FI route.");
+      setQuoteState("empty");
+      return;
+    }
+    if (!sdkClient) {
+      toast.error("LI.FI SDK client not ready — wait a moment and retry.");
       setQuoteState("empty");
       return;
     }
@@ -232,28 +495,163 @@ export default function AgentPage() {
       setQuoteRuntimeMs(Date.now() - start);
     }, 80);
 
-    // Mocked quote latency — real wiring delegates to @lifi/sdk later
-    setTimeout(() => {
+    try {
+      // fromAmount is denominated in source-chain minor units (USDC on
+      // every chain in our catalogue = 6 decimals).
+      const fromAmount = parseUnits(
+        bridgeAmount,
+        sourceChain.usdcDecimals
+      ).toString();
+      const slippageDecimal = parseSlippageToDecimal(slippage);
+      // @lifi/sdk v4 requires an SDKClient as the FIRST arg. integrator
+      // is set on the client (above) so we don't repeat it here. order is
+      // accepted as a RequestOptions field.
+      const result = await getRoutes(sdkClient, {
+        fromChainId: sourceChain.chainId,
+        toChainId: ARC_TESTNET_CHAIN_ID,
+        fromTokenAddress: sourceChain.usdcAddress as `0x${string}`,
+        // Arc Testnet USDC is the chain's native gas → zero-address sentinel
+        toTokenAddress: ZERO_ADDRESS,
+        fromAmount,
+        fromAddress: agentWallet.address as `0x${string}`,
+        toAddress: recipient as `0x${string}`,
+        options: {
+          slippage: slippageDecimal,
+          order: "CHEAPEST",
+        },
+      });
       clearInterval(runtimeTimer);
       setQuoteRuntimeMs(Date.now() - start);
+      const first = result.routes?.[0];
+      if (!first) {
+        toast.warning("LI.FI returned no routes for this pair.");
+        setQuoteState("empty");
+        return;
+      }
+      // The runtime object is already structurally a RouteExtended —
+      // only execution metadata is missing until executeRoute populates
+      // it. Widen via the structural cast so the executing branch's
+      // s.execution?.status reads are type-safe.
+      setSelectedRoute(first as RouteExtended);
+      // NIT from review: use the route's own toToken.decimals so a
+      // future non-USDC destination is formatted correctly. The native
+      // USDC sentinel on Arc Testnet reports 18.
+      const destinationDecimals =
+        first.toToken?.decimals && first.toToken.decimals > 0
+          ? first.toToken.decimals
+          : 18;
+      const receiveNumber = parseFloat(
+        formatUnits(BigInt(first.toAmount), destinationDecimals)
+      );
+      const fee = Math.max(0, amount - receiveNumber);
+      // @lifi/sdk v4 nests the real cross-chain logic inside each
+      // LiFiStep.includedSteps[]; the outer steps are always tagged
+      // 'lifi'. Cross-chain bridges are tagged 'cross' and token
+      // swaps are 'swap' inside the nested array.
+      const allSubSteps = (first.steps ?? []).flatMap(
+        (s) => s.includedSteps ?? []
+      );
+      const bridges = allSubSteps.filter((s) => s.type === "cross").length;
+      const swaps = allSubSteps.filter((s) => s.type === "swap").length;
+      setQuote({
+        receive: receiveNumber,
+        fee,
+        bridgeSeconds: Math.max(
+          45,
+          Math.round(310 - (Date.now() - start) / 20)
+        ),
+        bridges,
+        swaps,
+      });
       setQuoteState("ready");
-    }, 1400);
-  }, [bridgeAmount]);
+    } catch (err) {
+      clearInterval(runtimeTimer);
+      setQuoteRuntimeMs(Date.now() - start);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`LI.FI quote failed: ${msg.slice(0, 80)}`);
+      setQuoteState("empty");
+    }
+  }, [bridgeAmount, recipient, agentWallet, sourceChain, slippage, sdkClient]);
+
+  // Execute Route → calls LI.FI executeRoute() with the SDKClient that
+  // already has the EVM EthereumProvider wired in (see sdkClient effect
+  // above). The v4 contract is: signature
+  //   executeRoute(client: SDKClient, route: Route, executionOptions?: ExecutionOptions)
+  // — `signer` is NOT a per-call option; v4 picks the right provider
+  // automatically per-step (chain switches too). Streams step-level
+  // execution status into `selectedRoute` so the quote preview panel
+  // reflects per-step progress in real time.
+  const handleExecuteRoute = useCallback(async () => {
+    if (!selectedRoute || !agentWallet) {
+      toast.error("Connect a wallet and fetch a quote first.");
+      return;
+    }
+    if (!sdkClient) {
+      toast.error("LI.FI SDK client not ready — wait a moment and retry.");
+      return;
+    }
+    setQuoteState("executing");
+    try {
+      const updated = await executeRoute(sdkClient, selectedRoute, {
+        // @lifi/sdk v4 names the per-step progress callback
+        // `updateRouteHook` (typed `(route: RouteExtended) => void`),
+        // not the v3-era `updateRouteExecution`. RouteExtended.steps
+        // is `LiFiStepExtended[]`, each with its OWN aggregate
+        // `execution?: Execution` — that's the level we should read
+        // off (Step.includedSteps is typed Step[] without execution,
+        // so reading inner-step statuses would require an unsafe cast).
+        updateRouteHook: (route) => {
+          setSelectedRoute(route);
+          // Optimistic completion: when the LAST outer LiFiStep reports
+          // status="DONE", the full route has cleared the bridge.
+          // ExecutionStatus = 'ACTION_REQUIRED' | 'PENDING' | 'FAILED'
+          // | 'DONE' (uppercase).
+          const outer = route.steps?.at(-1);
+          if (outer?.execution?.status === "DONE") {
+            toast.success("LI.FI route executed successfully.");
+          }
+        },
+      });
+      setSelectedRoute(updated);
+      setQuoteState("ready");
+    } catch (err) {
+      const e = err as Error & { code?: number; shortMessage?: string };
+      if (
+        e?.code === 4001 ||
+        e?.shortMessage === "User rejected the request." ||
+        /User rejected/i.test(String(e?.message ?? ""))
+      ) {
+        toast.error("Execution canceled by user.");
+      } else {
+        const msg = e instanceof Error ? e.message : String(err);
+        toast.error(`Execute route failed: ${msg.slice(0, 80)}`);
+      }
+      setQuoteState("ready");
+    }
+  }, [selectedRoute, agentWallet, sdkClient]);
 
   const handleResetQuote = useCallback(() => {
     setQuoteState("idle");
     setBridgeAmount("");
     setQuoteRuntimeMs(0);
+    setSelectedRoute(null);
+    setQuote(null);
   }, []);
 
-  // Mocked quote output — deterministic for any (asset, source) input
-  const mockEstimatedReceive = useMemo(() => {
-    const amount = parseFloat(bridgeAmount);
-    if (!amount || amount <= 0) return 0;
-    // Subtract a flat 0.05% LI.FI bridge fee + simulated source-conversion
-    const feeRate = bridgeAsset.symbol === "USDC" ? 0.0005 : 0.0025;
-    return Math.max(0, amount * (1 - feeRate));
-  }, [bridgeAmount, bridgeAsset]);
+  // Terminal values rendered in the right-hand quote preview panel.
+  // Falls back to the deterministic LI.FI fee math (calcNetReceive via
+  // calcBridgeFee) when the user hasn't fetched a quote yet, so the
+  // preview is interactive from first render.
+  const estimatedReceive = quote?.receive ?? 0;
+  const parseAmount = parseFloat(bridgeAmount) || 0;
+  const estimatedFee = quote?.fee ?? calcNetReceive(
+    parseAmount,
+    bridgeAsset.symbol
+  );
+  const bridgeSecondsDisplay = quote?.bridgeSeconds ?? 60;
+  const bridgeHopsDisplay = `${
+    quote?.bridges ?? Math.max(1, Math.ceil(parseAmount / 100))
+  } bridges · ${quote?.swaps ?? (bridgeAsset.symbol === "USDC" ? 0 : 1)} swaps`;
 
   return (
     <div className="flex flex-col flex-1 bg-obsidian">
@@ -545,16 +943,31 @@ export default function AgentPage() {
               <div className="mb-4">
                 <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                   Current Velocity
+                  <span
+                    suppressHydrationWarning
+                    className={`ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
+                      liveSpending
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-500/25"
+                        : "bg-slate-200/60 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700"
+                    }`}
+                  >
+                    <CircleDot
+                      className={`w-2 h-2 ${
+                        liveSpending ? "animate-pulse" : ""
+                      }`}
+                    />
+                    {liveSpending ? "Live" : "Sim"}
+                  </span>
                 </p>
                 <div className="flex items-baseline gap-3 flex-wrap">
                   <h3 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-950 dark:text-slate-50 tracking-tight tabular-nums leading-none">
                     <span className="text-gradient">
-                      {velocitySpent.toFixed(2)}
+                      {effectiveSpent.toFixed(2)}
                     </span>
                   </h3>
                   <span className="text-xl sm:text-2xl font-semibold text-slate-400 dark:text-slate-500">
-                    / {SPENDING_LIMITER.velocityCap.toFixed(2)}{" "}
-                    {SPENDING_LIMITER.currency}
+                    / {effectiveCap.toFixed(2)}{" "}
+                    {SPENDING_DEFAULTS.currency}
                   </span>
                   <span className="ml-auto text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
                     {velocityPct.toFixed(1)}% Utilized
@@ -569,7 +982,7 @@ export default function AgentPage() {
                     className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-500 transition-all duration-500 ease-out"
                     style={{ width: `${velocityPct}%` }}
                   />
-                  {velocitySpent === 0 && (
+                  {effectiveSpent === 0 && (
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/15 to-transparent velocity-shimmer" />
                   )}
                 </div>
@@ -577,7 +990,7 @@ export default function AgentPage() {
                   <span>
                     Remaining:{" "}
                     <span className="font-semibold text-emerald-600 dark:text-emerald-300 tabular-nums">
-                      {remaining.toFixed(2)} {SPENDING_LIMITER.currency}
+                      {remainingDisplay} {SPENDING_DEFAULTS.currency}
                     </span>
                   </span>
                   <span className="inline-flex items-center gap-1">
@@ -615,7 +1028,7 @@ export default function AgentPage() {
                 <input
                   type="range"
                   min={0}
-                  max={SPENDING_LIMITER.velocityCap}
+                  max={SPENDING_DEFAULTS.velocityCap}
                   step={5}
                   value={velocitySpent}
                   onChange={(e) => setVelocitySpent(Number(e.target.value))}
@@ -630,28 +1043,28 @@ export default function AgentPage() {
                 <MetricTile
                   icon={<Flame className="w-3.5 h-3.5" />}
                   label="Burn Rate"
-                  value={`${SPENDING_LIMITER.burnRatePerHour.toFixed(2)}`}
+                  value={`${SPENDING_DEFAULTS.burnRatePerHour.toFixed(2)}`}
                   unit="USDC/hr"
                   tone="amber"
                 />
                 <MetricTile
                   icon={<Activity className="w-3.5 h-3.5" />}
                   label="Txns / Window"
-                  value={`${SPENDING_LIMITER.txnsThisWindow}`}
+                  value={`${effectiveTxns}`}
                   unit="calls"
                   tone="sky"
                 />
                 <MetricTile
                   icon={<Zap className="w-3.5 h-3.5" />}
                   label="Burst Allowance"
-                  value={`${SPENDING_LIMITER.burstAllowance.toFixed(2)}`}
+                  value={`${effectiveBurst.toFixed(2)}`}
                   unit="USDC"
                   tone="emerald"
                 />
                 <MetricTile
                   icon={<RefreshCw className="w-3.5 h-3.5" />}
                   label="Window Length"
-                  value={SPENDING_LIMITER.windowLength}
+                  value={SPENDING_DEFAULTS.windowLength}
                   unit=""
                   tone="violet"
                 />
@@ -663,7 +1076,7 @@ export default function AgentPage() {
                   Allowed Velocity Buckets
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {SPENDING_LIMITER.categories.map((cat) => (
+                  {categoryTiles.map((cat) => (
                     <CategoryTile
                       key={cat.name}
                       name={cat.name}
@@ -954,9 +1367,9 @@ export default function AgentPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
                     <button
                       onClick={handleGetQuote}
-                      disabled={quoteState === "loading"}
+                      disabled={quoteState === "loading" || quoteState === "executing"}
                       className={`flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all ${
-                        quoteState === "loading"
+                        quoteState === "loading" || quoteState === "executing"
                           ? "bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed"
                           : "bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:scale-[1.01] active:scale-[0.99]"
                       }`}
@@ -969,7 +1382,40 @@ export default function AgentPage() {
                       ) : (
                         <>
                           <Calculator className="w-4 h-4" />
-                          Get Quote
+                          {quoteState === "ready" ? "Re-Quote" : "Get Quote"}
+                          <ChevronRight className="w-3 h-3" />
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleExecuteRoute}
+                      disabled={
+                        // Note: omitting a redundant `quoteState ===
+                        // "executing"` clause here — TS narrowing on the
+                        // sibling className ternary (which reads
+                        // `quoteState === "ready" && ...`) flagged the
+                        // disjoint literal comparison. Functionally
+                        // equivalent because "executing" already implies
+                        // "!== ready".
+                        quoteState !== "ready" ||
+                        !selectedRoute ||
+                        !agentWallet
+                      }
+                      className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all border ${
+                        quoteState === "ready" && selectedRoute && agentWallet
+                          ? "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 hover:border-amber-500/60 shadow-sm shadow-amber-500/10"
+                          : "border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-500 bg-slate-100/40 dark:bg-[#121826]/40 cursor-not-allowed"
+                      }`}
+                    >
+                      {quoteState === "executing" ? (
+                        <>
+                          <span className="inline-block w-4 h-4 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+                          Executing
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Execute Route
                           <ChevronRight className="w-3 h-3" />
                         </>
                       )}
@@ -1030,7 +1476,7 @@ export default function AgentPage() {
                               <QuoteRow
                                 icon={<Coins className="w-3.5 h-3.5" />}
                                 label="Estimated receive"
-                                value={`${mockEstimatedReceive.toLocaleString(
+                                value={`${estimatedReceive.toLocaleString(
                                   undefined,
                                   { maximumFractionDigits: 4 }
                                 )} ${bridgeAsset.symbol}`}
@@ -1039,7 +1485,7 @@ export default function AgentPage() {
                               <QuoteRow
                                 icon={<Send className="w-3.5 h-3.5" />}
                                 label="Bridge fee"
-                                value={`${(parseFloat(bridgeAmount) - mockEstimatedReceive).toLocaleString(
+                                value={`${estimatedFee.toLocaleString(
                                   undefined,
                                   { maximumFractionDigits: 4 }
                                 )} ${bridgeAsset.symbol}`}
@@ -1047,15 +1493,12 @@ export default function AgentPage() {
                               <QuoteRow
                                 icon={<Timer className="w-3.5 h-3.5" />}
                                 label="Estimated time"
-                                value={`~ ${Math.max(
-                                  45,
-                                  Math.round(310 - quoteRuntimeMs / 20)
-                                )}s`}
+                                value={`~ ${bridgeSecondsDisplay}s`}
                               />
                               <QuoteRow
                                 icon={<Zap className="w-3.5 h-3.5" />}
                                 label="Route hops"
-                                value="2 bridges · 1 swap"
+                                value={bridgeHopsDisplay}
                               />
                               <QuoteRow
                                 icon={<Network className="w-3.5 h-3.5" />}
@@ -1064,9 +1507,37 @@ export default function AgentPage() {
                               />
                             </div>
                           )}
+                          {quoteState === "executing" && (
+                            <div className="space-y-3 animate-fade-in" aria-busy>
+                              <QuoteRow
+                                icon={<Send className="w-3.5 h-3.5" />}
+                                label="Execution step"
+                                value={(() => {
+                                  // RouteExtended.steps is
+                                  // LiFiStepExtended[] — each carries
+                                  // its own aggregate `execution?.status`
+                                  // (ExecutionStatus = ACTION_REQUIRED |
+                                  //  PENDING | FAILED | DONE). Count at
+                                  // the OUTER level so the UI stays in
+                                  // lockstep with the SDK's natural
+                                  // granularity.
+                                  const outer = selectedRoute?.steps ?? [];
+                                  if (outer.length === 0) return "Streaming";
+                                  const totalSteps = outer.length;
+                                  const doneSteps = outer.filter(
+                                    (s) => s.execution?.status === "DONE"
+                                  ).length;
+                                  return totalSteps > 0
+                                    ? `${doneSteps} / ${totalSteps}`
+                                    : "Streaming";
+                                })()}
+                                highlight
+                              />
+                              <SkeletonRow label="Approve" />
+                              <SkeletonRow label="Bridge" />
+                            </div>
+                          )}
                         </div>
-
-                        {/* Slippage / recipient summary */}
                         <div className="mt-5 pt-4 border-t border-slate-700/60 space-y-2">
                           <SummaryRow
                             label="Slippage"
@@ -1090,13 +1561,16 @@ export default function AgentPage() {
                           />
                         </div>
 
-                        {/* Disabled execute hint */}
+                        {/* Live status hint — replaces the Phase 2 stub once a
+                            quote has been fetched. */}
                         <div className="mt-5 p-3 rounded-lg bg-slate-800/60 border border-slate-700/60">
                           <p className="text-[10px] text-slate-300 leading-relaxed flex items-start gap-2">
                             <Terminal className="w-3.5 h-3.5 text-amber-400 mt-px shrink-0" />
                             <span>
                               <span className="font-bold text-amber-300">
-                                Phase 2 wires up next:
+                                {selectedRoute
+                                  ? `executeRoute() ready via ${LI_FI_INTEGRATOR}`
+                                  : "Phase 2 wires complete:"}
                               </span>{" "}
                               <code className="font-mono text-[10px] text-slate-200">
                                 getRoutes()&nbsp;→&nbsp;executeRoute()
@@ -1105,7 +1579,9 @@ export default function AgentPage() {
                               <code className="font-mono text-[10px] text-slate-200">
                                 @lifi/sdk
                               </code>
-                              .
+                              {agentWallet
+                                ? " · EIP-1193 signer wired."
+                                : " · connect wallet to enable execution."}
                             </span>
                           </p>
                         </div>
