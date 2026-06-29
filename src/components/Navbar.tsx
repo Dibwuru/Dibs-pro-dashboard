@@ -5,7 +5,7 @@ import { useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { arcTestnet } from "@/components/Web3Provider";
 import Link from "next/link";
-import { Menu, Coins, Fuel, ExternalLink, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
+import { Menu, Coins, Fuel, Sun, Moon, LogOut, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
@@ -114,27 +114,24 @@ export function Navbar() {
 
             {/* Right Side Actions: [Gas Pill] → [Theme Toggle] → [Sign In] → [Wallet] → [Arc Badge] → [Disconnect] */}
             <div className="flex items-center gap-3">
-              {/* Gas Status Pill — icon + numeric value only */}
+              {/* Gas Status Pill — icon + numeric value with hover tooltip */}
               <div className="relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-amber-600/10 border border-amber-500/20 dark:bg-amber-400/10 dark:border-amber-400/20 shrink-0 min-w-0 max-w-[88px] sm:max-w-none">
                 <Fuel className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
                 <span className="text-xs font-medium text-amber-600 dark:text-amber-400 tracking-wide truncate">
                   {gasBalance}
                 </span>
-                {/* Tooltip */}
-                <div className="absolute top-full mt-2 right-0 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <div className="tooltip-card p-3">
-                    <p className="text-xs mb-2">
-                      Need testnet gas tokens?
+                {/* Tooltip — pure CSS, group-hover only. Bounded at
+                    absolute top-full right-0 mt-2 so it never reflows the
+                    surrounding header tags. No focus-within because the
+                    gas pill is not keyboard-focusable. */}
+                <div
+                  role="tooltip"
+                  className="absolute top-full right-0 mt-2 w-52 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none"
+                >
+                  <div className="tooltip-card px-3 py-2 shadow-lg shadow-amber-500/10">
+                    <p className="text-xs font-medium text-amber-800 dark:text-amber-200/90 leading-snug">
+                      Native Gas Balance (Settled in USDC)
                     </p>
-                    <a
-                      href="https://faucet.arc.io/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      Get Faucet Gas
-                    </a>
                   </div>
                 </div>
               </div>
